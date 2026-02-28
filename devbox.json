@@ -12,19 +12,20 @@
       "echo ''",
       "echo '🗓️  Event Tracker'",
       "echo '─────────────────────────────────────────'",
-      "echo 'First time setup?  devbox run init'",
-      "echo 'Start dev server?  devbox run dev'",
-      "echo 'Reset database?    devbox run db:reset'",
+      "echo 'Start dev server?  devbox run start'",
+      "echo 'Fresh reset?       devbox run freshstart'",
       "echo ''"
     ],
     "scripts": {
-      "init": "bash scripts/devbox-init.sh",
+      "start": "bash scripts/devbox-quickstart.sh",
+      "freshstart": "bash scripts/devbox-freshstart.sh",
       "dev": "bash scripts/devbox-guard.sh && bash scripts/devbox-pnpm.sh dev",
       "build": "bash scripts/devbox-guard.sh && bash scripts/devbox-pnpm.sh build",
       "lint": "bash scripts/devbox-guard.sh && bash scripts/devbox-pnpm.sh lint",
-      "db:push": "bash scripts/devbox-guard.sh && bash scripts/devbox-pnpm.sh db:push",
-      "db:studio": "bash scripts/devbox-guard.sh && bash scripts/devbox-pnpm.sh db:studio",
-      "db:reset": "rm -f local.db && bash scripts/devbox-guard.sh && bash scripts/devbox-pnpm.sh db:push && echo '✅ DB reset'"
+      "typecheck": "bash scripts/devbox-guard.sh && bash scripts/devbox-pnpm.sh typecheck",
+      "db:reset": "rm -f local.db && env TURSO_DATABASE_URL=\"file:./local.db\" TURSO_AUTH_TOKEN=\"\" bash scripts/devbox-guard.sh && env TURSO_DATABASE_URL=\"file:./local.db\" TURSO_AUTH_TOKEN=\"\" bash scripts/devbox-pnpm.sh db:push && echo '✅ DB reset'",
+      "db:push:local": "env TURSO_DATABASE_URL=\"file:./local.db\" TURSO_AUTH_TOKEN=\"\" bash scripts/devbox-guard.sh && env TURSO_DATABASE_URL=\"file:./local.db\" TURSO_AUTH_TOKEN=\"\" bash scripts/devbox-pnpm.sh db:push",
+      "db:studio": "env TURSO_DATABASE_URL=\"file:./local.db\" TURSO_AUTH_TOKEN=\"\" bash scripts/devbox-guard.sh && env TURSO_DATABASE_URL=\"file:./local.db\" TURSO_AUTH_TOKEN=\"\" bash scripts/devbox-pnpm.sh db:studio"
     }
   }
 }

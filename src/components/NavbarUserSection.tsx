@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { LogOut, User } from 'lucide-react';
+import { isAdminEmail } from '@/lib/admin';
 
 export async function NavbarUserSection() {
   await connection();
@@ -63,6 +64,14 @@ export async function NavbarUserSection() {
                 Dashboard
               </Link>
             </DropdownMenuItem>
+            {isAdminEmail(session.user.email ?? null) && (
+              <DropdownMenuItem asChild>
+                <Link href="/admin/users" className="gap-2 cursor-pointer">
+                  <User className="h-4 w-4" />
+                  Admin
+                </Link>
+              </DropdownMenuItem>
+            )}
             <DropdownMenuSeparator />
             <DropdownMenuItem asChild>
               <form

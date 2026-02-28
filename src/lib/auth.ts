@@ -1,24 +1,13 @@
 import NextAuth from 'next-auth';
-import Google from 'next-auth/providers/google';
 import Credentials from 'next-auth/providers/credentials';
-import { DrizzleAdapter } from '@auth/drizzle-adapter';
 import { db } from '@/lib/db';
-import { users, accounts, sessions, verificationTokens } from '@/schema/schema';
+import { users } from '@/schema/schema';
 import { eq } from 'drizzle-orm';
+import { hashPassword, verifyPassword } from '@/lib/password';
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
-  adapter: DrizzleAdapter(db, {
-    usersTable: users,
-    accountsTable: accounts,
-    sessionsTable: sessions,
-    verificationTokensTable: verificationTokens,
-  }),
   providers: [
-    Google({
-      clientId: process.env.AUTH_GOOGLE_ID!,
-      clientSecret: process.env.AUTH_GOOGLE_SECRET!,
-    }),
-    // Optional: Credentials provider for email/password
+    // Credentials provider for email/password
     // In production, hash passwords with bcrypt
     Credentials({
       name: 'credentials',
@@ -27,33 +16,42 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         password: { label: 'Password', type: 'password' },
       },
       async authorize(credentials) {
-        // TODO: Replace with real password hashing + DB lookup
-        // Example only — do NOT use plain-text passwords in production
-        if (
-          credentials?.email === process.env.DEMO_EMAIL &&
-          credentials?.password === process.env.DEMO_PASSWORD
-        ) {
-          const email = String(credentials.email);
-          const existing = await db.select().from(users).where(eq(users.email, email)).limit(1);
+        const email = String(credentials?.email ?? '')
+          .toLowerCase()
+          .trim();
+        const password = String(credentials?.password ?? '');
 
-          const user = existing[0]
-            ? existing[0]
-            : (await db.insert(users).values({ email, name: 'Demo User' }).returning())[0];
+        if (!email || !password) return null;
 
-          if (!user) return null;
+        const existing = await db.select().from(users).where(eq(users.email, email)).limit(1);
+        let user = existing[0];
 
-          return {
-            id: user.id,
-            email: user.email,
-            name: user.name ?? 'Demo User',
-          };
+        const bootstrapEmail = process.env.ADMIN_BOOTSTRAP_EMAIL?.toLowerCase().trim();
+        const bootstrapPassword = process.env.ADMIN_BOOTSTRAP_PASSWORD;
+
+        if (!user && bootstrapEmail && bootstrapPassword && email === bootstrapEmail) {
+          if (password === bootstrapPassword) {
+            const passwordHash = await hashPassword(password);
+            user = (
+              await db.insert(users).values({ email, name: 'Admin', passwordHash }).returning()
+            )[0];
+          }
         }
-        return null;
+
+        if (!user?.passwordHash) return null;
+        const valid = await verifyPassword(password, user.passwordHash);
+        if (!valid) return null;
+
+        return {
+          id: user.id,
+          email: user.email,
+          name: user.name ?? null,
+        };
       },
     }),
   ],
   session: {
-    strategy: process.env.NODE_ENV === 'development' ? 'jwt' : 'database',
+    strategy: 'jwt',
   },
   pages: {
     signIn: '/auth/signin',
