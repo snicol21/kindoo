@@ -11,7 +11,23 @@ import {
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ArrowUpDown, ArrowUp, ArrowDown, Loader2, AlertTriangle, Inbox } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
+  Loader2,
+  AlertTriangle,
+  Inbox,
+  Trash2,
+} from 'lucide-react';
 import type { Event } from '@/schema/schema';
 
 interface EventTableProps {
@@ -19,14 +35,17 @@ interface EventTableProps {
   isLoading: boolean;
   isError: boolean;
   building: string;
+  onDelete?: (eventId: string) => Promise<void>;
 }
 
 type SortKey = 'name' | 'email' | 'createdAt';
 type SortDir = 'asc' | 'desc';
 
-export function EventTable({ events, isLoading, isError, building }: EventTableProps) {
+export function EventTable({ events, isLoading, isError, building, onDelete }: EventTableProps) {
   const [sortKey, setSortKey] = useState<SortKey>('createdAt');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [pendingDeleteEvent, setPendingDeleteEvent] = useState<Event | null>(null);
 
   const handleSort = (key: SortKey) => {
     if (sortKey === key) {
@@ -102,80 +121,144 @@ export function EventTable({ events, isLoading, isError, building }: EventTableP
     );
   }
 
+  const confirmDelete = async () => {
+    if (!onDelete || !pendingDeleteEvent) return;
+    setDeletingId(pendingDeleteEvent.id);
+    try {
+      await onDelete(pendingDeleteEvent.id);
+      setPendingDeleteEvent(null);
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
   return (
-    <div className="rounded-md border overflow-x-auto">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>
-              <SortButton col="name" label="Name" />
-            </TableHead>
-            <TableHead>Phone</TableHead>
-            <TableHead>
-              <SortButton col="email" label="Email" />
-            </TableHead>
-            <TableHead className="min-w-[200px]">Description</TableHead>
-            <TableHead>
-              <SortButton col="createdAt" label="Created" />
-            </TableHead>
-            <TableHead className="w-[80px]">Status</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {sorted.map((event) => {
-            const isOptimistic = event.id.startsWith('optimistic-');
-            return (
-              <TableRow key={event.id} className={isOptimistic ? 'opacity-60 animate-pulse' : ''}>
-                <TableCell className="font-medium whitespace-nowrap">{event.name}</TableCell>
-                <TableCell className="text-muted-foreground whitespace-nowrap">
-                  {event.phone ? (
-                    <a
-                      href={`tel:${event.phone}`}
-                      className="hover:text-foreground transition-colors"
-                    >
-                      {event.phone}
+    <>
+      <div className="rounded-md border overflow-x-auto">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>
+                <SortButton col="name" label="Name" />
+              </TableHead>
+              <TableHead>Phone</TableHead>
+              <TableHead>
+                <SortButton col="email" label="Email" />
+              </TableHead>
+              <TableHead className="min-w-[200px]">Description</TableHead>
+              <TableHead>
+                <SortButton col="createdAt" label="Created" />
+              </TableHead>
+              <TableHead className="w-[80px]">Status</TableHead>
+              <TableHead className="w-[90px]">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {sorted.map((event) => {
+              const isOptimistic = event.id.startsWith('optimistic-');
+              return (
+                <TableRow key={event.id} className={isOptimistic ? 'opacity-60 animate-pulse' : ''}>
+                  <TableCell className="font-medium whitespace-nowrap">{event.name}</TableCell>
+                  <TableCell className="text-muted-foreground whitespace-nowrap">
+                    {event.phone ? (
+                      <a
+                        href={`tel:${event.phone}`}
+                        className="hover:text-foreground transition-colors"
+                      >
+                        {event.phone}
+                      </a>
+                    ) : (
+                      <span className="text-muted-foreground/50">—</span>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    <a href={`mailto:${event.email}`} className="text-primary hover:underline">
+                      {event.email}
                     </a>
-                  ) : (
-                    <span className="text-muted-foreground/50">—</span>
-                  )}
-                </TableCell>
-                <TableCell>
-                  <a href={`mailto:${event.email}`} className="text-primary hover:underline">
-                    {event.email}
-                  </a>
-                </TableCell>
-                <TableCell className="text-muted-foreground max-w-[300px]">
-                  <p className="truncate" title={event.description}>
-                    {event.description}
-                  </p>
-                </TableCell>
-                <TableCell className="text-muted-foreground whitespace-nowrap text-sm">
-                  {isOptimistic ? (
-                    <span className="text-muted-foreground/50">Saving…</span>
-                  ) : (
-                    new Date(event.createdAt).toLocaleDateString('en-US', {
-                      month: 'short',
-                      day: 'numeric',
-                      year: 'numeric',
-                    })
-                  )}
-                </TableCell>
-                <TableCell>
-                  {isOptimistic ? (
-                    <Badge variant="secondary" className="text-xs">
-                      Pending
-                    </Badge>
-                  ) : (
-                    <Badge variant="outline" className="text-xs">
-                      Active
-                    </Badge>
-                  )}
-                </TableCell>
-              </TableRow>
-            );
-          })}
-        </TableBody>
-      </Table>
-    </div>
+                  </TableCell>
+                  <TableCell className="text-muted-foreground max-w-[300px]">
+                    <p className="truncate" title={event.description}>
+                      {event.description}
+                    </p>
+                  </TableCell>
+                  <TableCell className="text-muted-foreground whitespace-nowrap text-sm">
+                    {isOptimistic ? (
+                      <span className="text-muted-foreground/50">Saving…</span>
+                    ) : (
+                      new Date(event.createdAt).toLocaleDateString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric',
+                      })
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {isOptimistic ? (
+                      <Badge variant="secondary" className="text-xs">
+                        Pending
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline" className="text-xs">
+                        Active
+                      </Badge>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      aria-label={`Delete ${event.name}`}
+                      disabled={isOptimistic || deletingId === event.id || !onDelete}
+                      onClick={() => setPendingDeleteEvent(event)}
+                    >
+                      {deletingId === event.id ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      )}
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+      </div>
+
+      <Dialog
+        open={!!pendingDeleteEvent}
+        onOpenChange={(open) => !open && setPendingDeleteEvent(null)}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete event?</DialogTitle>
+            <DialogDescription>
+              {pendingDeleteEvent
+                ? `This will permanently delete "${pendingDeleteEvent.name}".`
+                : 'This action cannot be undone.'}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPendingDeleteEvent(null)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={confirmDelete}
+              disabled={!pendingDeleteEvent || deletingId === pendingDeleteEvent.id}
+            >
+              {pendingDeleteEvent && deletingId === pendingDeleteEvent.id ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Deleting…
+                </>
+              ) : (
+                'Delete'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

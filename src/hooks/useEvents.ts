@@ -1,7 +1,7 @@
 'use client';
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getEventsByBuilding, addEvent } from '@/actions/events';
+import { getEventsByBuilding, addEvent, deleteEvent } from '@/actions/events';
 import type { Building, Event } from '@/schema/schema';
 import type { AddEventInput } from '@/actions/events';
 import { toast } from 'sonner';
@@ -85,6 +85,45 @@ export function useAddEvent(onSuccess?: () => void) {
     onSuccess: () => {
       toast.success('Event added successfully!');
       onSuccess?.();
+    },
+  });
+}
+
+export function useDeleteEvent(building: Building) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (eventId: string) => {
+      const result = await deleteEvent(eventId);
+      if (!result.success) throw new Error(result.error);
+      return eventId;
+    },
+
+    onMutate: async (eventId) => {
+      const queryKey = eventKeys.byBuilding(building);
+      await queryClient.cancelQueries({ queryKey });
+
+      const previousEvents = queryClient.getQueryData<Event[]>(queryKey);
+      queryClient.setQueryData<Event[]>(queryKey, (old = []) =>
+        old.filter((e) => e.id !== eventId)
+      );
+
+      return { previousEvents, queryKey };
+    },
+
+    onError: (error, _eventId, context) => {
+      if (context?.previousEvents !== undefined && context?.queryKey) {
+        queryClient.setQueryData(context.queryKey, context.previousEvents);
+      }
+      toast.error(error.message ?? 'Failed to delete event.');
+    },
+
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: eventKeys.byBuilding(building) });
+    },
+
+    onSuccess: () => {
+      toast.success('Event deleted.');
     },
   });
 }
