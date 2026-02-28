@@ -1,9 +1,9 @@
 'use client';
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getEventsByBuilding, addEvent, deleteEvent } from '@/actions/events';
+import { getEventsByBuilding, addEvent, deleteEvent, updateEvent } from '@/actions/events';
 import type { Building, Event } from '@/schema/schema';
-import type { AddEventInput } from '@/actions/events';
+import type { AddEventInput, UpdateEventInput } from '@/actions/events';
 import { toast } from 'sonner';
 
 // ─── Query Keys ───────────────────────────────────────────────────────────────
@@ -124,6 +124,84 @@ export function useDeleteEvent(building: Building) {
 
     onSuccess: () => {
       toast.success('Event deleted.');
+    },
+  });
+}
+
+export function useUpdateEvent() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (input: UpdateEventInput) => {
+      const result = await updateEvent(input);
+      if (!result.success) throw new Error(result.error);
+      return result.data!;
+    },
+
+    onMutate: async (input) => {
+      await queryClient.cancelQueries({ queryKey: eventKeys.all });
+
+      const stakeKey = eventKeys.byBuilding('Stake Center');
+      const maplesKey = eventKeys.byBuilding('Maples Building');
+
+      const previousStake = queryClient.getQueryData<Event[]>(stakeKey);
+      const previousMaples = queryClient.getQueryData<Event[]>(maplesKey);
+
+      const mergedUpdate = (existing?: Event): Event => ({
+        ...(existing ?? {
+          id: input.id,
+          userId: 'pending',
+          createdAt: new Date(),
+          building: input.building,
+          name: input.name,
+          phone: input.phone ?? null,
+          email: input.email,
+          description: input.description,
+        }),
+        building: input.building,
+        name: input.name,
+        phone: input.phone ?? null,
+        email: input.email,
+        description: input.description,
+      });
+
+      queryClient.setQueryData<Event[]>(stakeKey, (old = []) => {
+        const existing = old.find((e) => e.id === input.id);
+        const filtered = old.filter((e) => e.id !== input.id);
+        if (input.building === 'Stake Center') {
+          return [...filtered, mergedUpdate(existing)];
+        }
+        return filtered;
+      });
+
+      queryClient.setQueryData<Event[]>(maplesKey, (old = []) => {
+        const existing = old.find((e) => e.id === input.id);
+        const filtered = old.filter((e) => e.id !== input.id);
+        if (input.building === 'Maples Building') {
+          return [...filtered, mergedUpdate(existing)];
+        }
+        return filtered;
+      });
+
+      return { previousStake, previousMaples, stakeKey, maplesKey };
+    },
+
+    onError: (error, _input, context) => {
+      if (context?.previousStake !== undefined) {
+        queryClient.setQueryData(context.stakeKey, context.previousStake);
+      }
+      if (context?.previousMaples !== undefined) {
+        queryClient.setQueryData(context.maplesKey, context.previousMaples);
+      }
+      toast.error(error.message ?? 'Failed to update event.');
+    },
+
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: eventKeys.all });
+    },
+
+    onSuccess: () => {
+      toast.success('Event updated.');
     },
   });
 }

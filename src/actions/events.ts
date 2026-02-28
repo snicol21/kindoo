@@ -17,6 +17,10 @@ export interface AddEventInput {
   description: string;
 }
 
+export interface UpdateEventInput extends AddEventInput {
+  id: string;
+}
+
 export interface ActionResult<T = unknown> {
   success: boolean;
   data?: T;
@@ -119,5 +123,48 @@ export async function deleteEvent(eventId: string): Promise<ActionResult<void>> 
   } catch (error) {
     console.error('[deleteEvent] Error:', error);
     return { success: false, error: 'Failed to delete event.' };
+  }
+}
+
+export async function updateEvent(input: UpdateEventInput): Promise<ActionResult<Event>> {
+  try {
+    const session = await auth();
+
+    if (!session?.user?.id) {
+      return { success: false, error: 'Not authenticated.' };
+    }
+
+    if (!input.id?.trim()) {
+      return { success: false, error: 'Invalid event id.' };
+    }
+
+    const validationError = validateEventInput(input);
+    if (validationError) {
+      return { success: false, error: validationError };
+    }
+
+    const [updatedEvent] = await db
+      .update(events)
+      .set({
+        building: input.building,
+        name: input.name.trim(),
+        phone: input.phone?.trim() || null,
+        email: input.email.trim().toLowerCase(),
+        description: input.description.trim(),
+      })
+      .where(and(eq(events.id, input.id), eq(events.userId, session.user.id)))
+      .returning();
+
+    if (!updatedEvent) {
+      return { success: false, error: 'Event not found.' };
+    }
+
+    revalidateTag(`events-${session.user.id}`, 'everything');
+    revalidateTag(`events-${session.user.id}-${input.building}`, 'everything');
+
+    return { success: true, data: updatedEvent };
+  } catch (error) {
+    console.error('[updateEvent] Error:', error);
+    return { success: false, error: 'Failed to update event.' };
   }
 }

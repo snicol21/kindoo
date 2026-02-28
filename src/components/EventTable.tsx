@@ -19,6 +19,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import {
   ArrowUpDown,
   ArrowUp,
@@ -26,9 +36,11 @@ import {
   Loader2,
   AlertTriangle,
   Inbox,
+  Pencil,
   Trash2,
 } from 'lucide-react';
-import type { Event } from '@/schema/schema';
+import { BUILDINGS, type Building, type Event } from '@/schema/schema';
+import type { UpdateEventInput } from '@/actions/events';
 
 interface EventTableProps {
   events: Event[];
@@ -36,16 +48,31 @@ interface EventTableProps {
   isError: boolean;
   building: string;
   onDelete?: (eventId: string) => Promise<void>;
+  onEdit?: (input: UpdateEventInput) => Promise<void>;
 }
 
 type SortKey = 'name' | 'email' | 'createdAt';
 type SortDir = 'asc' | 'desc';
 
-export function EventTable({ events, isLoading, isError, building, onDelete }: EventTableProps) {
+export function EventTable({
+  events,
+  isLoading,
+  isError,
+  building,
+  onDelete,
+  onEdit,
+}: EventTableProps) {
   const [sortKey, setSortKey] = useState<SortKey>('createdAt');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [pendingDeleteEvent, setPendingDeleteEvent] = useState<Event | null>(null);
+  const [editingEvent, setEditingEvent] = useState<Event | null>(null);
+  const [editBuilding, setEditBuilding] = useState<Building>('Stake Center');
+  const [editName, setEditName] = useState('');
+  const [editPhone, setEditPhone] = useState('');
+  const [editEmail, setEditEmail] = useState('');
+  const [editDescription, setEditDescription] = useState('');
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
 
   const handleSort = (key: SortKey) => {
     if (sortKey === key) {
@@ -132,6 +159,33 @@ export function EventTable({ events, isLoading, isError, building, onDelete }: E
     }
   };
 
+  const openEditDialog = (event: Event) => {
+    setEditingEvent(event);
+    setEditBuilding(event.building);
+    setEditName(event.name);
+    setEditPhone(event.phone ?? '');
+    setEditEmail(event.email);
+    setEditDescription(event.description);
+  };
+
+  const submitEdit = async () => {
+    if (!onEdit || !editingEvent) return;
+    setIsSavingEdit(true);
+    try {
+      await onEdit({
+        id: editingEvent.id,
+        building: editBuilding,
+        name: editName,
+        phone: editPhone,
+        email: editEmail,
+        description: editDescription,
+      });
+      setEditingEvent(null);
+    } finally {
+      setIsSavingEdit(false);
+    }
+  };
+
   return (
     <>
       <div className="rounded-md border overflow-x-auto">
@@ -150,7 +204,7 @@ export function EventTable({ events, isLoading, isError, building, onDelete }: E
                 <SortButton col="createdAt" label="Created" />
               </TableHead>
               <TableHead className="w-[80px]">Status</TableHead>
-              <TableHead className="w-[90px]">Actions</TableHead>
+              <TableHead className="w-[120px]">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -204,19 +258,30 @@ export function EventTable({ events, isLoading, isError, building, onDelete }: E
                     )}
                   </TableCell>
                   <TableCell>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      aria-label={`Delete ${event.name}`}
-                      disabled={isOptimistic || deletingId === event.id || !onDelete}
-                      onClick={() => setPendingDeleteEvent(event)}
-                    >
-                      {deletingId === event.id ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      )}
-                    </Button>
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        aria-label={`Edit ${event.name}`}
+                        disabled={isOptimistic || !onEdit}
+                        onClick={() => openEditDialog(event)}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        aria-label={`Delete ${event.name}`}
+                        disabled={isOptimistic || deletingId === event.id || !onDelete}
+                        onClick={() => setPendingDeleteEvent(event)}
+                      >
+                        {deletingId === event.id ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        )}
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               );
@@ -254,6 +319,84 @@ export function EventTable({ events, isLoading, isError, building, onDelete }: E
                 </>
               ) : (
                 'Delete'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!editingEvent} onOpenChange={(open) => !open && setEditingEvent(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit event</DialogTitle>
+            <DialogDescription>Update the event details and save your changes.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-building">Building</Label>
+              <Select
+                value={editBuilding}
+                onValueChange={(value) => setEditBuilding(value as Building)}
+              >
+                <SelectTrigger id="edit-building">
+                  <SelectValue placeholder="Select building" />
+                </SelectTrigger>
+                <SelectContent>
+                  {BUILDINGS.map((b) => (
+                    <SelectItem key={b} value={b}>
+                      {b}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-name">Name</Label>
+              <Input
+                id="edit-name"
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-phone">Phone</Label>
+              <Input
+                id="edit-phone"
+                value={editPhone}
+                onChange={(e) => setEditPhone(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-email">Email</Label>
+              <Input
+                id="edit-email"
+                type="email"
+                value={editEmail}
+                onChange={(e) => setEditEmail(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-description">Description</Label>
+              <Textarea
+                id="edit-description"
+                rows={4}
+                value={editDescription}
+                onChange={(e) => setEditDescription(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditingEvent(null)}>
+              Cancel
+            </Button>
+            <Button onClick={submitEdit} disabled={!editingEvent || isSavingEdit || !onEdit}>
+              {isSavingEdit ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Saving…
+                </>
+              ) : (
+                'Save changes'
               )}
             </Button>
           </DialogFooter>

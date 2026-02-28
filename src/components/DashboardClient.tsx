@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { EventTable } from '@/components/EventTable';
 import { AddEventDialog } from '@/components/AddEventDialog';
-import { useDeleteEvent, useEvents } from '@/hooks/useEvents';
+import { useDeleteEvent, useEvents, useUpdateEvent } from '@/hooks/useEvents';
 import { Building2, Plus, CalendarDays } from 'lucide-react';
 import type { Event, Building } from '@/schema/schema';
 
@@ -46,6 +46,7 @@ export function DashboardClient({
 
   const deleteStakeCenterEvent = useDeleteEvent('Stake Center');
   const deleteMaplesEvent = useDeleteEvent('Maples Building');
+  const updateEvent = useUpdateEvent();
 
   const userInitials = user.name
     ? user.name
@@ -158,6 +159,7 @@ export function DashboardClient({
                 onDelete={(eventId) =>
                   deleteStakeCenterEvent.mutateAsync(eventId).then(() => undefined)
                 }
+                onEdit={(input) => updateEvent.mutateAsync(input).then(() => undefined)}
               />
             </CardContent>
           </Card>
@@ -190,6 +192,7 @@ export function DashboardClient({
                 isError={mbError}
                 building="Maples Building"
                 onDelete={(eventId) => deleteMaplesEvent.mutateAsync(eventId).then(() => undefined)}
+                onEdit={(input) => updateEvent.mutateAsync(input).then(() => undefined)}
               />
             </CardContent>
           </Card>
