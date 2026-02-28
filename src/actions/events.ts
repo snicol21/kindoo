@@ -38,6 +38,12 @@ export interface EventWithCreator extends Event {
   creatorEmail: string | null;
 }
 
+export interface ImportEventsResult {
+  inserted: number;
+  failed: number;
+  rowErrors: { row: number; message: string }[];
+}
+
 export interface ActionResult<T = unknown> {
   success: boolean;
   data?: T;
@@ -239,5 +245,66 @@ export async function updateEvent(input: UpdateEventInput): Promise<ActionResult
   } catch (error) {
     console.error('[updateEvent] Error:', error);
     return { success: false, error: 'Failed to update event.' };
+  }
+}
+
+export async function importEvents(input: {
+  events: AddEventInput[];
+}): Promise<ActionResult<ImportEventsResult>> {
+  try {
+    const session = await auth();
+
+    if (!session?.user?.id) {
+      return { success: false, error: 'Not authenticated.' };
+    }
+
+    const rowErrors: { row: number; message: string }[] = [];
+    const validRows: AddEventInput[] = [];
+
+    input.events.forEach((event, index) => {
+      const error = validateEventInput(event);
+      if (error) {
+        rowErrors.push({ row: index + 2, message: error });
+      } else {
+        validRows.push(event);
+      }
+    });
+
+    if (validRows.length === 0) {
+      return {
+        success: false,
+        error: 'No valid rows found. Please fix the errors and try again.',
+        data: { inserted: 0, failed: rowErrors.length, rowErrors },
+      };
+    }
+
+    const insertValues = validRows.map((event) => ({
+      building: event.building,
+      ward: event.ward,
+      name: event.name.trim(),
+      eventDate: event.eventDate.trim(),
+      startTime: event.startTime.trim(),
+      endTime: event.endTime.trim(),
+      phone: event.phone?.trim() || null,
+      email: event.email.trim().toLowerCase(),
+      description: event.description.trim(),
+      userId: session.user.id,
+    }));
+
+    await db.insert(events).values(insertValues);
+
+    revalidateTag(`events-${session.user.id}`, 'everything');
+
+    return {
+      success: true,
+      data: {
+        inserted: insertValues.length,
+        failed: rowErrors.length,
+        rowErrors,
+      },
+    };
+  } catch (error) {
+    console.error('[importEvents] Error:', error);
+    return { success: false, error: 'Failed to import events.' };
   }
 }

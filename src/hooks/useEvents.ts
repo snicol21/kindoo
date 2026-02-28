@@ -1,9 +1,20 @@
 'use client';
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getEventsByBuilding, addEvent, deleteEvent, updateEvent } from '@/actions/events';
+import {
+  getEventsByBuilding,
+  addEvent,
+  deleteEvent,
+  updateEvent,
+  importEvents,
+} from '@/actions/events';
 import type { Building } from '@/schema/schema';
-import type { AddEventInput, EventWithCreator, UpdateEventInput } from '@/actions/events';
+import type {
+  AddEventInput,
+  EventWithCreator,
+  ImportEventsResult,
+  UpdateEventInput,
+} from '@/actions/events';
 import { toast } from 'sonner';
 
 // ─── Query Keys ───────────────────────────────────────────────────────────────
@@ -221,6 +232,22 @@ export function useUpdateEvent() {
 
     onSuccess: () => {
       toast.success('Event updated.');
+    },
+  });
+}
+
+export function useImportEvents() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (events: AddEventInput[]) => {
+      const result = await importEvents({ events });
+      if (!result.success) throw new Error(result.error);
+      return result.data as ImportEventsResult;
+    },
+
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: eventKeys.all });
     },
   });
 }

@@ -7,8 +7,9 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { EventTable } from '@/components/EventTable';
 import { AddEventDialog } from '@/components/AddEventDialog';
+import { CsvImportDialog } from '@/components/CsvImportDialog';
 import { useDeleteEvent, useEvents, useUpdateEvent } from '@/hooks/useEvents';
-import { Building2, Plus, CalendarDays } from 'lucide-react';
+import { Building2, Plus, CalendarDays, Upload } from 'lucide-react';
 import type { Building } from '@/schema/schema';
 import type { EventWithCreator } from '@/actions/events';
 
@@ -31,6 +32,7 @@ export function DashboardClient({
   initialMaplesEvents,
 }: DashboardClientProps) {
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const [defaultBuilding, setDefaultBuilding] = useState<Building>('Stake Center');
 
   const {
@@ -80,10 +82,16 @@ export function DashboardClient({
           </div>
         </div>
 
-        <Button onClick={() => openDialogFor('Stake Center')} className="gap-2 shrink-0">
-          <Plus className="h-4 w-4" />
-          Add Event
-        </Button>
+        <div className="flex flex-col sm:flex-row gap-2 shrink-0">
+          <Button variant="outline" onClick={() => setImportOpen(true)} className="gap-2">
+            <Upload className="h-4 w-4" />
+            Import CSV
+          </Button>
+          <Button onClick={() => openDialogFor('Stake Center')} className="gap-2">
+            <Plus className="h-4 w-4" />
+            Add Event
+          </Button>
+        </div>
       </div>
 
       {/* Stats */}
@@ -206,6 +214,8 @@ export function DashboardClient({
         onOpenChange={setDialogOpen}
         defaultBuilding={defaultBuilding}
       />
+
+      <CsvImportDialog open={importOpen} onOpenChange={setImportOpen} />
     </div>
   );
 }
