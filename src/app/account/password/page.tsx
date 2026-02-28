@@ -4,7 +4,7 @@ import type { Metadata } from 'next';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { changeDisplayName, changePassword } from '@/actions/auth';
+import { changeProfile, changePassword } from '@/actions/auth';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 
@@ -55,7 +55,7 @@ export default async function AccountPasswordPage({ searchParams }: AccountPassw
           <form
             action={async (formData: FormData) => {
               'use server';
-              const result = await changeDisplayName({
+              const result = await changeProfile({
                 name: String(formData.get('name') ?? ''),
               });
 

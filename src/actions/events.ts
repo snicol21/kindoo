@@ -3,7 +3,15 @@
 
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
-import { events, type Building, type Event } from '@/schema/schema';
+import {
+  events,
+  users,
+  BUILDINGS,
+  WARDS,
+  type Building,
+  type Event,
+  type Ward,
+} from '@/schema/schema';
 import { eq, and } from 'drizzle-orm';
 import { revalidateTag } from 'next/cache';
 
@@ -11,7 +19,11 @@ import { revalidateTag } from 'next/cache';
 
 export interface AddEventInput {
   building: Building;
+  ward: Ward;
   name: string;
+  eventDate: string;
+  startTime: string;
+  endTime: string;
   phone?: string;
   email: string;
   description: string;
@@ -19,6 +31,11 @@ export interface AddEventInput {
 
 export interface UpdateEventInput extends AddEventInput {
   id: string;
+}
+
+export interface EventWithCreator extends Event {
+  creatorName: string | null;
+  creatorEmail: string | null;
 }
 
 export interface ActionResult<T = unknown> {
@@ -30,10 +47,17 @@ export interface ActionResult<T = unknown> {
 // ─── Validation Helper ────────────────────────────────────────────────────────
 
 function validateEventInput(input: AddEventInput): string | null {
-  if (!input.building || !['Stake Center', 'Maples Building'].includes(input.building)) {
+  if (!input.building || !BUILDINGS.includes(input.building)) {
     return 'Invalid building selection.';
   }
+  if (!input.ward || !WARDS.includes(input.ward)) return 'Ward is required.';
   if (!input.name?.trim()) return 'Name is required.';
+  if (!/^[^\s]+\s+[^\s]+/.test(input.name.trim())) {
+    return 'Please enter both first and last name.';
+  }
+  if (!input.eventDate?.trim()) return 'Event date is required.';
+  if (!input.startTime?.trim()) return 'Start time is required.';
+  if (!input.endTime?.trim()) return 'End time is required.';
   if (!input.email?.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.email)) {
     return 'Valid email is required.';
   }
@@ -63,7 +87,11 @@ export async function addEvent(input: AddEventInput): Promise<ActionResult<Event
       .insert(events)
       .values({
         building: input.building,
+        ward: input.ward,
         name: input.name.trim(),
+        eventDate: input.eventDate.trim(),
+        startTime: input.startTime.trim(),
+        endTime: input.endTime.trim(),
         phone: input.phone?.trim() || null,
         email: input.email.trim().toLowerCase(),
         description: input.description.trim(),
@@ -85,7 +113,9 @@ export async function addEvent(input: AddEventInput): Promise<ActionResult<Event
   }
 }
 
-export async function getEventsByBuilding(building: Building): Promise<ActionResult<Event[]>> {
+export async function getEventsByBuilding(
+  building: Building
+): Promise<ActionResult<EventWithCreator[]>> {
   try {
     const session = await auth();
 
@@ -94,12 +124,28 @@ export async function getEventsByBuilding(building: Building): Promise<ActionRes
     }
 
     const userEvents = await db
-      .select()
+      .select({
+        id: events.id,
+        building: events.building,
+        ward: events.ward,
+        name: events.name,
+        eventDate: events.eventDate,
+        startTime: events.startTime,
+        endTime: events.endTime,
+        phone: events.phone,
+        email: events.email,
+        description: events.description,
+        userId: events.userId,
+        createdAt: events.createdAt,
+        creatorName: users.name,
+        creatorEmail: users.email,
+      })
       .from(events)
+      .innerJoin(users, eq(events.userId, users.id))
       .where(and(eq(events.userId, session.user.id), eq(events.building, building)))
       .orderBy(events.createdAt);
 
-    return { success: true, data: userEvents };
+    return { success: true, data: userEvents as EventWithCreator[] };
   } catch (error) {
     console.error('[getEventsByBuilding] Error:', error);
     return { success: false, error: 'Failed to fetch events.', data: [] };
@@ -147,7 +193,11 @@ export async function updateEvent(input: UpdateEventInput): Promise<ActionResult
       .update(events)
       .set({
         building: input.building,
+        ward: input.ward,
         name: input.name.trim(),
+        eventDate: input.eventDate.trim(),
+        startTime: input.startTime.trim(),
+        endTime: input.endTime.trim(),
         phone: input.phone?.trim() || null,
         email: input.email.trim().toLowerCase(),
         description: input.description.trim(),

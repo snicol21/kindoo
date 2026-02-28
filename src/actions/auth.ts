@@ -69,7 +69,11 @@ export async function listUsers(): Promise<
   return {
     success: true,
     data: allUsers
-      .map((user) => ({ id: user.id, email: user.email, name: user.name ?? null }))
+      .map((user) => ({
+        id: user.id,
+        email: user.email,
+        name: user.name ?? null,
+      }))
       .sort((a, b) => a.email.localeCompare(b.email)),
   };
 }
@@ -159,7 +163,7 @@ export async function changePassword(input: {
   return { success: true };
 }
 
-export async function changeDisplayName(input: { name: string }): Promise<ActionResult> {
+export async function changeProfile(input: { name: string }): Promise<ActionResult> {
   const session = await auth();
   const userId = session?.user?.id ?? null;
 

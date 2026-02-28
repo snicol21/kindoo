@@ -20,8 +20,25 @@ export const users = sqliteTable('user', {
 // ─── Events Table ─────────────────────────────────────────────────────────────
 
 export type Building = 'Stake Center' | 'Maples Building';
+export type Ward =
+  | '1st Ward'
+  | '2nd Ward'
+  | '3rd Ward'
+  | '4th Ward'
+  | '5th Ward'
+  | '6th Ward'
+  | 'Park Ridge Ward';
 
 export const BUILDINGS: Building[] = ['Stake Center', 'Maples Building'];
+export const WARDS: Ward[] = [
+  '1st Ward',
+  '2nd Ward',
+  '3rd Ward',
+  '4th Ward',
+  '5th Ward',
+  '6th Ward',
+  'Park Ridge Ward',
+];
 
 export const events = sqliteTable('event', {
   id: text('id')
@@ -32,7 +49,23 @@ export const events = sqliteTable('event', {
   })
     .notNull()
     .$type<Building>(),
+  ward: text('ward', {
+    enum: [
+      '1st Ward',
+      '2nd Ward',
+      '3rd Ward',
+      '4th Ward',
+      '5th Ward',
+      '6th Ward',
+      'Park Ridge Ward',
+    ],
+  })
+    .notNull()
+    .$type<Ward>(),
   name: text('name').notNull(),
+  eventDate: text('event_date').notNull(),
+  startTime: text('start_time').notNull(),
+  endTime: text('end_time').notNull(),
   phone: text('phone'),
   email: text('email').notNull(),
   description: text('description').notNull(),

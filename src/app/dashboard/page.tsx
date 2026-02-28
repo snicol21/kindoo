@@ -1,7 +1,7 @@
 import { auth } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { db } from '@/lib/db';
-import { events } from '@/schema/schema';
+import { events, users } from '@/schema/schema';
 import { eq, and } from 'drizzle-orm';
 import { DashboardClient } from '@/components/DashboardClient';
 import type { Metadata } from 'next';
@@ -11,7 +11,6 @@ import { connection } from 'next/server';
 export const metadata: Metadata = {
   title: 'Dashboard',
 };
-
 
 export default async function DashboardPage() {
   await connection();
@@ -24,15 +23,47 @@ export default async function DashboardPage() {
   // Initial data fetch for both buildings (runs in parallel)
   const [stakeCenterEvents, maplesEvents] = await Promise.all([
     db
-      .select()
+      .select({
+        id: events.id,
+        building: events.building,
+        ward: events.ward,
+        name: events.name,
+        eventDate: events.eventDate,
+        startTime: events.startTime,
+        endTime: events.endTime,
+        phone: events.phone,
+        email: events.email,
+        description: events.description,
+        userId: events.userId,
+        createdAt: events.createdAt,
+        creatorName: users.name,
+        creatorEmail: users.email,
+      })
       .from(events)
+      .innerJoin(users, eq(events.userId, users.id))
       .where(
         and(eq(events.userId, session.user.id), eq(events.building, 'Stake Center' as Building))
       )
       .orderBy(events.createdAt),
     db
-      .select()
+      .select({
+        id: events.id,
+        building: events.building,
+        ward: events.ward,
+        name: events.name,
+        eventDate: events.eventDate,
+        startTime: events.startTime,
+        endTime: events.endTime,
+        phone: events.phone,
+        email: events.email,
+        description: events.description,
+        userId: events.userId,
+        createdAt: events.createdAt,
+        creatorName: users.name,
+        creatorEmail: users.email,
+      })
       .from(events)
+      .innerJoin(users, eq(events.userId, users.id))
       .where(
         and(eq(events.userId, session.user.id), eq(events.building, 'Maples Building' as Building))
       )

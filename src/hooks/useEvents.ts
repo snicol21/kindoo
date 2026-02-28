@@ -2,8 +2,8 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getEventsByBuilding, addEvent, deleteEvent, updateEvent } from '@/actions/events';
-import type { Building, Event } from '@/schema/schema';
-import type { AddEventInput, UpdateEventInput } from '@/actions/events';
+import type { Building } from '@/schema/schema';
+import type { AddEventInput, EventWithCreator, UpdateEventInput } from '@/actions/events';
 import { toast } from 'sonner';
 
 // ─── Query Keys ───────────────────────────────────────────────────────────────
@@ -15,13 +15,13 @@ export const eventKeys = {
 
 // ─── Fetch Hook ───────────────────────────────────────────────────────────────
 
-export function useEvents(building: Building, initialData?: Event[]) {
+export function useEvents(building: Building, initialData?: EventWithCreator[]) {
   return useQuery({
     queryKey: eventKeys.byBuilding(building),
     queryFn: async () => {
       const result = await getEventsByBuilding(building);
       if (!result.success) throw new Error(result.error);
-      return result.data ?? [];
+      return (result.data ?? []) as EventWithCreator[];
     },
     initialData,
     staleTime: 1000 * 60 * 2,
@@ -48,21 +48,30 @@ export function useAddEvent(onSuccess?: () => void) {
       await queryClient.cancelQueries({ queryKey });
 
       // Snapshot current data for rollback
-      const previousEvents = queryClient.getQueryData<Event[]>(queryKey);
+      const previousEvents = queryClient.getQueryData<EventWithCreator[]>(queryKey);
 
       // Optimistically insert
-      const optimisticEvent: Event = {
+      const optimisticEvent: EventWithCreator = {
         id: `optimistic-${Date.now()}`,
         building: newEventInput.building,
+        ward: newEventInput.ward,
         name: newEventInput.name,
+        eventDate: newEventInput.eventDate,
+        startTime: newEventInput.startTime,
+        endTime: newEventInput.endTime,
         phone: newEventInput.phone ?? null,
         email: newEventInput.email,
         description: newEventInput.description,
         userId: 'pending',
         createdAt: new Date(),
+        creatorName: null,
+        creatorEmail: null,
       };
 
-      queryClient.setQueryData<Event[]>(queryKey, (old = []) => [...old, optimisticEvent]);
+      queryClient.setQueryData<EventWithCreator[]>(queryKey, (old = []) => [
+        ...old,
+        optimisticEvent,
+      ]);
 
       return { previousEvents, queryKey };
     },
@@ -70,7 +79,7 @@ export function useAddEvent(onSuccess?: () => void) {
     // Rollback on error
     onError: (error, _variables, context) => {
       if (context?.previousEvents !== undefined && context?.queryKey) {
-        queryClient.setQueryData(context.queryKey, context.previousEvents);
+        queryClient.setQueryData(context.queryKey, context.previousEvents as EventWithCreator[]);
       }
       toast.error(error.message ?? 'Failed to add event.');
     },
@@ -103,8 +112,8 @@ export function useDeleteEvent(building: Building) {
       const queryKey = eventKeys.byBuilding(building);
       await queryClient.cancelQueries({ queryKey });
 
-      const previousEvents = queryClient.getQueryData<Event[]>(queryKey);
-      queryClient.setQueryData<Event[]>(queryKey, (old = []) =>
+      const previousEvents = queryClient.getQueryData<EventWithCreator[]>(queryKey);
+      queryClient.setQueryData<EventWithCreator[]>(queryKey, (old = []) =>
         old.filter((e) => e.id !== eventId)
       );
 
@@ -113,7 +122,7 @@ export function useDeleteEvent(building: Building) {
 
     onError: (error, _eventId, context) => {
       if (context?.previousEvents !== undefined && context?.queryKey) {
-        queryClient.setQueryData(context.queryKey, context.previousEvents);
+        queryClient.setQueryData(context.queryKey, context.previousEvents as EventWithCreator[]);
       }
       toast.error(error.message ?? 'Failed to delete event.');
     },
@@ -144,28 +153,38 @@ export function useUpdateEvent() {
       const stakeKey = eventKeys.byBuilding('Stake Center');
       const maplesKey = eventKeys.byBuilding('Maples Building');
 
-      const previousStake = queryClient.getQueryData<Event[]>(stakeKey);
-      const previousMaples = queryClient.getQueryData<Event[]>(maplesKey);
+      const previousStake = queryClient.getQueryData<EventWithCreator[]>(stakeKey);
+      const previousMaples = queryClient.getQueryData<EventWithCreator[]>(maplesKey);
 
-      const mergedUpdate = (existing?: Event): Event => ({
+      const mergedUpdate = (existing?: EventWithCreator): EventWithCreator => ({
         ...(existing ?? {
           id: input.id,
           userId: 'pending',
           createdAt: new Date(),
           building: input.building,
+          ward: input.ward,
           name: input.name,
+          eventDate: input.eventDate,
+          startTime: input.startTime,
+          endTime: input.endTime,
           phone: input.phone ?? null,
           email: input.email,
           description: input.description,
+          creatorName: null,
+          creatorEmail: null,
         }),
         building: input.building,
+        ward: input.ward,
         name: input.name,
+        eventDate: input.eventDate,
+        startTime: input.startTime,
+        endTime: input.endTime,
         phone: input.phone ?? null,
         email: input.email,
         description: input.description,
       });
 
-      queryClient.setQueryData<Event[]>(stakeKey, (old = []) => {
+      queryClient.setQueryData<EventWithCreator[]>(stakeKey, (old = []) => {
         const existing = old.find((e) => e.id === input.id);
         const filtered = old.filter((e) => e.id !== input.id);
         if (input.building === 'Stake Center') {
@@ -174,7 +193,7 @@ export function useUpdateEvent() {
         return filtered;
       });
 
-      queryClient.setQueryData<Event[]>(maplesKey, (old = []) => {
+      queryClient.setQueryData<EventWithCreator[]>(maplesKey, (old = []) => {
         const existing = old.find((e) => e.id === input.id);
         const filtered = old.filter((e) => e.id !== input.id);
         if (input.building === 'Maples Building') {

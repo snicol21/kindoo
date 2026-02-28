@@ -9,7 +9,8 @@ import { EventTable } from '@/components/EventTable';
 import { AddEventDialog } from '@/components/AddEventDialog';
 import { useDeleteEvent, useEvents, useUpdateEvent } from '@/hooks/useEvents';
 import { Building2, Plus, CalendarDays } from 'lucide-react';
-import type { Event, Building } from '@/schema/schema';
+import type { Building } from '@/schema/schema';
+import type { EventWithCreator } from '@/actions/events';
 
 interface DashboardUser {
   id: string;
@@ -20,8 +21,8 @@ interface DashboardUser {
 
 interface DashboardClientProps {
   user: DashboardUser;
-  initialStakeCenterEvents: Event[];
-  initialMaplesEvents: Event[];
+  initialStakeCenterEvents: EventWithCreator[];
+  initialMaplesEvents: EventWithCreator[];
 }
 
 export function DashboardClient({

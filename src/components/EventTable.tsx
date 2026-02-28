@@ -10,7 +10,6 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import {
   Dialog,
   DialogContent,
@@ -38,12 +37,14 @@ import {
   Inbox,
   Pencil,
   Trash2,
+  Copy,
 } from 'lucide-react';
-import { BUILDINGS, type Building, type Event } from '@/schema/schema';
-import type { UpdateEventInput } from '@/actions/events';
+import { BUILDINGS, WARDS, type Building, type Ward } from '@/schema/schema';
+import type { EventWithCreator, UpdateEventInput } from '@/actions/events';
+import { toast } from 'sonner';
 
 interface EventTableProps {
-  events: Event[];
+  events: EventWithCreator[];
   isLoading: boolean;
   isError: boolean;
   building: string;
@@ -51,8 +52,82 @@ interface EventTableProps {
   onEdit?: (input: UpdateEventInput) => Promise<void>;
 }
 
-type SortKey = 'name' | 'email' | 'createdAt';
+type SortKey = 'name' | 'email' | 'eventDate';
 type SortDir = 'asc' | 'desc';
+
+function formatPhone(value?: string | null) {
+  if (!value) return '';
+  const digits = value.replace(/\D/g, '');
+  if (!digits) return '';
+
+  let normalized = digits;
+  if (normalized.length === 11 && normalized.startsWith('1')) {
+    normalized = normalized.slice(1);
+  }
+  if (normalized.length > 10) {
+    normalized = normalized.slice(0, 10);
+  }
+
+  if (normalized.length <= 3) return normalized;
+  if (normalized.length <= 6) {
+    return `(${normalized.slice(0, 3)}) ${normalized.slice(3)}`;
+  }
+  return `(${normalized.slice(0, 3)}) ${normalized.slice(3, 6)}-${normalized.slice(6)}`;
+}
+
+function formatDate(dateStr: string) {
+  return new Date(`${dateStr}T00:00:00`).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
+}
+
+function formatTime(timeStr: string) {
+  const [hours, minutes] = timeStr.split(':').map((value) => Number(value));
+  const dt = new Date();
+  dt.setHours(hours, minutes, 0, 0);
+  return dt.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+}
+
+function formatTimeRange(startTime: string, endTime: string) {
+  return `${formatTime(startTime)} – ${formatTime(endTime)}`;
+}
+
+function getDaysUntil(dateStr: string) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const target = new Date(`${dateStr}T00:00:00`);
+  const diff = Math.round((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+  if (diff < 0) return 'Past';
+  if (diff === 0) return 'Today';
+  if (diff === 1) return '1 day';
+  return `${diff} days`;
+}
+
+function buildShortMessage(event: EventWithCreator) {
+  const phone = formatPhone(event.phone);
+  const date = formatDate(event.eventDate);
+  const time = formatTimeRange(event.startTime, event.endTime);
+  const contact = [event.name, phone].filter(Boolean).join(' ');
+  return `Event at ${event.building} on ${date} ${time}. Contact: ${contact}. ${event.description}`;
+}
+
+function buildFullMessage(event: EventWithCreator) {
+  const phone = formatPhone(event.phone);
+  const contactLine = [event.name, phone, event.email].filter(Boolean).join(' | ');
+  const creator = event.creatorName || event.creatorEmail || '—';
+
+  return [
+    `Event details: ${event.description}`,
+    `Date: ${formatDate(event.eventDate)}`,
+    `Time: ${formatTimeRange(event.startTime, event.endTime)}`,
+    `Building: ${event.building}`,
+    `Contact: ${contactLine || '—'}`,
+    `Ward: ${event.ward ?? '—'}`,
+    `Created by: ${creator}`,
+  ].join('\n');
+}
 
 export function EventTable({
   events,
@@ -62,13 +137,18 @@ export function EventTable({
   onDelete,
   onEdit,
 }: EventTableProps) {
-  const [sortKey, setSortKey] = useState<SortKey>('createdAt');
-  const [sortDir, setSortDir] = useState<SortDir>('desc');
+  const [sortKey, setSortKey] = useState<SortKey>('eventDate');
+  const [sortDir, setSortDir] = useState<SortDir>('asc');
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [pendingDeleteEvent, setPendingDeleteEvent] = useState<Event | null>(null);
-  const [editingEvent, setEditingEvent] = useState<Event | null>(null);
+  const [pendingDeleteEvent, setPendingDeleteEvent] = useState<EventWithCreator | null>(null);
+  const [editingEvent, setEditingEvent] = useState<EventWithCreator | null>(null);
+  const [copyingEvent, setCopyingEvent] = useState<EventWithCreator | null>(null);
   const [editBuilding, setEditBuilding] = useState<Building>('Stake Center');
   const [editName, setEditName] = useState('');
+  const [editWard, setEditWard] = useState<Ward | ''>('');
+  const [editEventDate, setEditEventDate] = useState('');
+  const [editStartTime, setEditStartTime] = useState('');
+  const [editEndTime, setEditEndTime] = useState('');
   const [editPhone, setEditPhone] = useState('');
   const [editEmail, setEditEmail] = useState('');
   const [editDescription, setEditDescription] = useState('');
@@ -87,9 +167,9 @@ export function EventTable({
     let valA: string | number | Date = a[sortKey] ?? '';
     let valB: string | number | Date = b[sortKey] ?? '';
 
-    if (sortKey === 'createdAt') {
-      valA = new Date(valA).getTime();
-      valB = new Date(valB).getTime();
+    if (sortKey === 'eventDate') {
+      valA = new Date(`${a.eventDate}T${a.startTime ?? '00:00'}`).getTime();
+      valB = new Date(`${b.eventDate}T${b.startTime ?? '00:00'}`).getTime();
     } else {
       valA = String(valA).toLowerCase();
       valB = String(valB).toLowerCase();
@@ -159,11 +239,15 @@ export function EventTable({
     }
   };
 
-  const openEditDialog = (event: Event) => {
+  const openEditDialog = (event: EventWithCreator) => {
     setEditingEvent(event);
     setEditBuilding(event.building);
     setEditName(event.name);
-    setEditPhone(event.phone ?? '');
+    setEditWard(event.ward ?? '');
+    setEditEventDate(event.eventDate);
+    setEditStartTime(event.startTime);
+    setEditEndTime(event.endTime);
+    setEditPhone(formatPhone(event.phone ?? ''));
     setEditEmail(event.email);
     setEditDescription(event.description);
   };
@@ -172,10 +256,18 @@ export function EventTable({
     if (!onEdit || !editingEvent) return;
     setIsSavingEdit(true);
     try {
+      if (!editWard) {
+        toast.error('Ward is required.');
+        return;
+      }
       await onEdit({
         id: editingEvent.id,
         building: editBuilding,
+        ward: editWard as Ward,
         name: editName,
+        eventDate: editEventDate,
+        startTime: editStartTime,
+        endTime: editEndTime,
         phone: editPhone,
         email: editEmail,
         description: editDescription,
@@ -195,15 +287,17 @@ export function EventTable({
               <TableHead>
                 <SortButton col="name" label="Name" />
               </TableHead>
+              <TableHead>
+                <SortButton col="eventDate" label="Date / Time" />
+              </TableHead>
+              <TableHead className="w-[110px]">Days Until</TableHead>
               <TableHead>Phone</TableHead>
               <TableHead>
                 <SortButton col="email" label="Email" />
               </TableHead>
-              <TableHead className="min-w-[200px]">Description</TableHead>
-              <TableHead>
-                <SortButton col="createdAt" label="Created" />
-              </TableHead>
-              <TableHead className="w-[80px]">Status</TableHead>
+              <TableHead className="w-[140px]">Ward</TableHead>
+              <TableHead className="w-[170px]">Created By</TableHead>
+              <TableHead className="min-w-[220px]">Description</TableHead>
               <TableHead className="w-[120px]">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -213,13 +307,20 @@ export function EventTable({
               return (
                 <TableRow key={event.id} className={isOptimistic ? 'opacity-60 animate-pulse' : ''}>
                   <TableCell className="font-medium whitespace-nowrap">{event.name}</TableCell>
+                  <TableCell className="text-muted-foreground whitespace-nowrap text-sm">
+                    <div>{formatDate(event.eventDate)}</div>
+                    <div>{formatTimeRange(event.startTime, event.endTime)}</div>
+                  </TableCell>
+                  <TableCell className="text-muted-foreground text-sm">
+                    {isOptimistic ? '—' : getDaysUntil(event.eventDate)}
+                  </TableCell>
                   <TableCell className="text-muted-foreground whitespace-nowrap">
                     {event.phone ? (
                       <a
-                        href={`tel:${event.phone}`}
+                        href={`tel:${event.phone.replace(/\D/g, '')}`}
                         className="hover:text-foreground transition-colors"
                       >
-                        {event.phone}
+                        {formatPhone(event.phone)}
                       </a>
                     ) : (
                       <span className="text-muted-foreground/50">—</span>
@@ -230,35 +331,26 @@ export function EventTable({
                       {event.email}
                     </a>
                   </TableCell>
-                  <TableCell className="text-muted-foreground max-w-[300px]">
+                  <TableCell className="text-muted-foreground">{event.ward ?? '—'}</TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {event.creatorName || event.creatorEmail || '—'}
+                  </TableCell>
+                  <TableCell className="text-muted-foreground max-w-[320px]">
                     <p className="truncate" title={event.description}>
                       {event.description}
                     </p>
                   </TableCell>
-                  <TableCell className="text-muted-foreground whitespace-nowrap text-sm">
-                    {isOptimistic ? (
-                      <span className="text-muted-foreground/50">Saving…</span>
-                    ) : (
-                      new Date(event.createdAt).toLocaleDateString('en-US', {
-                        month: 'short',
-                        day: 'numeric',
-                        year: 'numeric',
-                      })
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    {isOptimistic ? (
-                      <Badge variant="secondary" className="text-xs">
-                        Pending
-                      </Badge>
-                    ) : (
-                      <Badge variant="outline" className="text-xs">
-                        Active
-                      </Badge>
-                    )}
-                  </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        aria-label={`Copy ${event.name}`}
+                        disabled={isOptimistic}
+                        onClick={() => setCopyingEvent(event)}
+                      >
+                        <Copy className="h-4 w-4" />
+                      </Button>
                       <Button
                         variant="ghost"
                         size="icon"
@@ -351,7 +443,7 @@ export function EventTable({
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="edit-name">Name</Label>
+              <Label htmlFor="edit-name">Contact Name</Label>
               <Input
                 id="edit-name"
                 value={editName}
@@ -359,11 +451,56 @@ export function EventTable({
               />
             </div>
             <div className="space-y-1.5">
+              <Label htmlFor="edit-ward">Ward</Label>
+              <Select value={editWard} onValueChange={(value) => setEditWard(value as Ward)}>
+                <SelectTrigger id="edit-ward">
+                  <SelectValue placeholder="Select ward" />
+                </SelectTrigger>
+                <SelectContent>
+                  {WARDS.map((ward) => (
+                    <SelectItem key={ward} value={ward}>
+                      {ward}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="edit-event-date">Date</Label>
+                <Input
+                  id="edit-event-date"
+                  type="date"
+                  value={editEventDate}
+                  onChange={(e) => setEditEventDate(e.target.value)}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="edit-start-time">Start</Label>
+                <Input
+                  id="edit-start-time"
+                  type="time"
+                  value={editStartTime}
+                  onChange={(e) => setEditStartTime(e.target.value)}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="edit-end-time">End</Label>
+                <Input
+                  id="edit-end-time"
+                  type="time"
+                  value={editEndTime}
+                  onChange={(e) => setEditEndTime(e.target.value)}
+                />
+              </div>
+            </div>
+            <div className="space-y-1.5">
               <Label htmlFor="edit-phone">Phone</Label>
               <Input
                 id="edit-phone"
+                type="tel"
                 value={editPhone}
-                onChange={(e) => setEditPhone(e.target.value)}
+                onChange={(e) => setEditPhone(formatPhone(e.target.value))}
               />
             </div>
             <div className="space-y-1.5">
@@ -398,6 +535,58 @@ export function EventTable({
               ) : (
                 'Save changes'
               )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!copyingEvent} onOpenChange={(open) => !open && setCopyingEvent(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Copy event details</DialogTitle>
+            <DialogDescription>Copy a formatted message to share.</DialogDescription>
+          </DialogHeader>
+          {copyingEvent && (
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Short message</Label>
+                <Textarea readOnly rows={3} value={buildShortMessage(copyingEvent)} />
+                <Button
+                  variant="outline"
+                  onClick={async () => {
+                    try {
+                      await navigator.clipboard.writeText(buildShortMessage(copyingEvent));
+                      toast.success('Short message copied.');
+                    } catch {
+                      toast.error('Failed to copy.');
+                    }
+                  }}
+                >
+                  Copy short message
+                </Button>
+              </div>
+              <div className="space-y-2">
+                <Label>Full details</Label>
+                <Textarea readOnly rows={7} value={buildFullMessage(copyingEvent)} />
+                <Button
+                  variant="outline"
+                  onClick={async () => {
+                    try {
+                      await navigator.clipboard.writeText(buildFullMessage(copyingEvent));
+                      toast.success('Full details copied.');
+                    } catch {
+                      toast.error('Failed to copy.');
+                    }
+                  }}
+                >
+                  Copy full details
+                </Button>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCopyingEvent(null)}>
+              Close
             </Button>
           </DialogFooter>
         </DialogContent>
