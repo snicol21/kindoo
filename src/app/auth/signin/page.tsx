@@ -38,15 +38,17 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
   const errorMessage = params.error ? (errorMessages[params.error] ?? errorMessages.default) : null;
 
   return (
-    <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center px-4">
+    <div className="flex min-h-[calc(100vh-4rem)] justify-center px-4 pt-[10vh]">
       <div className="w-full max-w-md space-y-6">
         {/* Logo */}
-        <div className="flex flex-col items-center space-y-2 text-center">
+        <div className="flex items-center gap-3">
           <div className="rounded-full bg-primary/10 p-3">
             <CalendarDays className="h-8 w-8 text-primary" />
           </div>
-          <h1 className="text-2xl font-bold">Event Tracker</h1>
-          <p className="text-sm text-muted-foreground">Sign in to access your event dashboard</p>
+          <div className="space-y-0.5">
+            <h1 className="text-2xl font-bold">Event Tracker</h1>
+            <p className="text-sm text-muted-foreground">Sign in to access your event dashboard</p>
+          </div>
         </div>
 
         <Card>

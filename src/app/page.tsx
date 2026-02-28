@@ -6,7 +6,6 @@ import { CalendarDays, Building2, Shield } from 'lucide-react';
 import Link from 'next/link';
 import { connection } from 'next/server';
 
-
 export default async function HomePage() {
   await connection();
   const session = await auth();
@@ -16,7 +15,7 @@ export default async function HomePage() {
   }
 
   return (
-    <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center px-4">
+    <div className="flex min-h-[calc(100vh-4rem)] justify-center px-4 pt-[10vh]">
       <div className="w-full max-w-4xl space-y-8 text-center">
         {/* Hero */}
         <div className="space-y-4">
