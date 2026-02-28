@@ -79,6 +79,20 @@ function formatPhone(value: string) {
   return `(${normalized.slice(0, 3)}) ${normalized.slice(3, 6)}-${normalized.slice(6)}`;
 }
 
+function formatYmd(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function getTomorrowYmd() {
+  const tomorrow = new Date();
+  tomorrow.setHours(0, 0, 0, 0);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  return formatYmd(tomorrow);
+}
+
 function SubmitButton() {
   const { pending } = useFormStatus();
 
@@ -105,6 +119,7 @@ export function AddEventDialog({
   const { mutate: addEventMutation, isPending } = useAddEvent(() => {
     onOpenChange(false);
   });
+  const minEventDate = getTomorrowYmd();
 
   const handlePhoneInput = (event: ChangeEvent<HTMLInputElement>) => {
     event.target.value = formatPhone(event.target.value);
@@ -141,6 +156,8 @@ export function AddEventDialog({
       }
       if (!eventDate?.trim()) {
         errors.eventDate = 'Event date is required.';
+      } else if (eventDate < minEventDate) {
+        errors.eventDate = 'Please select a future date.';
       }
       if (!startTime?.trim()) {
         errors.startTime = 'Start time is required.';
@@ -318,7 +335,8 @@ export function AddEventDialog({
                 id="eventDate"
                 name="eventDate"
                 type="date"
-                defaultValue={state.values?.eventDate}
+                defaultValue={state.values?.eventDate ?? minEventDate}
+                min={minEventDate}
                 className={state.errors?.eventDate ? 'border-destructive' : ''}
               />
               {state.errors?.eventDate && (

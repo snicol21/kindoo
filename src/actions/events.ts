@@ -46,6 +46,26 @@ export interface ActionResult<T = unknown> {
 
 // ─── Validation Helper ────────────────────────────────────────────────────────
 
+function parseYmd(value: string) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!match) return null;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  if (!year || month < 1 || month > 12 || day < 1 || day > 31) return null;
+  return { year, month, day };
+}
+
+function isFutureDate(ymd: string) {
+  const parsed = parseYmd(ymd);
+  if (!parsed) return false;
+
+  const now = new Date();
+  const todayUtc = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
+  const targetUtc = Date.UTC(parsed.year, parsed.month - 1, parsed.day);
+  return targetUtc > todayUtc;
+}
+
 function validateEventInput(input: AddEventInput): string | null {
   if (!input.building || !BUILDINGS.includes(input.building)) {
     return 'Invalid building selection.';
@@ -56,6 +76,9 @@ function validateEventInput(input: AddEventInput): string | null {
     return 'Please enter both first and last name.';
   }
   if (!input.eventDate?.trim()) return 'Event date is required.';
+  if (!isFutureDate(input.eventDate.trim())) {
+    return 'Event date must be in the future.';
+  }
   if (!input.startTime?.trim()) return 'Start time is required.';
   if (!input.endTime?.trim()) return 'End time is required.';
   if (!input.email?.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.email)) {

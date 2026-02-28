@@ -319,20 +319,20 @@ export function EventTable({
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>
+              <TableHead className="w-[110px]">Days Until</TableHead>
+              <TableHead className="w-[170px]">
+                <SortButton col="eventDate" label="Date" />
+              </TableHead>
+              <TableHead className="w-[180px]">
                 <SortButton col="name" label="Name" />
               </TableHead>
-              <TableHead>
-                <SortButton col="eventDate" label="Date / Time" />
-              </TableHead>
-              <TableHead className="w-[110px]">Days Until</TableHead>
-              <TableHead>Phone</TableHead>
-              <TableHead>
+              <TableHead className="w-[220px]">
                 <SortButton col="email" label="Email" />
               </TableHead>
+              <TableHead className="w-[160px]">Phone</TableHead>
               <TableHead className="w-[140px]">Ward</TableHead>
-              <TableHead className="w-[170px]">Created By</TableHead>
               <TableHead className="min-w-[220px]">Description</TableHead>
+              <TableHead className="w-[140px]">Created</TableHead>
               <TableHead className="w-[120px]">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -341,13 +341,24 @@ export function EventTable({
               const isOptimistic = event.id.startsWith('optimistic-');
               return (
                 <TableRow key={event.id} className={isOptimistic ? 'opacity-60 animate-pulse' : ''}>
-                  <TableCell className="font-medium whitespace-nowrap">{event.name}</TableCell>
-                  <TableCell className="text-muted-foreground whitespace-nowrap text-sm">
-                    <div>{formatDate(event.eventDate)}</div>
-                    <div>{formatTimeRange(event.startTime, event.endTime)}</div>
-                  </TableCell>
-                  <TableCell className="text-muted-foreground text-sm">
+                  <TableCell className="text-foreground text-sm">
                     {isOptimistic ? '—' : getDaysUntil(event.eventDate)}
+                  </TableCell>
+                  <TableCell className="whitespace-nowrap">
+                    <div className="text-foreground text-sm">{formatDate(event.eventDate)}</div>
+                    <div className="text-muted-foreground text-xs">
+                      {formatTimeRange(event.startTime, event.endTime)}
+                    </div>
+                  </TableCell>
+                  <TableCell className="whitespace-nowrap text-foreground">{event.name}</TableCell>
+                  <TableCell className="max-w-[220px]">
+                    <a
+                      href={`mailto:${event.email}`}
+                      className="block truncate text-foreground hover:underline"
+                      title={event.email}
+                    >
+                      {event.email}
+                    </a>
                   </TableCell>
                   <TableCell className="text-muted-foreground whitespace-nowrap">
                     {event.phone ? (
@@ -361,19 +372,31 @@ export function EventTable({
                       <span className="text-muted-foreground/50">—</span>
                     )}
                   </TableCell>
-                  <TableCell>
-                    <a href={`mailto:${event.email}`} className="text-primary hover:underline">
-                      {event.email}
-                    </a>
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">{event.ward ?? '—'}</TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {event.creatorName || event.creatorEmail || '—'}
+                  <TableCell className="text-muted-foreground text-sm">
+                    {event.ward ?? '—'}
                   </TableCell>
                   <TableCell className="text-muted-foreground max-w-[320px]">
                     <p className="truncate" title={event.description}>
                       {event.description}
                     </p>
+                  </TableCell>
+                  <TableCell className="text-muted-foreground whitespace-nowrap text-sm">
+                    {isOptimistic ? (
+                      '—'
+                    ) : (
+                      <div>
+                        <div className="text-foreground text-xs">
+                          {event.creatorName || event.creatorEmail || '—'}
+                        </div>
+                        <div className="text-muted-foreground text-xs">
+                          {new Date(event.createdAt).toLocaleDateString('en-US', {
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric',
+                          })}
+                        </div>
+                      </div>
+                    )}
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-1">
