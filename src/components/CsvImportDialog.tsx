@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -12,8 +12,15 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Download, FileText } from 'lucide-react';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { Download } from 'lucide-react';
 import { toast } from 'sonner';
 import { useImportEvents } from '@/hooks/useEvents';
 import { BUILDINGS, WARDS, type Building, type Ward } from '@/schema/schema';
@@ -52,19 +59,31 @@ function getTomorrowYmd() {
 
 function createTemplateCsv() {
   const tomorrow = getTomorrowYmd();
-  const sample = [
-    'Stake Center',
-    '1st Ward',
-    'Jane Doe',
+  const wardBuildingMap: Record<Ward, Building> = {
+    '1st Ward': 'Maples Building',
+    '2nd Ward': 'Maples Building',
+    '3rd Ward': 'Stake Center',
+    '4th Ward': 'Stake Center',
+    '5th Ward': 'Maples Building',
+    '6th Ward': 'Stake Center',
+    'Park Ridge Ward': 'Maples Building',
+  };
+
+  const sampleRows = WARDS.map((ward, index) => [
+    wardBuildingMap[ward],
+    ward,
+    `Sample Member ${index + 1}`,
     tomorrow,
     '18:00',
     '19:30',
-    'jane@example.com',
+    `sample${index + 1}@example.com`,
     '555-123-4567',
-    'Relief Society activity in the cultural hall.',
-  ];
+    `Sample event for ${wardBuildingMap[ward]} ${ward}.`,
+  ]);
 
-  return `${TEMPLATE_HEADERS.join(',')}\n${sample.join(',')}\n`;
+  const csvRows = [TEMPLATE_HEADERS, ...sampleRows].map((row) => row.join(',')).join('\n');
+
+  return `${csvRows}\n`;
 }
 
 function downloadTemplate() {
@@ -256,13 +275,38 @@ function mapRowsToEvents(rows: string[][]) {
 }
 
 export function CsvImportDialog({ open, onOpenChange }: CsvImportDialogProps) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [fileName, setFileName] = useState<string | null>(null);
   const [csvText, setCsvText] = useState('');
   const [parseErrors, setParseErrors] = useState<string[]>([]);
   const { mutateAsync: importEvents, isPending } = useImportEvents();
 
-  const parsed = useMemo(() => mapRowsToEvents(parseCsv(csvText)), [csvText]);
+  const csvRows = useMemo(() => parseCsv(csvText), [csvText]);
+  const parsed = useMemo(() => mapRowsToEvents(csvRows), [csvRows]);
   const allErrors = [...parseErrors, ...parsed.errors];
+
+  const previewHeaders = csvRows[0] ?? [];
+  const previewRows = csvRows.slice(1, 7);
+
+  const handleBrowseClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const resetForm = () => {
+    setFileName(null);
+    setCsvText('');
+    setParseErrors([]);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const handleOpenChange = (nextOpen: boolean) => {
+    if (!nextOpen) {
+      resetForm();
+    }
+    onOpenChange(nextOpen);
+  };
 
   const handleFileChange = async (file: File | null) => {
     if (!file) return;
@@ -285,17 +329,15 @@ export function CsvImportDialog({ open, onOpenChange }: CsvImportDialogProps) {
       } else {
         toast.success(`Imported ${result.inserted} events.`);
       }
-      onOpenChange(false);
-      setCsvText('');
-      setFileName(null);
+      handleOpenChange(false);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to import events.');
     }
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[620px]">
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogContent className="sm:max-w-[620px] max-h-[85vh] overflow-hidden">
         <DialogHeader>
           <DialogTitle>Import events from CSV</DialogTitle>
           <DialogDescription>
@@ -303,14 +345,13 @@ export function CsvImportDialog({ open, onOpenChange }: CsvImportDialogProps) {
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
-          <div className="flex flex-col sm:flex-row gap-2">
+        <div className="space-y-4 overflow-y-auto pr-1">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
             <Button variant="outline" onClick={downloadTemplate} className="gap-2">
               <Download className="h-4 w-4" />
               Download template
             </Button>
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <FileText className="h-4 w-4" />
+            <div className="text-sm text-muted-foreground">
               Columns: {TEMPLATE_HEADERS.join(', ')}
             </div>
           </div>
@@ -318,19 +359,62 @@ export function CsvImportDialog({ open, onOpenChange }: CsvImportDialogProps) {
           <div className="space-y-2">
             <Label htmlFor="csv-file">CSV file</Label>
             <Input
+              ref={fileInputRef}
               id="csv-file"
               type="file"
               accept=".csv,text/csv"
+              className="hidden"
               onChange={(event) => handleFileChange(event.target.files?.[0] ?? null)}
             />
+            <div className="flex items-center gap-2">
+              <Input
+                value={fileName ?? ''}
+                readOnly
+                placeholder="No file selected"
+                className="flex-1"
+              />
+              <Button type="button" variant="outline" onClick={handleBrowseClick}>
+                Browse CSV
+              </Button>
+            </div>
             {fileName && <p className="text-xs text-muted-foreground">Selected: {fileName}</p>}
           </div>
 
           {csvText && (
             <div className="space-y-2">
               <Label>Preview</Label>
-              <Textarea readOnly rows={6} value={csvText.slice(0, 800)} className="text-xs" />
-              <p className="text-xs text-muted-foreground">Parsed rows: {parsed.events.length}</p>
+              <div className="rounded-md border max-h-72 overflow-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      {previewHeaders.map((header, index) => (
+                        <TableHead key={`${header}-${index}`} className="text-xs">
+                          {header || `Column ${index + 1}`}
+                        </TableHead>
+                      ))}
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {previewRows.map((row, rowIndex) => (
+                      <TableRow key={`preview-row-${rowIndex}`}>
+                        {previewHeaders.map((_, colIndex) => (
+                          <TableCell
+                            key={`preview-cell-${rowIndex}-${colIndex}`}
+                            className="max-w-[220px] truncate align-top text-xs"
+                            title={row[colIndex] || '—'}
+                          >
+                            {row[colIndex] || '—'}
+                          </TableCell>
+                        ))}
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Showing {Math.min(previewRows.length, 6)} of {Math.max(csvRows.length - 1, 0)} rows.
+                Parsed valid rows: {parsed.events.length}.
+              </p>
             </div>
           )}
 
@@ -345,7 +429,7 @@ export function CsvImportDialog({ open, onOpenChange }: CsvImportDialogProps) {
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isPending}>
+          <Button variant="outline" onClick={() => handleOpenChange(false)} disabled={isPending}>
             Cancel
           </Button>
           <Button onClick={handleSubmit} disabled={isPending || parsed.events.length === 0}>
