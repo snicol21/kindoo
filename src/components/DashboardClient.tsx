@@ -8,7 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { EventTable } from '@/components/EventTable';
 import { AddEventDialog } from '@/components/AddEventDialog';
 import { CsvImportDialog } from '@/components/CsvImportDialog';
-import { useDeleteEvent, useEvents, useUpdateEvent } from '@/hooks/useEvents';
+import { useBulkDeleteEvents, useDeleteEvent, useEvents, useUpdateEvent } from '@/hooks/useEvents';
 import { Building2, Plus, CalendarDays, Upload } from 'lucide-react';
 import type { Building } from '@/schema/schema';
 import type { EventWithCreator } from '@/actions/events';
@@ -34,6 +34,8 @@ export function DashboardClient({
   const [dialogOpen, setDialogOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [defaultBuilding, setDefaultBuilding] = useState<Building>('Stake Center');
+  const [selectedStakeIds, setSelectedStakeIds] = useState<string[]>([]);
+  const [selectedMaplesIds, setSelectedMaplesIds] = useState<string[]>([]);
 
   const {
     data: stakeCenterEvents = [],
@@ -49,6 +51,8 @@ export function DashboardClient({
 
   const deleteStakeCenterEvent = useDeleteEvent('Stake Center');
   const deleteMaplesEvent = useDeleteEvent('Maples Building');
+  const bulkDeleteStakeCenterEvents = useBulkDeleteEvents('Stake Center');
+  const bulkDeleteMaplesEvents = useBulkDeleteEvents('Maples Building');
   const updateEvent = useUpdateEvent();
 
   const userInitials = user.name
@@ -149,15 +153,30 @@ export function DashboardClient({
                 </CardTitle>
                 <CardDescription>All upcoming events at Stake Center</CardDescription>
               </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => openDialogFor('Stake Center')}
-                className="gap-2"
-              >
-                <Plus className="h-4 w-4" />
-                Add
-              </Button>
+              <div className="flex items-center gap-2">
+                {selectedStakeIds.length > 0 && (
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    disabled={bulkDeleteStakeCenterEvents.isPending}
+                    onClick={async () => {
+                      await bulkDeleteStakeCenterEvents.mutateAsync(selectedStakeIds);
+                      setSelectedStakeIds([]);
+                    }}
+                  >
+                    Delete selected ({selectedStakeIds.length})
+                  </Button>
+                )}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => openDialogFor('Stake Center')}
+                  className="gap-2"
+                >
+                  <Plus className="h-4 w-4" />
+                  Add
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
               <EventTable
@@ -168,6 +187,8 @@ export function DashboardClient({
                 onDelete={(eventId) =>
                   deleteStakeCenterEvent.mutateAsync(eventId).then(() => undefined)
                 }
+                selectedIds={selectedStakeIds}
+                onSelectionChange={setSelectedStakeIds}
                 onEdit={(input) => updateEvent.mutateAsync(input).then(() => undefined)}
               />
             </CardContent>
@@ -184,15 +205,30 @@ export function DashboardClient({
                 </CardTitle>
                 <CardDescription>All upcoming events at Maples Building</CardDescription>
               </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => openDialogFor('Maples Building')}
-                className="gap-2"
-              >
-                <Plus className="h-4 w-4" />
-                Add
-              </Button>
+              <div className="flex items-center gap-2">
+                {selectedMaplesIds.length > 0 && (
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    disabled={bulkDeleteMaplesEvents.isPending}
+                    onClick={async () => {
+                      await bulkDeleteMaplesEvents.mutateAsync(selectedMaplesIds);
+                      setSelectedMaplesIds([]);
+                    }}
+                  >
+                    Delete selected ({selectedMaplesIds.length})
+                  </Button>
+                )}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => openDialogFor('Maples Building')}
+                  className="gap-2"
+                >
+                  <Plus className="h-4 w-4" />
+                  Add
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
               <EventTable
@@ -201,6 +237,8 @@ export function DashboardClient({
                 isError={mbError}
                 building="Maples Building"
                 onDelete={(eventId) => deleteMaplesEvent.mutateAsync(eventId).then(() => undefined)}
+                selectedIds={selectedMaplesIds}
+                onSelectionChange={setSelectedMaplesIds}
                 onEdit={(input) => updateEvent.mutateAsync(input).then(() => undefined)}
               />
             </CardContent>

@@ -5,6 +5,7 @@ import {
   getEventsByBuilding,
   addEvent,
   deleteEvent,
+  deleteEvents,
   updateEvent,
   importEvents,
 } from '@/actions/events';
@@ -148,6 +149,44 @@ export function useDeleteEvent(building: Building) {
   });
 }
 
+export function useBulkDeleteEvents(building: Building) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (eventIds: string[]) => {
+      const result = await deleteEvents(eventIds);
+      if (!result.success) throw new Error(result.error);
+      return eventIds;
+    },
+
+    onMutate: async (eventIds) => {
+      const queryKey = eventKeys.byBuilding(building);
+      await queryClient.cancelQueries({ queryKey });
+
+      const previousEvents = queryClient.getQueryData<EventWithCreator[]>(queryKey);
+      queryClient.setQueryData<EventWithCreator[]>(queryKey, (old = []) =>
+        old.filter((event) => !eventIds.includes(event.id))
+      );
+
+      return { previousEvents, queryKey };
+    },
+
+    onError: (error, _eventIds, context) => {
+      if (context?.previousEvents !== undefined && context?.queryKey) {
+        queryClient.setQueryData(context.queryKey, context.previousEvents as EventWithCreator[]);
+      }
+      toast.error(error.message ?? 'Failed to delete events.');
+    },
+
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: eventKeys.byBuilding(building) });
+    },
+
+    onSuccess: () => {
+      toast.success('Events deleted.');
+    },
+  });
+}
 export function useUpdateEvent() {
   const queryClient = useQueryClient();
 

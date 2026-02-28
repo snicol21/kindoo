@@ -12,7 +12,7 @@ import {
   type Event,
   type Ward,
 } from '@/schema/schema';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, inArray } from 'drizzle-orm';
 import { revalidateTag } from 'next/cache';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -198,6 +198,32 @@ export async function deleteEvent(eventId: string): Promise<ActionResult<void>> 
   } catch (error) {
     console.error('[deleteEvent] Error:', error);
     return { success: false, error: 'Failed to delete event.' };
+  }
+}
+
+export async function deleteEvents(eventIds: string[]): Promise<ActionResult<{ deleted: number }>> {
+  try {
+    const session = await auth();
+
+    if (!session?.user?.id) {
+      return { success: false, error: 'Not authenticated.' };
+    }
+
+    const ids = eventIds.map((id) => id.trim()).filter(Boolean);
+    if (ids.length === 0) {
+      return { success: false, error: 'No events selected.' };
+    }
+
+    const result = await db
+      .delete(events)
+      .where(and(eq(events.userId, session.user.id), inArray(events.id, ids)));
+
+    revalidateTag(`events-${session.user.id}`, 'everything');
+
+    return { success: true, data: { deleted: result.rowsAffected ?? ids.length } };
+  } catch (error) {
+    console.error('[deleteEvents] Error:', error);
+    return { success: false, error: 'Failed to delete events.' };
   }
 }
 

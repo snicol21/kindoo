@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Table,
   TableBody,
@@ -53,6 +53,8 @@ interface EventTableProps {
   building: string;
   onDelete?: (eventId: string) => Promise<void>;
   onEdit?: (input: UpdateEventInput) => Promise<void>;
+  selectedIds?: string[];
+  onSelectionChange?: (eventIds: string[]) => void;
 }
 
 type SortKey = 'name' | 'email' | 'eventDate' | 'daysUntil';
@@ -184,6 +186,8 @@ export function EventTable({
   building,
   onDelete,
   onEdit,
+  selectedIds,
+  onSelectionChange,
 }: EventTableProps) {
   const [sortKey, setSortKey] = useState<SortKey>('eventDate');
   const [sortDir, setSortDir] = useState<SortDir>('asc');
@@ -201,6 +205,37 @@ export function EventTable({
   const [editEmail, setEditEmail] = useState('');
   const [editDescription, setEditDescription] = useState('');
   const [isSavingEdit, setIsSavingEdit] = useState(false);
+  const [internalSelectedIds, setInternalSelectedIds] = useState<Set<string>>(new Set());
+
+  const selectedIdSet = useMemo(
+    () => new Set(selectedIds ?? Array.from(internalSelectedIds)),
+    [selectedIds, internalSelectedIds]
+  );
+
+  const selectableEvents = useMemo(
+    () => events.filter((event) => !event.id.startsWith('optimistic-')),
+    [events]
+  );
+  const allSelected = selectableEvents.length > 0 && selectedIdSet.size === selectableEvents.length;
+
+  const applySelection = (next: Set<string>) => {
+    if (onSelectionChange) {
+      onSelectionChange(Array.from(next));
+      return;
+    }
+    setInternalSelectedIds(next);
+  };
+
+  useEffect(() => {
+    const next = new Set<string>();
+    for (const event of selectableEvents) {
+      if (selectedIdSet.has(event.id)) next.add(event.id);
+    }
+
+    if (next.size !== selectedIdSet.size || Array.from(next).some((id) => !selectedIdSet.has(id))) {
+      applySelection(next);
+    }
+  }, [selectableEvents, selectedIdSet]);
 
   const handleSort = (key: SortKey) => {
     if (sortKey === key) {
@@ -338,6 +373,20 @@ export function EventTable({
         <Table>
           <TableHeader className="[&_th]:text-xs">
             <TableRow>
+              <TableHead className="w-[36px]">
+                <input
+                  type="checkbox"
+                  aria-label="Select all events"
+                  checked={allSelected}
+                  onChange={(event) => {
+                    if (event.target.checked) {
+                      applySelection(new Set(selectableEvents.map((e) => e.id)));
+                    } else {
+                      applySelection(new Set());
+                    }
+                  }}
+                />
+              </TableHead>
               <TableHead className="w-[110px]">
                 <SortButton col="daysUntil" label="Days Until" />
               </TableHead>
@@ -358,6 +407,23 @@ export function EventTable({
               const isOptimistic = event.id.startsWith('optimistic-');
               return (
                 <TableRow key={event.id} className={isOptimistic ? 'opacity-60 animate-pulse' : ''}>
+                  <TableCell className="w-[36px]">
+                    <input
+                      type="checkbox"
+                      aria-label={`Select ${event.name}`}
+                      disabled={isOptimistic}
+                      checked={selectedIdSet.has(event.id)}
+                      onChange={(e) => {
+                        const next = new Set(selectedIdSet);
+                        if (e.target.checked) {
+                          next.add(event.id);
+                        } else {
+                          next.delete(event.id);
+                        }
+                        applySelection(next);
+                      }}
+                    />
+                  </TableCell>
                   <TableCell className="text-foreground text-sm">
                     {isOptimistic ? '—' : getDaysUntil(event.eventDate)}
                   </TableCell>
