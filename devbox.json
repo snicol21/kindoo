@@ -1,0 +1,30 @@
+{
+  "$schema": "https://raw.githubusercontent.com/jetify-com/devbox/0.16.0/.schema/devbox.schema.json",
+  "packages": ["nodejs@22.12.0", "sqlite@3.47.0", "pnpm@9.15.0"],
+  "env": {
+    "DEVBOX_COREPACK_ENABLED": "false",
+    "COREPACK_ENABLE": "0",
+    "COREPACK_ENABLE_STRICT": "0",
+    "NODE_ENV": "development"
+  },
+  "shell": {
+    "init_hook": [
+      "echo ''",
+      "echo '🗓️  Event Tracker'",
+      "echo '─────────────────────────────────────────'",
+      "echo 'First time setup?  devbox run init'",
+      "echo 'Start dev server?  devbox run dev'",
+      "echo 'Reset database?    devbox run db:reset'",
+      "echo ''"
+    ],
+    "scripts": {
+      "init": "bash scripts/devbox-init.sh",
+      "dev": "bash scripts/devbox-guard.sh && bash scripts/devbox-pnpm.sh dev",
+      "build": "bash scripts/devbox-guard.sh && bash scripts/devbox-pnpm.sh build",
+      "lint": "bash scripts/devbox-guard.sh && bash scripts/devbox-pnpm.sh lint",
+      "db:push": "bash scripts/devbox-guard.sh && bash scripts/devbox-pnpm.sh db:push",
+      "db:studio": "bash scripts/devbox-guard.sh && bash scripts/devbox-pnpm.sh db:studio",
+      "db:reset": "rm -f local.db && bash scripts/devbox-guard.sh && bash scripts/devbox-pnpm.sh db:push && echo '✅ DB reset'"
+    }
+  }
+}
