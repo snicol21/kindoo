@@ -5,6 +5,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { EventTable } from '@/components/EventTable';
 import { AddEventDialog } from '@/components/AddEventDialog';
 import { CsvImportDialog } from '@/components/CsvImportDialog';
@@ -36,6 +44,7 @@ export function DashboardClient({
   const [defaultBuilding, setDefaultBuilding] = useState<Building>('Stake Center');
   const [selectedStakeIds, setSelectedStakeIds] = useState<string[]>([]);
   const [selectedMaplesIds, setSelectedMaplesIds] = useState<string[]>([]);
+  const [bulkDeleteTarget, setBulkDeleteTarget] = useState<Building | null>(null);
 
   const {
     data: stakeCenterEvents = [],
@@ -67,6 +76,27 @@ export function DashboardClient({
   const openDialogFor = (building: Building) => {
     setDefaultBuilding(building);
     setDialogOpen(true);
+  };
+
+  const selectedCount =
+    bulkDeleteTarget === 'Stake Center'
+      ? selectedStakeIds.length
+      : bulkDeleteTarget === 'Maples Building'
+        ? selectedMaplesIds.length
+        : 0;
+
+  const confirmBulkDelete = async () => {
+    if (bulkDeleteTarget === 'Stake Center' && selectedStakeIds.length > 0) {
+      await bulkDeleteStakeCenterEvents.mutateAsync(selectedStakeIds);
+      setSelectedStakeIds([]);
+    }
+
+    if (bulkDeleteTarget === 'Maples Building' && selectedMaplesIds.length > 0) {
+      await bulkDeleteMaplesEvents.mutateAsync(selectedMaplesIds);
+      setSelectedMaplesIds([]);
+    }
+
+    setBulkDeleteTarget(null);
   };
 
   return (
@@ -159,10 +189,7 @@ export function DashboardClient({
                     variant="destructive"
                     size="sm"
                     disabled={bulkDeleteStakeCenterEvents.isPending}
-                    onClick={async () => {
-                      await bulkDeleteStakeCenterEvents.mutateAsync(selectedStakeIds);
-                      setSelectedStakeIds([]);
-                    }}
+                    onClick={() => setBulkDeleteTarget('Stake Center')}
                   >
                     Delete selected ({selectedStakeIds.length})
                   </Button>
@@ -211,10 +238,7 @@ export function DashboardClient({
                     variant="destructive"
                     size="sm"
                     disabled={bulkDeleteMaplesEvents.isPending}
-                    onClick={async () => {
-                      await bulkDeleteMaplesEvents.mutateAsync(selectedMaplesIds);
-                      setSelectedMaplesIds([]);
-                    }}
+                    onClick={() => setBulkDeleteTarget('Maples Building')}
                   >
                     Delete selected ({selectedMaplesIds.length})
                   </Button>
@@ -254,6 +278,39 @@ export function DashboardClient({
       />
 
       <CsvImportDialog open={importOpen} onOpenChange={setImportOpen} />
+
+      <Dialog
+        open={bulkDeleteTarget !== null}
+        onOpenChange={(open) => !open && setBulkDeleteTarget(null)}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete selected events?</DialogTitle>
+            <DialogDescription>
+              This will permanently delete {selectedCount} event{selectedCount === 1 ? '' : 's'}.
+              This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setBulkDeleteTarget(null)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={confirmBulkDelete}
+              disabled={
+                selectedCount === 0 ||
+                bulkDeleteStakeCenterEvents.isPending ||
+                bulkDeleteMaplesEvents.isPending
+              }
+            >
+              {bulkDeleteStakeCenterEvents.isPending || bulkDeleteMaplesEvents.isPending
+                ? 'Deleting…'
+                : 'Delete selected'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
