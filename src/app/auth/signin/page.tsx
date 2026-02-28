@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { CalendarDays } from 'lucide-react';
+import Link from 'next/link';
 import type { Metadata } from 'next';
 import { connection } from 'next/server';
 
@@ -88,7 +89,7 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
 
             <div className="text-center">
               <Button asChild variant="link" className="px-0 text-sm">
-                <a href="/auth/reset">Forgot your password?</a>
+                <Link href="/auth/reset">Forgot your password?</Link>
               </Button>
             </div>
 
