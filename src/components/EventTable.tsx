@@ -55,6 +55,35 @@ interface EventTableProps {
 type SortKey = 'name' | 'email' | 'eventDate';
 type SortDir = 'asc' | 'desc';
 
+function parseYmd(dateStr: string) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateStr);
+  if (!match) return null;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  if (!year || month < 1 || month > 12 || day < 1 || day > 31) return null;
+  return { year, month, day };
+}
+
+function toLocalDate(dateStr: string) {
+  const parsed = parseYmd(dateStr);
+  if (parsed) {
+    return new Date(parsed.year, parsed.month - 1, parsed.day);
+  }
+  const fallback = new Date(dateStr);
+  return Number.isNaN(fallback.getTime()) ? null : fallback;
+}
+
+function toLocalDateTime(dateStr: string, timeStr: string) {
+  const date = toLocalDate(dateStr);
+  if (!date) return Number.NaN;
+  const [hours, minutes] = timeStr.split(':').map((value) => Number(value));
+  const safeHours = Number.isFinite(hours) ? hours : 0;
+  const safeMinutes = Number.isFinite(minutes) ? minutes : 0;
+  date.setHours(safeHours, safeMinutes, 0, 0);
+  return date.getTime();
+}
+
 function formatPhone(value?: string | null) {
   if (!value) return '';
   const digits = value.replace(/\D/g, '');
@@ -76,7 +105,10 @@ function formatPhone(value?: string | null) {
 }
 
 function formatDate(dateStr: string) {
-  return new Date(`${dateStr}T00:00:00`).toLocaleDateString('en-US', {
+  const date = toLocalDate(dateStr);
+  if (!date) return dateStr;
+
+  return date.toLocaleDateString('en-US', {
     month: 'short',
     day: 'numeric',
     year: 'numeric',
@@ -95,10 +127,13 @@ function formatTimeRange(startTime: string, endTime: string) {
 }
 
 function getDaysUntil(dateStr: string) {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const target = new Date(`${dateStr}T00:00:00`);
-  const diff = Math.round((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+  const parsed = parseYmd(dateStr);
+  if (!parsed) return '—';
+
+  const now = new Date();
+  const todayUtc = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
+  const targetUtc = Date.UTC(parsed.year, parsed.month - 1, parsed.day);
+  const diff = Math.floor((targetUtc - todayUtc) / (1000 * 60 * 60 * 24));
   if (diff < 0) return 'Past';
   if (diff === 0) return 'Today';
   if (diff === 1) return '1 day';
@@ -168,8 +203,8 @@ export function EventTable({
     let valB: string | number | Date = b[sortKey] ?? '';
 
     if (sortKey === 'eventDate') {
-      valA = new Date(`${a.eventDate}T${a.startTime ?? '00:00'}`).getTime();
-      valB = new Date(`${b.eventDate}T${b.startTime ?? '00:00'}`).getTime();
+      valA = toLocalDateTime(a.eventDate, a.startTime ?? '00:00');
+      valB = toLocalDateTime(b.eventDate, b.startTime ?? '00:00');
     } else {
       valA = String(valA).toLowerCase();
       valB = String(valB).toLowerCase();
