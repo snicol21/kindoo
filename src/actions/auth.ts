@@ -5,8 +5,7 @@ import { db } from '@/lib/db';
 import { users } from '@/schema/schema';
 import { eq } from 'drizzle-orm';
 import { getAdminEmails, isAdminEmail } from '@/lib/admin';
-import { generateResetToken, hashPassword, hashResetToken, verifyPassword } from '@/lib/password';
-import { sendPasswordResetEmail } from '@/lib/mailer';
+import { hashPassword, verifyPassword } from '@/lib/password';
 
 export interface ActionResult<T = unknown> {
   success: boolean;
@@ -15,7 +14,6 @@ export interface ActionResult<T = unknown> {
 }
 
 const PASSWORD_MIN_LENGTH = 12;
-const RESET_TOKEN_TTL_MS = 1000 * 60 * 60;
 
 function isValidEmail(email: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
@@ -61,67 +59,34 @@ export async function createUser(input: {
   return { success: true };
 }
 
-export async function sendResetEmail(input: { email: string }): Promise<ActionResult> {
+export async function listUsers(): Promise<
+  ActionResult<{ id: string; email: string; name: string | null }[]>
+> {
   const admin = await requireAdmin();
   if (!admin.ok) return { success: false, error: admin.error };
 
-  const email = input.email.trim().toLowerCase();
-  if (!isValidEmail(email)) return { success: false, error: 'Valid email is required.' };
-
-  const existing = await db.select().from(users).where(eq(users.email, email)).limit(1);
-  const user = existing[0];
-
-  if (!user) {
-    return { success: true };
-  }
-
-  const token = generateResetToken();
-  const resetTokenHash = hashResetToken(token);
-  const resetTokenExpires = new Date(Date.now() + RESET_TOKEN_TTL_MS);
-
-  await db.update(users).set({ resetTokenHash, resetTokenExpires }).where(eq(users.id, user.id));
-
-  const baseUrl = process.env.AUTH_URL ?? 'http://localhost:3000';
-  const resetUrl = `${baseUrl}/auth/reset/${token}`;
-
-  await sendPasswordResetEmail(email, resetUrl);
-
-  return { success: true };
+  const allUsers = await db.select().from(users);
+  return {
+    success: true,
+    data: allUsers
+      .map((user) => ({ id: user.id, email: user.email, name: user.name ?? null }))
+      .sort((a, b) => a.email.localeCompare(b.email)),
+  };
 }
 
-export async function requestPasswordReset(input: { email: string }): Promise<ActionResult> {
-  const email = input.email.trim().toLowerCase();
-  if (!isValidEmail(email)) return { success: true };
-
-  const existing = await db.select().from(users).where(eq(users.email, email)).limit(1);
-  const user = existing[0];
-
-  if (!user) return { success: true };
-
-  const token = generateResetToken();
-  const resetTokenHash = hashResetToken(token);
-  const resetTokenExpires = new Date(Date.now() + RESET_TOKEN_TTL_MS);
-
-  await db.update(users).set({ resetTokenHash, resetTokenExpires }).where(eq(users.id, user.id));
-
-  const baseUrl = process.env.AUTH_URL ?? 'http://localhost:3000';
-  const resetUrl = `${baseUrl}/auth/reset/${token}`;
-
-  await sendPasswordResetEmail(email, resetUrl);
-
-  return { success: true };
-}
-
-export async function resetPassword(input: {
-  token: string;
+export async function adminSetUserPassword(input: {
+  userId: string;
   password: string;
   confirmPassword: string;
 }): Promise<ActionResult> {
-  const token = input.token.trim();
+  const admin = await requireAdmin();
+  if (!admin.ok) return { success: false, error: admin.error };
+
+  const userId = input.userId.trim();
   const password = input.password;
   const confirmPassword = input.confirmPassword;
 
-  if (!token) return { success: false, error: 'Invalid reset token.' };
+  if (!userId) return { success: false, error: 'Invalid user id.' };
   if (!password || password.length < PASSWORD_MIN_LENGTH) {
     return {
       success: false,
@@ -130,24 +95,32 @@ export async function resetPassword(input: {
   }
   if (password !== confirmPassword) return { success: false, error: 'Passwords do not match.' };
 
-  const resetTokenHash = hashResetToken(token);
-  const existing = await db
-    .select()
-    .from(users)
-    .where(eq(users.resetTokenHash, resetTokenHash))
-    .limit(1);
-  const user = existing[0];
+  const passwordHash = await hashPassword(password);
+  await db.update(users).set({ passwordHash }).where(eq(users.id, userId));
 
-  if (!user || !user.resetTokenExpires || user.resetTokenExpires < new Date()) {
-    return { success: false, error: 'Reset token is invalid or expired.' };
+  return { success: true };
+}
+
+export async function adminDeleteUser(input: { userId: string }): Promise<ActionResult> {
+  const admin = await requireAdmin();
+  if (!admin.ok) return { success: false, error: admin.error };
+
+  const userId = input.userId.trim();
+  if (!userId) return { success: false, error: 'Invalid user id.' };
+
+  const existing = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+  const user = existing[0];
+  if (!user) return { success: false, error: 'User not found.' };
+
+  if ((admin.email ?? '').toLowerCase() === user.email.toLowerCase()) {
+    return { success: false, error: 'You cannot delete your own account.' };
   }
 
-  const passwordHash = await hashPassword(password);
-  await db
-    .update(users)
-    .set({ passwordHash, resetTokenHash: null, resetTokenExpires: null })
-    .where(eq(users.id, user.id));
+  if (isAdminEmail(user.email)) {
+    return { success: false, error: 'Cannot delete another admin account.' };
+  }
 
+  await db.delete(users).where(eq(users.id, userId));
   return { success: true };
 }
 

@@ -64,6 +64,12 @@ export async function NavbarUserSection() {
                 Dashboard
               </Link>
             </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link href="/account/password" className="gap-2 cursor-pointer">
+                <User className="h-4 w-4" />
+                Change Password
+              </Link>
+            </DropdownMenuItem>
             {isAdminEmail(session.user.email ?? null) && (
               <DropdownMenuItem asChild>
                 <Link href="/admin/users" className="gap-2 cursor-pointer">

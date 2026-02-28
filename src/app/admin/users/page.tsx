@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import type { Metadata } from 'next';
-import { createUser, sendResetEmail } from '@/actions/auth';
+import { adminDeleteUser, adminSetUserPassword, createUser, listUsers } from '@/actions/auth';
 
 export const metadata: Metadata = {
   title: 'User Admin',
@@ -14,11 +14,13 @@ export const metadata: Metadata = {
 interface AdminUsersPageProps {
   searchParams: Promise<{
     created?: string;
-    reset?: string;
+    updated?: string;
+    deleted?: string;
     error?: string;
     email?: string;
     name?: string;
-    resetEmail?: string;
+    setUserId?: string;
+    setUserEmail?: string;
   }>;
 }
 
@@ -31,13 +33,18 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
     redirect('/auth/signin');
   }
 
+  const usersResult = await listUsers();
+  const managedUsers = usersResult.success ? (usersResult.data ?? []) : [];
+
   const message = params.error
     ? decodeURIComponent(params.error)
     : params.created === '1'
       ? 'User created.'
-      : params.reset === '1'
-        ? 'Password reset email sent.'
-        : null;
+      : params.updated === '1'
+        ? 'Password updated.'
+        : params.deleted === '1'
+          ? 'User deleted.'
+          : null;
 
   return (
     <div className="container mx-auto max-w-3xl px-4 py-8 space-y-6">
@@ -98,29 +105,82 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
             <form
               action={async (formData: FormData) => {
                 'use server';
-                const result = await sendResetEmail({
-                  email: String(formData.get('resetEmail') ?? ''),
+                const result = await adminSetUserPassword({
+                  userId: String(formData.get('setUserId') ?? ''),
+                  password: String(formData.get('password') ?? ''),
+                  confirmPassword: String(formData.get('confirmPassword') ?? ''),
                 });
                 if (!result.success) {
-                  const msg = encodeURIComponent(result.error ?? 'Failed to send reset email.');
-                  const emailValue = encodeURIComponent(String(formData.get('resetEmail') ?? ''));
-                  redirect(`/admin/users?error=${msg}&resetEmail=${emailValue}`);
+                  const msg = encodeURIComponent(result.error ?? 'Failed to update password.');
+                  const setUserId = encodeURIComponent(String(formData.get('setUserId') ?? ''));
+                  const setUserEmail = encodeURIComponent(
+                    String(formData.get('setUserEmail') ?? '')
+                  );
+                  redirect(
+                    `/admin/users?error=${msg}&setUserId=${setUserId}&setUserEmail=${setUserEmail}`
+                  );
                 }
-                redirect('/admin/users?reset=1');
+                redirect('/admin/users?updated=1');
               }}
               className="space-y-3"
             >
-              <h3 className="text-sm font-medium">Send reset link</h3>
-              <Input
-                name="resetEmail"
-                type="email"
-                placeholder="user@example.com"
-                defaultValue={params.resetEmail ?? ''}
-              />
+              <h3 className="text-sm font-medium">Set user password</h3>
+              <input type="hidden" name="setUserEmail" value={params.setUserEmail ?? ''} />
+              <select
+                name="setUserId"
+                defaultValue={params.setUserId ?? ''}
+                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+              >
+                <option value="">Select user…</option>
+                {managedUsers.map((user) => (
+                  <option key={user.id} value={user.id}>
+                    {user.email}
+                  </option>
+                ))}
+              </select>
+              <Input name="password" type="password" placeholder="New password" />
+              <Input name="confirmPassword" type="password" placeholder="Confirm password" />
               <Button type="submit" variant="secondary" className="w-full">
-                Send reset
+                Set password
               </Button>
             </form>
+          </div>
+
+          <div className="space-y-3">
+            <h3 className="text-sm font-medium">Delete user</h3>
+            <div className="space-y-2">
+              {managedUsers.map((user) => (
+                <form
+                  key={user.id}
+                  action={async (formData: FormData) => {
+                    'use server';
+                    const result = await adminDeleteUser({
+                      userId: String(formData.get('userId') ?? ''),
+                    });
+                    if (!result.success) {
+                      const msg = encodeURIComponent(result.error ?? 'Failed to delete user.');
+                      redirect(`/admin/users?error=${msg}`);
+                    }
+                    redirect('/admin/users?deleted=1');
+                  }}
+                  className="flex items-center justify-between gap-3 rounded-md border border-border p-3"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium">{user.email}</p>
+                    {user.name && (
+                      <p className="truncate text-xs text-muted-foreground">{user.name}</p>
+                    )}
+                  </div>
+                  <input type="hidden" name="userId" value={user.id} />
+                  <Button type="submit" variant="destructive" size="sm">
+                    Delete
+                  </Button>
+                </form>
+              ))}
+              {managedUsers.length === 0 && (
+                <p className="text-sm text-muted-foreground">No users found.</p>
+              )}
+            </div>
           </div>
         </CardContent>
       </Card>

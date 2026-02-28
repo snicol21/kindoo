@@ -10,8 +10,6 @@ export const users = sqliteTable('user', {
   name: text('name'),
   email: text('email').unique().notNull(),
   passwordHash: text('password_hash'),
-  resetTokenHash: text('reset_token_hash'),
-  resetTokenExpires: integer('reset_token_expires', { mode: 'timestamp_ms' }),
   emailVerified: integer('emailVerified', { mode: 'timestamp_ms' }),
   image: text('image'),
   createdAt: integer('created_at', { mode: 'timestamp' })
