@@ -189,8 +189,11 @@ export function EventTable({
   selectedIds,
   onSelectionChange,
 }: EventTableProps) {
+  const PAGE_SIZE = 10;
+
   const [sortKey, setSortKey] = useState<SortKey>('eventDate');
   const [sortDir, setSortDir] = useState<SortDir>('asc');
+  const [currentPage, setCurrentPage] = useState(1);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [pendingDeleteEvent, setPendingDeleteEvent] = useState<EventWithCreator | null>(null);
   const [editingEvent, setEditingEvent] = useState<EventWithCreator | null>(null);
@@ -216,7 +219,6 @@ export function EventTable({
     () => events.filter((event) => !event.id.startsWith('optimistic-')),
     [events]
   );
-  const allSelected = selectableEvents.length > 0 && selectedIdSet.size === selectableEvents.length;
 
   const applySelection = (next: Set<string>) => {
     if (onSelectionChange) {
@@ -268,6 +270,30 @@ export function EventTable({
     if (valA > valB) return sortDir === 'asc' ? 1 : -1;
     return 0;
   });
+
+  const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [building]);
+
+  const pageStartIndex = (currentPage - 1) * PAGE_SIZE;
+  const pageEndIndex = pageStartIndex + PAGE_SIZE;
+  const pagedEvents = sorted.slice(pageStartIndex, pageEndIndex);
+
+  const selectablePageEvents = useMemo(
+    () => pagedEvents.filter((event) => !event.id.startsWith('optimistic-')),
+    [pagedEvents]
+  );
+  const allSelected =
+    selectablePageEvents.length > 0 &&
+    selectablePageEvents.every((event) => selectedIdSet.has(event.id));
 
   const SortIcon = ({ col }: { col: SortKey }) => {
     if (sortKey !== col) return <ArrowUpDown className="h-3 w-3 opacity-50" />;
@@ -380,9 +406,17 @@ export function EventTable({
                   checked={allSelected}
                   onChange={(event) => {
                     if (event.target.checked) {
-                      applySelection(new Set(selectableEvents.map((e) => e.id)));
+                      const next = new Set(selectedIdSet);
+                      for (const selectableEvent of selectablePageEvents) {
+                        next.add(selectableEvent.id);
+                      }
+                      applySelection(next);
                     } else {
-                      applySelection(new Set());
+                      const next = new Set(selectedIdSet);
+                      for (const selectableEvent of selectablePageEvents) {
+                        next.delete(selectableEvent.id);
+                      }
+                      applySelection(next);
                     }
                   }}
                 />
@@ -403,7 +437,7 @@ export function EventTable({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {sorted.map((event) => {
+            {pagedEvents.map((event) => {
               const isOptimistic = event.id.startsWith('optimistic-');
               return (
                 <TableRow key={event.id} className={isOptimistic ? 'opacity-60 animate-pulse' : ''}>
@@ -535,6 +569,34 @@ export function EventTable({
             })}
           </TableBody>
         </Table>
+      </div>
+
+      <div className="mt-3 flex flex-col gap-2 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          Showing {sorted.length === 0 ? 0 : pageStartIndex + 1}–
+          {Math.min(pageEndIndex, sorted.length)} of {sorted.length} events
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+            disabled={currentPage === 1}
+          >
+            Previous
+          </Button>
+          <span className="text-xs text-muted-foreground">
+            Page {currentPage} of {totalPages}
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+            disabled={currentPage === totalPages}
+          >
+            Next
+          </Button>
+        </div>
       </div>
 
       <Dialog

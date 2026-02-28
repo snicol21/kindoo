@@ -72,6 +72,19 @@ function isFutureDate(ymd: string) {
   return targetUtc > todayUtc;
 }
 
+function normalizeEventInput(input: AddEventInput): AddEventInput {
+  return {
+    ...input,
+    name: input.name.trim(),
+    eventDate: input.eventDate.trim(),
+    startTime: input.startTime.trim(),
+    endTime: input.endTime.trim(),
+    phone: input.phone?.trim() || undefined,
+    email: input.email.trim().toLowerCase(),
+    description: input.description.trim(),
+  };
+}
+
 function validateEventInput(input: AddEventInput): string | null {
   if (!input.building || !BUILDINGS.includes(input.building)) {
     return 'Invalid building selection.';
@@ -107,7 +120,8 @@ export async function addEvent(input: AddEventInput): Promise<ActionResult<Event
       return { success: false, error: 'Not authenticated.' };
     }
 
-    const validationError = validateEventInput(input);
+    const normalizedInput = normalizeEventInput(input);
+    const validationError = validateEventInput(normalizedInput);
     if (validationError) {
       return { success: false, error: validationError };
     }
@@ -115,22 +129,22 @@ export async function addEvent(input: AddEventInput): Promise<ActionResult<Event
     const [newEvent] = await db
       .insert(events)
       .values({
-        building: input.building,
-        ward: input.ward,
-        name: input.name.trim(),
-        eventDate: input.eventDate.trim(),
-        startTime: input.startTime.trim(),
-        endTime: input.endTime.trim(),
-        phone: input.phone?.trim() || null,
-        email: input.email.trim().toLowerCase(),
-        description: input.description.trim(),
+        building: normalizedInput.building,
+        ward: normalizedInput.ward,
+        name: normalizedInput.name,
+        eventDate: normalizedInput.eventDate,
+        startTime: normalizedInput.startTime,
+        endTime: normalizedInput.endTime,
+        phone: normalizedInput.phone || null,
+        email: normalizedInput.email,
+        description: normalizedInput.description,
         userId: session.user.id,
       })
       .returning();
 
     // Invalidate cache tags for this user's events
     revalidateTag(`events-${session.user.id}`, 'everything');
-    revalidateTag(`events-${session.user.id}-${input.building}`, 'everything');
+    revalidateTag(`events-${session.user.id}-${normalizedInput.building}`, 'everything');
 
     return { success: true, data: newEvent };
   } catch (error) {
@@ -239,7 +253,8 @@ export async function updateEvent(input: UpdateEventInput): Promise<ActionResult
       return { success: false, error: 'Invalid event id.' };
     }
 
-    const validationError = validateEventInput(input);
+    const normalizedInput = normalizeEventInput(input);
+    const validationError = validateEventInput(normalizedInput);
     if (validationError) {
       return { success: false, error: validationError };
     }
@@ -247,15 +262,15 @@ export async function updateEvent(input: UpdateEventInput): Promise<ActionResult
     const [updatedEvent] = await db
       .update(events)
       .set({
-        building: input.building,
-        ward: input.ward,
-        name: input.name.trim(),
-        eventDate: input.eventDate.trim(),
-        startTime: input.startTime.trim(),
-        endTime: input.endTime.trim(),
-        phone: input.phone?.trim() || null,
-        email: input.email.trim().toLowerCase(),
-        description: input.description.trim(),
+        building: normalizedInput.building,
+        ward: normalizedInput.ward,
+        name: normalizedInput.name,
+        eventDate: normalizedInput.eventDate,
+        startTime: normalizedInput.startTime,
+        endTime: normalizedInput.endTime,
+        phone: normalizedInput.phone || null,
+        email: normalizedInput.email,
+        description: normalizedInput.description,
       })
       .where(and(eq(events.id, input.id), eq(events.userId, session.user.id)))
       .returning();
@@ -265,7 +280,7 @@ export async function updateEvent(input: UpdateEventInput): Promise<ActionResult
     }
 
     revalidateTag(`events-${session.user.id}`, 'everything');
-    revalidateTag(`events-${session.user.id}-${input.building}`, 'everything');
+    revalidateTag(`events-${session.user.id}-${normalizedInput.building}`, 'everything');
 
     return { success: true, data: updatedEvent };
   } catch (error) {
@@ -288,11 +303,12 @@ export async function importEvents(input: {
     const validRows: AddEventInput[] = [];
 
     input.events.forEach((event, index) => {
-      const error = validateEventInput(event);
+      const normalizedEvent = normalizeEventInput(event);
+      const error = validateEventInput(normalizedEvent);
       if (error) {
         rowErrors.push({ row: index + 2, message: error });
       } else {
-        validRows.push(event);
+        validRows.push(normalizedEvent);
       }
     });
 
@@ -307,13 +323,13 @@ export async function importEvents(input: {
     const insertValues = validRows.map((event) => ({
       building: event.building,
       ward: event.ward,
-      name: event.name.trim(),
-      eventDate: event.eventDate.trim(),
-      startTime: event.startTime.trim(),
-      endTime: event.endTime.trim(),
-      phone: event.phone?.trim() || null,
-      email: event.email.trim().toLowerCase(),
-      description: event.description.trim(),
+      name: event.name,
+      eventDate: event.eventDate,
+      startTime: event.startTime,
+      endTime: event.endTime,
+      phone: event.phone || null,
+      email: event.email,
+      description: event.description,
       userId: session.user.id,
     }));
 

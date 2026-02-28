@@ -18,6 +18,10 @@ import type {
 } from '@/actions/events';
 import { toast } from 'sonner';
 
+function normalizeEmail(email: string) {
+  return email.trim().toLowerCase();
+}
+
 // ─── Query Keys ───────────────────────────────────────────────────────────────
 
 export const eventKeys = {
@@ -47,7 +51,7 @@ export function useAddEvent(onSuccess?: () => void) {
 
   return useMutation({
     mutationFn: async (input: AddEventInput) => {
-      const result = await addEvent(input);
+      const result = await addEvent({ ...input, email: normalizeEmail(input.email) });
       if (!result.success) throw new Error(result.error);
       return result.data!;
     },
@@ -72,7 +76,7 @@ export function useAddEvent(onSuccess?: () => void) {
         startTime: newEventInput.startTime,
         endTime: newEventInput.endTime,
         phone: newEventInput.phone ?? null,
-        email: newEventInput.email,
+        email: normalizeEmail(newEventInput.email),
         description: newEventInput.description,
         userId: 'pending',
         createdAt: new Date(),
@@ -192,7 +196,7 @@ export function useUpdateEvent() {
 
   return useMutation({
     mutationFn: async (input: UpdateEventInput) => {
-      const result = await updateEvent(input);
+      const result = await updateEvent({ ...input, email: normalizeEmail(input.email) });
       if (!result.success) throw new Error(result.error);
       return result.data!;
     },
@@ -218,7 +222,7 @@ export function useUpdateEvent() {
           startTime: input.startTime,
           endTime: input.endTime,
           phone: input.phone ?? null,
-          email: input.email,
+          email: normalizeEmail(input.email),
           description: input.description,
           creatorName: null,
           creatorEmail: null,
@@ -230,7 +234,7 @@ export function useUpdateEvent() {
         startTime: input.startTime,
         endTime: input.endTime,
         phone: input.phone ?? null,
-        email: input.email,
+        email: normalizeEmail(input.email),
         description: input.description,
       });
 
@@ -280,7 +284,12 @@ export function useImportEvents() {
 
   return useMutation({
     mutationFn: async (events: AddEventInput[]) => {
-      const result = await importEvents({ events });
+      const result = await importEvents({
+        events: events.map((event) => ({
+          ...event,
+          email: normalizeEmail(event.email),
+        })),
+      });
       if (!result.success) throw new Error(result.error);
       return result.data as ImportEventsResult;
     },
