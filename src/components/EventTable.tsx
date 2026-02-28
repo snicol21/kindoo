@@ -38,6 +38,9 @@ import {
   Pencil,
   Trash2,
   Copy,
+  Mail,
+  Phone,
+  Church,
 } from 'lucide-react';
 import { BUILDINGS, WARDS, type Building, type Ward } from '@/schema/schema';
 import type { EventWithCreator, UpdateEventInput } from '@/actions/events';
@@ -52,7 +55,7 @@ interface EventTableProps {
   onEdit?: (input: UpdateEventInput) => Promise<void>;
 }
 
-type SortKey = 'name' | 'email' | 'eventDate';
+type SortKey = 'name' | 'email' | 'eventDate' | 'daysUntil';
 type SortDir = 'asc' | 'desc';
 
 function parseYmd(dateStr: string) {
@@ -140,6 +143,16 @@ function getDaysUntil(dateStr: string) {
   return `${diff} days`;
 }
 
+function getDaysUntilValue(dateStr: string) {
+  const parsed = parseYmd(dateStr);
+  if (!parsed) return Number.NaN;
+
+  const now = new Date();
+  const todayUtc = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
+  const targetUtc = Date.UTC(parsed.year, parsed.month - 1, parsed.day);
+  return Math.floor((targetUtc - todayUtc) / (1000 * 60 * 60 * 24));
+}
+
 function buildShortMessage(event: EventWithCreator) {
   const phone = formatPhone(event.phone);
   const date = formatDate(event.eventDate);
@@ -199,15 +212,21 @@ export function EventTable({
   };
 
   const sorted = [...events].sort((a, b) => {
-    let valA: string | number | Date = a[sortKey] ?? '';
-    let valB: string | number | Date = b[sortKey] ?? '';
+    let valA: string | number = '';
+    let valB: string | number = '';
 
     if (sortKey === 'eventDate') {
       valA = toLocalDateTime(a.eventDate, a.startTime ?? '00:00');
       valB = toLocalDateTime(b.eventDate, b.startTime ?? '00:00');
-    } else {
-      valA = String(valA).toLowerCase();
-      valB = String(valB).toLowerCase();
+    } else if (sortKey === 'daysUntil') {
+      valA = getDaysUntilValue(a.eventDate);
+      valB = getDaysUntilValue(b.eventDate);
+    } else if (sortKey === 'name') {
+      valA = a.name.toLowerCase();
+      valB = b.name.toLowerCase();
+    } else if (sortKey === 'email') {
+      valA = a.email.toLowerCase();
+      valB = b.email.toLowerCase();
     }
 
     if (valA < valB) return sortDir === 'asc' ? -1 : 1;
@@ -317,21 +336,19 @@ export function EventTable({
     <>
       <div className="rounded-md border overflow-x-auto">
         <Table>
-          <TableHeader>
+          <TableHeader className="[&_th]:text-xs">
             <TableRow>
-              <TableHead className="w-[110px]">Days Until</TableHead>
+              <TableHead className="w-[110px]">
+                <SortButton col="daysUntil" label="Days Until" />
+              </TableHead>
               <TableHead className="w-[170px]">
-                <SortButton col="eventDate" label="Date" />
+                <SortButton col="eventDate" label="Event Date" />
               </TableHead>
-              <TableHead className="w-[180px]">
-                <SortButton col="name" label="Name" />
+              <TableHead className="min-w-[220px]">Event Description</TableHead>
+              <TableHead className="w-[240px]">
+                <SortButton col="name" label="Member" />
               </TableHead>
-              <TableHead className="w-[220px]">
-                <SortButton col="email" label="Email" />
-              </TableHead>
-              <TableHead className="w-[160px]">Phone</TableHead>
-              <TableHead className="w-[140px]">Ward</TableHead>
-              <TableHead className="min-w-[220px]">Description</TableHead>
+              <TableHead className="w-[240px]">Member Contact</TableHead>
               <TableHead className="w-[140px]">Created</TableHead>
               <TableHead className="w-[120px]">Actions</TableHead>
             </TableRow>
@@ -350,35 +367,49 @@ export function EventTable({
                       {formatTimeRange(event.startTime, event.endTime)}
                     </div>
                   </TableCell>
-                  <TableCell className="whitespace-nowrap text-foreground">{event.name}</TableCell>
-                  <TableCell className="max-w-[220px]">
-                    <a
-                      href={`mailto:${event.email}`}
-                      className="block truncate text-foreground hover:underline"
-                      title={event.email}
-                    >
-                      {event.email}
-                    </a>
-                  </TableCell>
-                  <TableCell className="text-muted-foreground whitespace-nowrap">
-                    {event.phone ? (
-                      <a
-                        href={`tel:${event.phone.replace(/\D/g, '')}`}
-                        className="hover:text-foreground transition-colors"
-                      >
-                        {formatPhone(event.phone)}
-                      </a>
-                    ) : (
-                      <span className="text-muted-foreground/50">—</span>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground text-sm">
-                    {event.ward ?? '—'}
-                  </TableCell>
                   <TableCell className="text-muted-foreground max-w-[320px]">
                     <p className="truncate" title={event.description}>
                       {event.description}
                     </p>
+                  </TableCell>
+                  <TableCell className="max-w-[360px]">
+                    <div className="space-y-1.5">
+                      <div className="truncate text-foreground" title={event.name}>
+                        {event.name}
+                      </div>
+                      <div className="flex items-center gap-1.5 text-muted-foreground text-xs">
+                        <Church className="h-3.5 w-3.5 shrink-0" />
+                        <span>{event.ward ?? '—'}</span>
+                      </div>
+                    </div>
+                  </TableCell>
+                  <TableCell className="max-w-[280px]">
+                    <div className="space-y-1.5">
+                      <div className="flex items-center gap-1.5 text-muted-foreground text-xs">
+                        <Mail className="h-3.5 w-3.5 shrink-0" />
+                        <a
+                          href={`mailto:${event.email}`}
+                          className="truncate hover:text-foreground hover:underline"
+                          title={event.email}
+                        >
+                          {event.email}
+                        </a>
+                      </div>
+                      <div className="flex items-center gap-1.5 text-muted-foreground text-xs">
+                        <Phone className="h-3.5 w-3.5 shrink-0" />
+                        {event.phone ? (
+                          <a
+                            href={`tel:${event.phone.replace(/\D/g, '')}`}
+                            className="truncate hover:text-foreground hover:underline"
+                            title={formatPhone(event.phone)}
+                          >
+                            {formatPhone(event.phone)}
+                          </a>
+                        ) : (
+                          <span className="text-muted-foreground/50">—</span>
+                        )}
+                      </div>
+                    </div>
                   </TableCell>
                   <TableCell className="text-muted-foreground whitespace-nowrap text-sm">
                     {isOptimistic ? (
@@ -501,7 +532,7 @@ export function EventTable({
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="edit-name">Contact Name</Label>
+              <Label htmlFor="edit-name">Member Name</Label>
               <Input
                 id="edit-name"
                 value={editName}

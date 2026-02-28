@@ -312,7 +312,7 @@ export function AddEventDialog({
           {/* Name */}
           <div className="space-y-1.5">
             <Label htmlFor="name">
-              Contact Name <span className="text-destructive">*</span>
+              Member Name <span className="text-destructive">*</span>
             </Label>
             <Input
               id="name"
