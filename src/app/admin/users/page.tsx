@@ -6,6 +6,8 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import type { Metadata } from 'next';
 import { adminDeleteUser, adminSetUserPassword, createUser, listUsers } from '@/actions/auth';
+import Link from 'next/link';
+import { ArrowLeft } from 'lucide-react';
 
 export const metadata: Metadata = {
   title: 'User Admin',
@@ -48,6 +50,14 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
 
   return (
     <div className="container mx-auto max-w-3xl px-4 py-8 space-y-6">
+      <div>
+        <Button asChild variant="ghost" size="sm" className="gap-2">
+          <Link href="/dashboard">
+            <ArrowLeft className="h-4 w-4" />
+            Back to dashboard
+          </Link>
+        </Button>
+      </div>
       <Card>
         <CardHeader>
           <CardTitle>User Admin</CardTitle>

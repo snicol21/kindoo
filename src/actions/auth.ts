@@ -159,6 +159,20 @@ export async function changePassword(input: {
   return { success: true };
 }
 
+export async function changeDisplayName(input: { name: string }): Promise<ActionResult> {
+  const session = await auth();
+  const userId = session?.user?.id ?? null;
+
+  if (!userId) return { success: false, error: 'Not authenticated.' };
+
+  const name = input.name.trim();
+  if (!name) return { success: false, error: 'Name is required.' };
+  if (name.length > 80) return { success: false, error: 'Name must be 80 characters or less.' };
+
+  await db.update(users).set({ name }).where(eq(users.id, userId));
+  return { success: true };
+}
+
 export async function listAdmins(): Promise<ActionResult<{ emails: string[] }>> {
   const admin = await requireAdmin();
   if (!admin.ok) return { success: false, error: admin.error };

@@ -72,13 +72,28 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     jwt({ token, user }) {
       if (user) {
         token.id = user.id;
+        token.name = user.name;
+        token.email = user.email;
       }
       return token;
     },
-    session({ session, user, token }) {
+    async session({ session, user, token }) {
       // Attach user ID to session for server-side filtering
       if (session.user) {
         session.user.id = user?.id ?? (token?.id as string | undefined) ?? session.user.id;
+
+        if (session.user.id) {
+          const dbUser = await db
+            .select()
+            .from(users)
+            .where(eq(users.id, session.user.id))
+            .limit(1);
+          const currentUser = dbUser[0];
+          if (currentUser) {
+            session.user.name = currentUser.name ?? null;
+            session.user.email = currentUser.email;
+          }
+        }
       }
       return session;
     },

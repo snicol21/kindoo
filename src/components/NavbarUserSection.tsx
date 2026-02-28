@@ -13,7 +13,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { ThemeToggle } from '@/components/ThemeToggle';
-import { LogOut, User } from 'lucide-react';
+import { LayoutDashboard, Settings, Shield, LogOut } from 'lucide-react';
 import { isAdminEmail } from '@/lib/admin';
 
 export async function NavbarUserSection() {
@@ -60,20 +60,20 @@ export async function NavbarUserSection() {
             <DropdownMenuSeparator />
             <DropdownMenuItem asChild>
               <Link href="/dashboard" className="gap-2 cursor-pointer">
-                <User className="h-4 w-4" />
+                <LayoutDashboard className="h-4 w-4" />
                 Dashboard
               </Link>
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
               <Link href="/account/password" className="gap-2 cursor-pointer">
-                <User className="h-4 w-4" />
-                Change Password
+                <Settings className="h-4 w-4" />
+                Account Settings
               </Link>
             </DropdownMenuItem>
             {isAdminEmail(session.user.email ?? null) && (
               <DropdownMenuItem asChild>
                 <Link href="/admin/users" className="gap-2 cursor-pointer">
-                  <User className="h-4 w-4" />
+                  <Shield className="h-4 w-4" />
                   Admin
                 </Link>
               </DropdownMenuItem>
