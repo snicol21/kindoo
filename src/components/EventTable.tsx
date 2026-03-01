@@ -264,14 +264,12 @@ function buildFullMessage(event: EventWithCreator) {
   const date = formatDateNoYear(event.eventDate);
   const time = formatTimeRange(event.startTime, event.endTime);
   return [
-    `I was able to confirm availability for your private event on ${date} from ${time} at the ${event.building}.`,
+    `${firstName}, I was able to confirm availability for your private event on ${date} from ${time} at the ${event.building}.`,
     '',
     'We will need your email address that you use on your church membership record so we can issue your temporary Kindoo access.',
     '',
     'Also we require you to please review the Stake Meetinghouse Use Policies here:',
     'https://drive.google.com/file/d/1LBukeaPHsg8eB-EtAyXXiPbq--o7wV1h/view?usp=sharing',
-    '',
-    `Thanks, ${firstName}!`,
   ].join('\n');
 }
 
