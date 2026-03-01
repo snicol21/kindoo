@@ -7,6 +7,9 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { LicenseLeadTimeSetting } from '@/components/LicenseLeadTimeSetting';
 import { changeProfile, changePassword } from '@/actions/auth';
+import { db } from '@/lib/db';
+import { users } from '@/schema/schema';
+import { eq } from 'drizzle-orm';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 
@@ -25,6 +28,13 @@ export default async function AccountPasswordPage({ searchParams }: AccountPassw
   if (!session?.user?.email) {
     redirect('/auth/signin');
   }
+
+  const userRecord = await db
+    .select({ licenseLeadDays: users.licenseLeadDays })
+    .from(users)
+    .where(eq(users.id, session.user.id))
+    .limit(1);
+  const licenseLeadDays = userRecord[0]?.licenseLeadDays ?? null;
 
   const message = params.error
     ? decodeURIComponent(params.error)
@@ -139,7 +149,7 @@ export default async function AccountPasswordPage({ searchParams }: AccountPassw
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <LicenseLeadTimeSetting />
+            <LicenseLeadTimeSetting initialLeadDays={licenseLeadDays} />
           </CardContent>
         </Card>
       </div>

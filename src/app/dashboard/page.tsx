@@ -20,6 +20,12 @@ export default async function DashboardPage() {
     redirect('/auth/signin');
   }
 
+  const userPreference = await db
+    .select({ licenseLeadDays: users.licenseLeadDays })
+    .from(users)
+    .where(eq(users.id, session.user.id))
+    .limit(1);
+
   // Initial data fetch for both buildings (runs in parallel)
   const [stakeCenterEvents, maplesEvents] = await Promise.all([
     db
@@ -80,6 +86,7 @@ export default async function DashboardPage() {
         email: session.user.email ?? null,
         image: session.user.image ?? null,
       }}
+      initialLicenseLeadDays={userPreference[0]?.licenseLeadDays ?? null}
       initialStakeCenterEvents={stakeCenterEvents}
       initialMaplesEvents={maplesEvents}
     />

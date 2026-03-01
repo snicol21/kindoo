@@ -9,35 +9,62 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { updateLicenseLeadDays } from '@/actions/auth';
+import { toast } from 'sonner';
 
 const STORAGE_KEY = 'kindoo.licenseLeadDays';
 const DEFAULT_DAYS = 2;
 const MAX_DAYS = 14;
 
-function parseLeadDays(value: string | null) {
-  const parsed = Number(value);
+function normalizeLeadDays(value: string | number | null | undefined) {
+  const parsed = typeof value === 'number' ? value : Number(value);
   if (!Number.isFinite(parsed)) return DEFAULT_DAYS;
   const normalized = Math.round(parsed);
   if (normalized < 0 || normalized > MAX_DAYS) return DEFAULT_DAYS;
   return normalized;
 }
 
-export function LicenseLeadTimeSetting() {
-  const [leadDays, setLeadDays] = useState(DEFAULT_DAYS);
+interface LicenseLeadTimeSettingProps {
+  initialLeadDays?: number | null;
+}
+
+export function LicenseLeadTimeSetting({ initialLeadDays }: LicenseLeadTimeSettingProps) {
+  const [leadDays, setLeadDays] = useState(() => normalizeLeadDays(initialLeadDays));
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
+    if (Number.isFinite(initialLeadDays)) {
+      const normalized = normalizeLeadDays(initialLeadDays ?? DEFAULT_DAYS);
+      setLeadDays(normalized);
+      window.localStorage.setItem(STORAGE_KEY, String(normalized));
+      return;
+    }
+
     const stored = window.localStorage.getItem(STORAGE_KEY);
-    setLeadDays(parseLeadDays(stored));
-  }, []);
+    setLeadDays(normalizeLeadDays(stored));
+  }, [initialLeadDays]);
 
-  useEffect(() => {
-    window.localStorage.setItem(STORAGE_KEY, String(leadDays));
-  }, [leadDays]);
+  const handleLeadDaysChange = async (value: string) => {
+    const next = normalizeLeadDays(value);
+    const previous = leadDays;
+    setLeadDays(next);
+    window.localStorage.setItem(STORAGE_KEY, String(next));
+    setIsSaving(true);
+
+    const result = await updateLicenseLeadDays({ leadDays: next });
+    setIsSaving(false);
+
+    if (!result.success) {
+      setLeadDays(previous);
+      window.localStorage.setItem(STORAGE_KEY, String(previous));
+      toast.error(result.error ?? 'Failed to update license lead time.');
+    }
+  };
 
   return (
     <div className="space-y-2">
       <Label htmlFor="license-lead-days">License lead time</Label>
-      <Select value={String(leadDays)} onValueChange={(value) => setLeadDays(parseLeadDays(value))}>
+      <Select value={String(leadDays)} onValueChange={handleLeadDaysChange} disabled={isSaving}>
         <SelectTrigger id="license-lead-days">
           <SelectValue placeholder="Select days" />
         </SelectTrigger>

@@ -12,6 +12,7 @@ export const users = sqliteTable('user', {
   passwordHash: text('password_hash'),
   emailVerified: integer('emailVerified', { mode: 'timestamp_ms' }),
   image: text('image'),
+  licenseLeadDays: integer('license_lead_days').notNull().default(2),
   createdAt: integer('created_at', { mode: 'timestamp' })
     .notNull()
     .default(sql`(unixepoch())`),

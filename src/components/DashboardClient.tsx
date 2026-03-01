@@ -39,6 +39,7 @@ interface DashboardClientProps {
   user: DashboardUser;
   initialStakeCenterEvents: EventWithCreator[];
   initialMaplesEvents: EventWithCreator[];
+  initialLicenseLeadDays?: number | null;
 }
 
 function isPastEvent(eventDate: string, endTime: string) {
@@ -56,8 +57,8 @@ const LICENSE_LEAD_KEY = 'kindoo.licenseLeadDays';
 const DEFAULT_LICENSE_LEAD_DAYS = 2;
 const MAX_LICENSE_LEAD_DAYS = 14;
 
-function parseLicenseLeadDays(value: string | null) {
-  const parsed = Number(value);
+function normalizeLicenseLeadDays(value: string | number | null | undefined) {
+  const parsed = typeof value === 'number' ? value : Number(value);
   if (!Number.isFinite(parsed)) return DEFAULT_LICENSE_LEAD_DAYS;
   const normalized = Math.round(parsed);
   if (normalized < 0 || normalized > MAX_LICENSE_LEAD_DAYS) return DEFAULT_LICENSE_LEAD_DAYS;
@@ -68,6 +69,7 @@ export function DashboardClient({
   user,
   initialStakeCenterEvents,
   initialMaplesEvents,
+  initialLicenseLeadDays,
 }: DashboardClientProps) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
@@ -77,7 +79,9 @@ export function DashboardClient({
   const [bulkDeleteTarget, setBulkDeleteTarget] = useState<Building | null>(null);
   const [showStakeArchived, setShowStakeArchived] = useState(false);
   const [showMaplesArchived, setShowMaplesArchived] = useState(false);
-  const [licenseLeadDays, setLicenseLeadDays] = useState(DEFAULT_LICENSE_LEAD_DAYS);
+  const [licenseLeadDays, setLicenseLeadDays] = useState(() =>
+    normalizeLicenseLeadDays(initialLicenseLeadDays)
+  );
 
   const {
     data: stakeCenterEvents = [],
@@ -136,17 +140,25 @@ export function DashboardClient({
   }, [maplesUpcoming]);
 
   useEffect(() => {
-    const stored = window.localStorage.getItem(LICENSE_LEAD_KEY);
-    setLicenseLeadDays(parseLicenseLeadDays(stored));
+    if (Number.isFinite(initialLicenseLeadDays)) {
+      const normalized = normalizeLicenseLeadDays(
+        initialLicenseLeadDays ?? DEFAULT_LICENSE_LEAD_DAYS
+      );
+      setLicenseLeadDays(normalized);
+      window.localStorage.setItem(LICENSE_LEAD_KEY, String(normalized));
+    } else {
+      const stored = window.localStorage.getItem(LICENSE_LEAD_KEY);
+      setLicenseLeadDays(normalizeLicenseLeadDays(stored));
+    }
 
     const handleStorage = (event: StorageEvent) => {
       if (event.key !== LICENSE_LEAD_KEY) return;
-      setLicenseLeadDays(parseLicenseLeadDays(event.newValue));
+      setLicenseLeadDays(normalizeLicenseLeadDays(event.newValue));
     };
 
     window.addEventListener('storage', handleStorage);
     return () => window.removeEventListener('storage', handleStorage);
-  }, []);
+  }, [initialLicenseLeadDays]);
 
   const userInitials = user.name
     ? user.name

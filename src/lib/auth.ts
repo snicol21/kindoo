@@ -5,6 +5,16 @@ import { users } from '@/schema/schema';
 import { eq } from 'drizzle-orm';
 import { hashPassword, verifyPassword } from '@/lib/password';
 
+const DEFAULT_LICENSE_LEAD_DAYS = 2;
+const MAX_LICENSE_LEAD_DAYS = 14;
+
+function normalizeLicenseLeadDays(value: number | null | undefined) {
+  if (!Number.isFinite(value)) return DEFAULT_LICENSE_LEAD_DAYS;
+  const rounded = Math.round(value as number);
+  if (rounded < 0 || rounded > MAX_LICENSE_LEAD_DAYS) return DEFAULT_LICENSE_LEAD_DAYS;
+  return rounded;
+}
+
 export const { handlers, auth, signIn, signOut } = NextAuth({
   providers: [
     // Credentials provider for email/password
@@ -92,6 +102,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           if (currentUser) {
             session.user.name = currentUser.name ?? null;
             session.user.email = currentUser.email;
+
+            const normalizedLeadDays = normalizeLicenseLeadDays(currentUser.licenseLeadDays);
+            if (normalizedLeadDays !== currentUser.licenseLeadDays) {
+              await db
+                .update(users)
+                .set({ licenseLeadDays: normalizedLeadDays })
+                .where(eq(users.id, currentUser.id));
+            }
           }
         }
       }
