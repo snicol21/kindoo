@@ -259,7 +259,7 @@ export function DashboardClient({
 
         <TabsContent value="stake-center">
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+            <CardHeader className="flex flex-col gap-3 space-y-0 pb-3 sm:flex-row sm:items-center sm:justify-between sm:pb-4">
               <div>
                 <CardTitle className="flex items-center gap-2">
                   <CalendarDays className="h-5 w-5 text-muted-foreground" />
@@ -267,11 +267,12 @@ export function DashboardClient({
                 </CardTitle>
                 <CardDescription>All upcoming events at Stake Center</CardDescription>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex w-full items-center gap-2 sm:w-auto sm:justify-end">
                 {selectedStakeIds.length > 0 && (
                   <Button
                     variant="destructive"
                     size="sm"
+                    className="flex-1 sm:flex-none"
                     disabled={bulkDeleteStakeCenterEvents.isPending}
                     onClick={() => setBulkDeleteTarget('Stake Center')}
                   >
@@ -282,14 +283,14 @@ export function DashboardClient({
                   variant="outline"
                   size="sm"
                   onClick={() => openDialogFor('Stake Center')}
-                  className="gap-2"
+                  className="gap-2 flex-1 sm:flex-none"
                 >
                   <Plus className="h-4 w-4" />
                   Add
                 </Button>
               </div>
             </CardHeader>
-            <CardContent>
+            <CardContent className="px-2 py-2 sm:px-6 sm:py-6">
               <EventTable
                 events={stakeUpcoming}
                 isLoading={scLoading}
@@ -348,7 +349,7 @@ export function DashboardClient({
 
         <TabsContent value="maples-building">
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+            <CardHeader className="flex flex-col gap-3 space-y-0 pb-3 sm:flex-row sm:items-center sm:justify-between sm:pb-4">
               <div>
                 <CardTitle className="flex items-center gap-2">
                   <CalendarDays className="h-5 w-5 text-muted-foreground" />
@@ -356,11 +357,12 @@ export function DashboardClient({
                 </CardTitle>
                 <CardDescription>All upcoming events at Maples Building</CardDescription>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex w-full items-center gap-2 sm:w-auto sm:justify-end">
                 {selectedMaplesIds.length > 0 && (
                   <Button
                     variant="destructive"
                     size="sm"
+                    className="flex-1 sm:flex-none"
                     disabled={bulkDeleteMaplesEvents.isPending}
                     onClick={() => setBulkDeleteTarget('Maples Building')}
                   >
@@ -371,14 +373,14 @@ export function DashboardClient({
                   variant="outline"
                   size="sm"
                   onClick={() => openDialogFor('Maples Building')}
-                  className="gap-2"
+                  className="gap-2 flex-1 sm:flex-none"
                 >
                   <Plus className="h-4 w-4" />
                   Add
                 </Button>
               </div>
             </CardHeader>
-            <CardContent>
+            <CardContent className="px-2 py-2 sm:px-6 sm:py-6">
               <EventTable
                 events={maplesUpcoming}
                 isLoading={mbLoading}

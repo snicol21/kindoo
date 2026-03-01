@@ -337,7 +337,7 @@ export function CsvImportDialog({ open, onOpenChange }: CsvImportDialogProps) {
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-[620px] max-h-[85vh] overflow-hidden">
+      <DialogContent className="sm:max-w-155 max-h-[calc(100dvh-2rem)] overflow-hidden">
         <DialogHeader>
           <DialogTitle>Import events from CSV</DialogTitle>
           <DialogDescription>
@@ -400,7 +400,7 @@ export function CsvImportDialog({ open, onOpenChange }: CsvImportDialogProps) {
                         {previewHeaders.map((_, colIndex) => (
                           <TableCell
                             key={`preview-cell-${rowIndex}-${colIndex}`}
-                            className="max-w-[220px] truncate align-top text-xs"
+                            className="max-w-55 truncate align-top text-xs"
                             title={row[colIndex] || '—'}
                           >
                             {row[colIndex] || '—'}

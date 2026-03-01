@@ -30,6 +30,13 @@ import {
 } from '@/components/ui/select';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
   ArrowUpDown,
   ArrowUp,
   ArrowDown,
@@ -46,6 +53,7 @@ import {
   Church,
   ExternalLink,
   CheckCircle2,
+  MoreVertical,
 } from 'lucide-react';
 import { BUILDINGS, WARDS, type Building, type Ward } from '@/schema/schema';
 import type { AddEventInput, EventWithCreator, UpdateEventInput } from '@/actions/events';
@@ -355,6 +363,7 @@ export function EventTable({
   const [cloneDescription, setCloneDescription] = useState('');
   const [isSavingClone, setIsSavingClone] = useState(false);
   const [internalSelectedIds, setInternalSelectedIds] = useState<Set<string>>(new Set());
+  const [isMobileView, setIsMobileView] = useState(false);
 
   const selectedIdSet = useMemo(
     () => new Set(selectedIds ?? Array.from(internalSelectedIds)),
@@ -384,6 +393,23 @@ export function EventTable({
       applySelection(next);
     }
   }, [selectableEvents, selectedIdSet]);
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(max-width: 767px)');
+    const handleChange = (event: MediaQueryListEvent) => {
+      setIsMobileView(event.matches);
+    };
+
+    setIsMobileView(mediaQuery.matches);
+
+    if (typeof mediaQuery.addEventListener === 'function') {
+      mediaQuery.addEventListener('change', handleChange);
+      return () => mediaQuery.removeEventListener('change', handleChange);
+    }
+
+    mediaQuery.addListener(handleChange);
+    return () => mediaQuery.removeListener(handleChange);
+  }, []);
 
   const handleSort = (key: SortKey) => {
     if (sortKey === key) {
@@ -619,8 +645,14 @@ export function EventTable({
 
   return (
     <TooltipProvider delayDuration={200}>
-      <div className="rounded-md border overflow-x-auto">
-        <Table>
+      <div className={`rounded-md border ${isMobileView ? 'overflow-hidden' : 'overflow-x-auto'}`}>
+        <Table
+          className={`${
+            isMobileView
+              ? 'table-fixed [&_th]:px-1 [&_td]:px-1 [&_th]:py-1 [&_td]:py-1'
+              : 'table-auto [&_th]:px-2 [&_td]:px-2 [&_th]:py-2 [&_td]:py-2'
+          }`}
+        >
           <TableHeader className="[&_th]:text-xs">
             <TableRow>
               <TableHead className="w-[36px]">
@@ -645,18 +677,22 @@ export function EventTable({
                   }}
                 />
               </TableHead>
-              <TableHead className="w-[150px]">
-                <SortButton col="daysUntil" label="Days Until" />
+              <TableHead className={isMobileView ? 'w-20' : 'w-[150px]'}>
+                <SortButton col="daysUntil" label={isMobileView ? 'Days' : 'Days Until'} />
               </TableHead>
-              <TableHead className="min-w-[260px]">
+              <TableHead className={isMobileView ? 'min-w-0' : 'min-w-[260px]'}>
                 <SortButton col="eventDate" label="Event" />
               </TableHead>
-              <TableHead className="w-[240px]">
-                <SortButton col="name" label="Member" />
-              </TableHead>
-              <TableHead className="w-[240px]">Member Contact</TableHead>
-              <TableHead className="w-[140px]">Created</TableHead>
-              <TableHead className="w-[120px]">Actions</TableHead>
+              {!isMobileView && (
+                <>
+                  <TableHead className="w-[240px]">
+                    <SortButton col="name" label="Member" />
+                  </TableHead>
+                  <TableHead className="w-[240px]">Member Contact</TableHead>
+                  <TableHead className="w-[140px]">Created</TableHead>
+                  <TableHead className="w-[120px]">Actions</TableHead>
+                </>
+              )}
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -687,7 +723,11 @@ export function EventTable({
                       }}
                     />
                   </TableCell>
-                  <TableCell className="text-foreground text-sm">
+                  <TableCell
+                    className={
+                      isMobileView ? 'w-20 text-foreground text-sm' : 'text-foreground text-sm'
+                    }
+                  >
                     {isOptimistic
                       ? '—'
                       : (() => {
@@ -726,27 +766,84 @@ export function EventTable({
                                 <Button
                                   variant="outline"
                                   size="sm"
-                                  className={
+                                  data-no-row-click
+                                  className={`${isMobileView ? 'px-2 text-xs' : 'px-3 text-sm'} ${
                                     withinWindow
                                       ? 'border-yellow-500 bg-yellow-500 text-black hover:bg-yellow-600 hover:border-yellow-600'
                                       : ''
-                                  }
+                                  }`}
                                   disabled={!withinWindow}
                                   onClick={() => setLicenseEvent(event)}
                                 >
-                                  Kindoo License
+                                  {isMobileView ? 'Kindoo' : 'Kindoo License'}
                                 </Button>
                               )}
                             </div>
                           );
                         })()}
                   </TableCell>
-                  <TableCell>
-                    <div className="text-foreground text-xs font-semibold">
-                      {formatDate(event.eventDate)}
-                    </div>
-                    <div className="text-muted-foreground text-xs">
-                      {formatTimeRange(event.startTime, event.endTime)}
+                  <TableCell className="min-w-0">
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <div className="text-foreground text-xs font-semibold">
+                          {formatDate(event.eventDate)}
+                        </div>
+                        <div className="text-muted-foreground text-xs">
+                          {formatTimeRange(event.startTime, event.endTime)}
+                        </div>
+                      </div>
+                      {isMobileView && (
+                        <div data-no-row-click>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                aria-label={`Actions for ${event.name}`}
+                              >
+                                <MoreVertical className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-48">
+                              <DropdownMenuItem
+                                disabled={isOptimistic}
+                                onSelect={() => setCopyingEvent(event)}
+                              >
+                                <MessageSquare className="h-4 w-4" />
+                                Message templates
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                disabled={isOptimistic || !onClone}
+                                onSelect={() => openCloneDialog(event)}
+                              >
+                                <CopyPlus className="h-4 w-4" />
+                                Clone event
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                disabled={isOptimistic || !onEdit}
+                                onSelect={() => openEditDialog(event)}
+                              >
+                                <Pencil className="h-4 w-4" />
+                                Edit event
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                className="text-destructive focus:text-destructive"
+                                disabled={isOptimistic || deletingId === event.id || !onDelete}
+                                onSelect={() => setPendingDeleteEvent(event)}
+                              >
+                                {deletingId === event.id ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <Trash2 className="h-4 w-4" />
+                                )}
+                                Delete event
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                      )}
                     </div>
                     <p
                       className="text-muted-foreground text-xs line-clamp-2"
@@ -754,108 +851,48 @@ export function EventTable({
                     >
                       {event.description}
                     </p>
-                  </TableCell>
-                  <TableCell className="max-w-[360px]">
-                    <div className="space-y-1.5">
-                      <div
-                        className="truncate text-foreground text-sm font-semibold"
-                        title={event.name}
-                      >
-                        {event.name}
-                      </div>
-                      <div className="flex items-center gap-1.5 text-muted-foreground text-xs">
-                        <Church className="h-3.5 w-3.5 shrink-0" />
-                        <span>{event.ward ?? '—'}</span>
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell className="max-w-[280px]">
-                    <div className="space-y-1.5">
-                      <div className="flex items-center gap-1.5 text-muted-foreground text-xs">
-                        <Mail className="h-3.5 w-3.5 shrink-0" />
-                        {event.email ? (
-                          <div className="flex min-w-0 items-center gap-1.5">
+                    {isMobileView && (
+                      <div className="mt-2 space-y-1.5">
+                        <div
+                          className="truncate text-foreground text-sm font-semibold"
+                          title={event.name}
+                        >
+                          {event.name}
+                        </div>
+                        <div className="flex items-center gap-1.5 text-muted-foreground text-xs">
+                          <Church className="h-3.5 w-3.5 shrink-0" />
+                          <span>{event.ward ?? '—'}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5 text-muted-foreground text-xs">
+                          <Mail className="h-3.5 w-3.5 shrink-0" />
+                          {event.email ? (
                             <a
                               href={`mailto:${event.email}`}
-                              className="truncate cursor-pointer font-semibold text-foreground hover:underline"
+                              className="max-w-44 truncate font-semibold text-foreground hover:underline"
                               title={event.email}
                             >
                               {event.email}
                             </a>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-6 w-6"
-                                  aria-label={`Copy email for ${event.name}`}
-                                  onClick={async () => {
-                                    try {
-                                      await navigator.clipboard.writeText(event.email ?? '');
-                                      toast.success('Email copied.');
-                                    } catch {
-                                      toast.error('Failed to copy.');
-                                    }
-                                  }}
-                                >
-                                  <Copy className="h-3.5 w-3.5" />
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>Copy email</TooltipContent>
-                            </Tooltip>
-                          </div>
-                        ) : (
-                          <span className="text-muted-foreground/50">—</span>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-1.5 text-muted-foreground text-xs">
-                        <Phone className="h-3.5 w-3.5 shrink-0" />
-                        {event.phone ? (
-                          <div className="flex min-w-0 items-center gap-1.5">
+                          ) : (
+                            <span className="text-muted-foreground/50">—</span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1.5 text-muted-foreground text-xs">
+                          <Phone className="h-3.5 w-3.5 shrink-0" />
+                          {event.phone ? (
                             <a
                               href={`tel:${event.phone.replace(/\D/g, '')}`}
-                              className="truncate cursor-pointer hover:text-foreground hover:underline"
+                              className="max-w-44 truncate hover:text-foreground hover:underline"
                               title={formatPhone(event.phone)}
                             >
                               {formatPhone(event.phone)}
                             </a>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-6 w-6"
-                                  aria-label={`Copy phone for ${event.name}`}
-                                  onClick={async () => {
-                                    try {
-                                      await navigator.clipboard.writeText(formatPhone(event.phone));
-                                      toast.success('Phone copied.');
-                                    } catch {
-                                      toast.error('Failed to copy.');
-                                    }
-                                  }}
-                                >
-                                  <Copy className="h-3.5 w-3.5" />
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>Copy phone</TooltipContent>
-                            </Tooltip>
-                          </div>
-                        ) : (
-                          <span className="text-muted-foreground/50">—</span>
-                        )}
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-muted-foreground whitespace-nowrap text-sm">
-                    {isOptimistic ? (
-                      '—'
-                    ) : (
-                      <div>
-                        <div className="text-foreground text-xs">
-                          {event.creatorName || event.creatorEmail || '—'}
+                          ) : (
+                            <span className="text-muted-foreground/50">—</span>
+                          )}
                         </div>
                         <div className="text-muted-foreground text-xs">
+                          Created by {event.creatorName || event.creatorEmail || '—'} ·{' '}
                           {new Date(event.createdAt).toLocaleDateString('en-US', {
                             month: 'short',
                             day: 'numeric',
@@ -865,70 +902,190 @@ export function EventTable({
                       </div>
                     )}
                   </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-1">
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            aria-label={`Copy ${event.name}`}
-                            disabled={isOptimistic}
-                            onClick={() => setCopyingEvent(event)}
-                          >
-                            <MessageSquare className="h-4 w-4" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>Message templates</TooltipContent>
-                      </Tooltip>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            aria-label={`Clone ${event.name}`}
-                            disabled={isOptimistic || !onClone}
-                            onClick={() => openCloneDialog(event)}
-                          >
-                            <CopyPlus className="h-4 w-4" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>Clone event</TooltipContent>
-                      </Tooltip>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            aria-label={`Edit ${event.name}`}
-                            disabled={isOptimistic || !onEdit}
-                            onClick={() => openEditDialog(event)}
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>Edit event</TooltipContent>
-                      </Tooltip>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            aria-label={`Delete ${event.name}`}
-                            disabled={isOptimistic || deletingId === event.id || !onDelete}
-                            onClick={() => setPendingDeleteEvent(event)}
-                          >
-                            {deletingId === event.id ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              <Trash2 className="h-4 w-4 text-destructive" />
-                            )}
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>Delete event</TooltipContent>
-                      </Tooltip>
-                    </div>
-                  </TableCell>
+                  {!isMobileView && (
+                    <TableCell className="max-w-[360px]">
+                      <div className="space-y-1.5">
+                        <div
+                          className="truncate text-foreground text-sm font-semibold"
+                          title={event.name}
+                        >
+                          {event.name}
+                        </div>
+                        <div className="flex items-center gap-1.5 text-muted-foreground text-xs">
+                          <Church className="h-3.5 w-3.5 shrink-0" />
+                          <span>{event.ward ?? '—'}</span>
+                        </div>
+                      </div>
+                    </TableCell>
+                  )}
+                  {!isMobileView && (
+                    <TableCell className="max-w-[280px]">
+                      <div className="space-y-1.5">
+                        <div className="flex items-center gap-1.5 text-muted-foreground text-xs">
+                          <Mail className="h-3.5 w-3.5 shrink-0" />
+                          {event.email ? (
+                            <div className="flex min-w-0 items-center gap-1.5">
+                              <a
+                                href={`mailto:${event.email}`}
+                                className="truncate cursor-pointer font-semibold text-foreground hover:underline"
+                                title={event.email}
+                              >
+                                {event.email}
+                              </a>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-6 w-6"
+                                    aria-label={`Copy email for ${event.name}`}
+                                    onClick={async () => {
+                                      try {
+                                        await navigator.clipboard.writeText(event.email ?? '');
+                                        toast.success('Email copied.');
+                                      } catch {
+                                        toast.error('Failed to copy.');
+                                      }
+                                    }}
+                                  >
+                                    <Copy className="h-3.5 w-3.5" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>Copy email</TooltipContent>
+                              </Tooltip>
+                            </div>
+                          ) : (
+                            <span className="text-muted-foreground/50">—</span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1.5 text-muted-foreground text-xs">
+                          <Phone className="h-3.5 w-3.5 shrink-0" />
+                          {event.phone ? (
+                            <div className="flex min-w-0 items-center gap-1.5">
+                              <a
+                                href={`tel:${event.phone.replace(/\D/g, '')}`}
+                                className="truncate cursor-pointer hover:text-foreground hover:underline"
+                                title={formatPhone(event.phone)}
+                              >
+                                {formatPhone(event.phone)}
+                              </a>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-6 w-6"
+                                    aria-label={`Copy phone for ${event.name}`}
+                                    onClick={async () => {
+                                      try {
+                                        await navigator.clipboard.writeText(
+                                          formatPhone(event.phone)
+                                        );
+                                        toast.success('Phone copied.');
+                                      } catch {
+                                        toast.error('Failed to copy.');
+                                      }
+                                    }}
+                                  >
+                                    <Copy className="h-3.5 w-3.5" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>Copy phone</TooltipContent>
+                              </Tooltip>
+                            </div>
+                          ) : (
+                            <span className="text-muted-foreground/50">—</span>
+                          )}
+                        </div>
+                      </div>
+                    </TableCell>
+                  )}
+                  {!isMobileView && (
+                    <TableCell className="text-muted-foreground whitespace-nowrap text-sm">
+                      {isOptimistic ? (
+                        '—'
+                      ) : (
+                        <div>
+                          <div className="text-foreground text-xs">
+                            {event.creatorName || event.creatorEmail || '—'}
+                          </div>
+                          <div className="text-muted-foreground text-xs">
+                            {new Date(event.createdAt).toLocaleDateString('en-US', {
+                              month: 'short',
+                              day: 'numeric',
+                              year: 'numeric',
+                            })}
+                          </div>
+                        </div>
+                      )}
+                    </TableCell>
+                  )}
+                  {!isMobileView && (
+                    <TableCell>
+                      <div className="flex items-center gap-1">
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              aria-label={`Copy ${event.name}`}
+                              disabled={isOptimistic}
+                              onClick={() => setCopyingEvent(event)}
+                            >
+                              <MessageSquare className="h-4 w-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>Message templates</TooltipContent>
+                        </Tooltip>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              aria-label={`Clone ${event.name}`}
+                              disabled={isOptimistic || !onClone}
+                              onClick={() => openCloneDialog(event)}
+                            >
+                              <CopyPlus className="h-4 w-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>Clone event</TooltipContent>
+                        </Tooltip>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              aria-label={`Edit ${event.name}`}
+                              disabled={isOptimistic || !onEdit}
+                              onClick={() => openEditDialog(event)}
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>Edit event</TooltipContent>
+                        </Tooltip>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              aria-label={`Delete ${event.name}`}
+                              disabled={isOptimistic || deletingId === event.id || !onDelete}
+                              onClick={() => setPendingDeleteEvent(event)}
+                            >
+                              {deletingId === event.id ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                              )}
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>Delete event</TooltipContent>
+                        </Tooltip>
+                      </div>
+                    </TableCell>
+                  )}
                 </TableRow>
               );
             })}

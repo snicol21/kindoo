@@ -36,7 +36,7 @@ export default async function AccountPasswordPage({ searchParams }: AccountPassw
 
   return (
     <div className="container mx-auto max-w-xl px-4 py-8">
-      <div className="mb-6">
+      <div className="sticky top-2 z-10 mb-6 w-fit rounded-md bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/80 sm:static sm:bg-transparent sm:backdrop-blur-none">
         <Button asChild variant="ghost" size="sm" className="gap-2">
           <Link href="/dashboard">
             <ArrowLeft className="h-4 w-4" />
