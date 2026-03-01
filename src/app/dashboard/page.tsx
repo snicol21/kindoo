@@ -2,7 +2,7 @@ import { auth } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { db } from '@/lib/db';
 import { events, users } from '@/schema/schema';
-import { eq, and } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import { DashboardClient } from '@/components/DashboardClient';
 import type { Metadata } from 'next';
 import type { Building } from '@/schema/schema';
@@ -48,9 +48,7 @@ export default async function DashboardPage() {
       })
       .from(events)
       .innerJoin(users, eq(events.userId, users.id))
-      .where(
-        and(eq(events.userId, session.user.id), eq(events.building, 'Stake Center' as Building))
-      )
+      .where(eq(events.building, 'Stake Center' as Building))
       .orderBy(events.createdAt),
     db
       .select({
@@ -72,9 +70,7 @@ export default async function DashboardPage() {
       })
       .from(events)
       .innerJoin(users, eq(events.userId, users.id))
-      .where(
-        and(eq(events.userId, session.user.id), eq(events.building, 'Maples Building' as Building))
-      )
+      .where(eq(events.building, 'Maples Building' as Building))
       .orderBy(events.createdAt),
   ]);
 

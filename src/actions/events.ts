@@ -12,7 +12,7 @@ import {
   type Event,
   type Ward,
 } from '@/schema/schema';
-import { eq, and, inArray } from 'drizzle-orm';
+import { eq, inArray } from 'drizzle-orm';
 import { revalidateTag } from 'next/cache';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -257,7 +257,7 @@ export async function getEventsByBuilding(
       })
       .from(events)
       .innerJoin(users, eq(events.userId, users.id))
-      .where(and(eq(events.userId, session.user.id), eq(events.building, building)))
+      .where(eq(events.building, building))
       .orderBy(events.createdAt);
 
     return { success: true, data: userEvents as EventWithCreator[] };
@@ -275,8 +275,7 @@ export async function deleteEvent(eventId: string): Promise<ActionResult<void>> 
       return { success: false, error: 'Not authenticated.' };
     }
 
-    // Ensure user owns this event
-    await db.delete(events).where(and(eq(events.id, eventId), eq(events.userId, session.user.id)));
+    await db.delete(events).where(eq(events.id, eventId));
 
     revalidateTag(`events-${session.user.id}`, 'everything');
 
@@ -300,9 +299,7 @@ export async function deleteEvents(eventIds: string[]): Promise<ActionResult<{ d
       return { success: false, error: 'No events selected.' };
     }
 
-    const result = await db
-      .delete(events)
-      .where(and(eq(events.userId, session.user.id), inArray(events.id, ids)));
+    const result = await db.delete(events).where(inArray(events.id, ids));
 
     revalidateTag(`events-${session.user.id}`, 'everything');
 
@@ -344,7 +341,7 @@ export async function updateEvent(input: UpdateEventInput): Promise<ActionResult
         email: normalizedInput.email || '',
         description: normalizedInput.description,
       })
-      .where(and(eq(events.id, input.id), eq(events.userId, session.user.id)))
+      .where(eq(events.id, input.id))
       .returning();
 
     if (!updatedEvent) {
@@ -443,7 +440,7 @@ export async function setKindooLicenseCreated(input: {
     const [updatedEvent] = await db
       .update(events)
       .set({ kindooLicenseCreated: input.kindooLicenseCreated })
-      .where(and(eq(events.id, eventId), eq(events.userId, session.user.id)))
+      .where(eq(events.id, eventId))
       .returning();
 
     if (!updatedEvent) {
