@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState, type MouseEvent } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Table,
   TableBody,
@@ -579,17 +579,6 @@ export function EventTable({
     }
   };
 
-  const handleRowClick = (
-    event: MouseEvent<HTMLTableRowElement>,
-    rowEvent: EventWithCreator,
-    isOptimisticRow: boolean
-  ) => {
-    if (!onEdit || isOptimisticRow) return;
-    const target = event.target as HTMLElement | null;
-    if (target?.closest('button, a, input, textarea, select, [data-no-row-click]')) return;
-    openEditDialog(rowEvent);
-  };
-
   const openCloneDialog = (event: EventWithCreator) => {
     setCloningEvent(event);
     setCloneBuilding(event.building);
@@ -710,10 +699,7 @@ export function EventTable({
               return (
                 <TableRow
                   key={event.id}
-                  onClick={(e) => handleRowClick(e, event, isOptimistic)}
-                  className={`${isOptimistic ? 'opacity-60 animate-pulse' : ''} ${
-                    !isOptimistic && onEdit ? 'cursor-pointer hover:bg-muted/40' : ''
-                  }`}
+                  className={isOptimistic ? 'opacity-60 animate-pulse' : undefined}
                 >
                   <TableCell className="w-[36px]">
                     <input
@@ -775,7 +761,6 @@ export function EventTable({
                                 <Button
                                   variant="outline"
                                   size="sm"
-                                  data-no-row-click
                                   className={`${isMobileView ? 'px-2 text-xs' : 'px-3 text-sm'} ${
                                     withinWindow
                                       ? 'border-yellow-500 bg-yellow-500 text-black hover:bg-yellow-600 hover:border-yellow-600'
@@ -802,7 +787,7 @@ export function EventTable({
                         </div>
                       </div>
                       {isMobileView && (
-                        <div data-no-row-click>
+                        <div>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <Button
