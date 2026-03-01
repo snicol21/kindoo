@@ -179,22 +179,22 @@ export function DashboardClient({
 
       {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Card>
-          <CardHeader className="pb-2">
+        <Card className="h-full">
+          <CardHeader className="h-full justify-center py-3">
             <CardDescription>Total Events</CardDescription>
             <CardTitle className="text-3xl">
               {stakeCenterEvents.length + maplesEvents.length}
             </CardTitle>
           </CardHeader>
         </Card>
-        <Card>
-          <CardHeader className="pb-2">
+        <Card className="h-full">
+          <CardHeader className="h-full justify-center py-3">
             <CardDescription>Stake Center</CardDescription>
             <CardTitle className="text-3xl">{stakeCenterEvents.length}</CardTitle>
           </CardHeader>
         </Card>
-        <Card>
-          <CardHeader className="pb-2">
+        <Card className="h-full">
+          <CardHeader className="h-full justify-center py-3">
             <CardDescription>Maples Building</CardDescription>
             <CardTitle className="text-3xl">{maplesEvents.length}</CardTitle>
           </CardHeader>
