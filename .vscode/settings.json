@@ -37,5 +37,6 @@
     "**/drizzle": true,
     "**/.devbox": true,
     "local.db": true
-  }
+  },
+  "cSpell.words": ["Kindoo"]
 }

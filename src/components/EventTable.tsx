@@ -45,6 +45,7 @@ import {
   Phone,
   Church,
   ExternalLink,
+  CheckCircle2,
 } from 'lucide-react';
 import { BUILDINGS, WARDS, type Building, type Ward } from '@/schema/schema';
 import type { AddEventInput, EventWithCreator, UpdateEventInput } from '@/actions/events';
@@ -58,6 +59,10 @@ interface EventTableProps {
   onDelete?: (eventId: string) => Promise<void>;
   onEdit?: (input: UpdateEventInput) => Promise<void>;
   onClone?: (input: AddEventInput) => Promise<void>;
+  onSetKindooLicenseCreated?: (input: {
+    eventId: string;
+    kindooLicenseCreated: boolean;
+  }) => Promise<void>;
   licenseLeadDays?: number;
   selectedIds?: string[];
   onSelectionChange?: (eventIds: string[]) => void;
@@ -286,6 +291,7 @@ export function EventTable({
   onDelete,
   onEdit,
   onClone,
+  onSetKindooLicenseCreated,
   licenseLeadDays,
   selectedIds,
   onSelectionChange,
@@ -302,6 +308,23 @@ export function EventTable({
   const [pendingDeleteEvent, setPendingDeleteEvent] = useState<EventWithCreator | null>(null);
   const [editingEvent, setEditingEvent] = useState<EventWithCreator | null>(null);
   const [licenseEvent, setLicenseEvent] = useState<EventWithCreator | null>(null);
+  const [isSavingLicenseStatus, setIsSavingLicenseStatus] = useState(false);
+  const submitKindooLicenseStatus = async (event: EventWithCreator, nextValue: boolean) => {
+    if (!onSetKindooLicenseCreated) return;
+    setIsSavingLicenseStatus(true);
+    try {
+      await onSetKindooLicenseCreated({
+        eventId: event.id,
+        kindooLicenseCreated: nextValue,
+      });
+      setLicenseEvent((prev) =>
+        prev && prev.id === event.id ? { ...prev, kindooLicenseCreated: nextValue } : prev
+      );
+    } finally {
+      setIsSavingLicenseStatus(false);
+    }
+  };
+
   const [cloningEvent, setCloningEvent] = useState<EventWithCreator | null>(null);
   const [copyingEvent, setCopyingEvent] = useState<EventWithCreator | null>(null);
   const [editBuilding, setEditBuilding] = useState<Building>('Stake Center');
@@ -666,13 +689,16 @@ export function EventTable({
                             Number.isFinite(daysValue) &&
                             daysValue >= 0 &&
                             daysValue <= effectiveLeadDays;
+                          const isCompleted = !!event.kindooLicenseCreated;
                           return (
                             <div className="flex flex-col gap-2">
                               <div
                                 className={
-                                  withinWindow
+                                  withinWindow && !isCompleted
                                     ? 'font-semibold text-emerald-600 animate-pulse'
-                                    : 'text-foreground'
+                                    : isCompleted
+                                      ? 'font-semibold text-emerald-700'
+                                      : 'text-foreground'
                                 }
                               >
                                 {getDaysUntil(event.eventDate)}
@@ -681,15 +707,23 @@ export function EventTable({
                                 variant="outline"
                                 size="sm"
                                 className={
-                                  withinWindow
-                                    ? 'border-emerald-600 bg-emerald-600 text-white hover:bg-emerald-700 hover:border-emerald-700'
-                                    : ''
+                                  isCompleted
+                                    ? 'border-emerald-600 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 hover:border-emerald-700'
+                                    : withinWindow
+                                      ? 'border-emerald-600 bg-emerald-600 text-white hover:bg-emerald-700 hover:border-emerald-700'
+                                      : ''
                                 }
-                                disabled={!withinWindow}
+                                disabled={!withinWindow && !isCompleted}
                                 onClick={() => setLicenseEvent(event)}
                               >
-                                Kindoo License
+                                {isCompleted ? 'License Completed' : 'Kindoo License'}
                               </Button>
+                              {isCompleted && (
+                                <div className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-700">
+                                  <CheckCircle2 className="h-3.5 w-3.5" />
+                                  Finished
+                                </div>
+                              )}
                             </div>
                           );
                         })()}
@@ -1499,6 +1533,23 @@ export function EventTable({
                   Open Kindoo
                   <ExternalLink className="h-3.5 w-3.5" />
                 </a>
+              </div>
+              <div className="rounded-md border border-border p-3">
+                <label className="flex items-center gap-2 text-sm font-medium text-foreground">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4 accent-emerald-600"
+                    checked={!!licenseEvent.kindooLicenseCreated}
+                    disabled={!onSetKindooLicenseCreated || isSavingLicenseStatus}
+                    onChange={(e) => {
+                      void submitKindooLicenseStatus(licenseEvent, e.target.checked);
+                    }}
+                  />
+                  Temporary license created
+                </label>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Mark this when setup is complete so the table shows the event as finished.
+                </p>
               </div>
             </div>
           )}

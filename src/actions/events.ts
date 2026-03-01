@@ -183,6 +183,7 @@ export async function addEvent(input: AddEventInput): Promise<ActionResult<Event
         phone: normalizedInput.phone || null,
         email: normalizedInput.email || '',
         description: normalizedInput.description,
+        kindooLicenseCreated: false,
         userId: session.user.id,
       })
       .returning();
@@ -223,6 +224,7 @@ export async function getEventsByBuilding(
         phone: events.phone,
         email: events.email,
         description: events.description,
+        kindooLicenseCreated: events.kindooLicenseCreated,
         userId: events.userId,
         createdAt: events.createdAt,
         creatorName: users.name,
@@ -375,6 +377,7 @@ export async function importEvents(input: {
       phone: event.phone || null,
       email: event.email || '',
       description: event.description,
+      kindooLicenseCreated: false,
       userId: session.user.id,
     }));
 
@@ -393,5 +396,41 @@ export async function importEvents(input: {
   } catch (error) {
     console.error('[importEvents] Error:', error);
     return { success: false, error: 'Failed to import events.' };
+  }
+}
+
+export async function setKindooLicenseCreated(input: {
+  eventId: string;
+  kindooLicenseCreated: boolean;
+}): Promise<ActionResult<Event>> {
+  try {
+    const session = await auth();
+
+    if (!session?.user?.id) {
+      return { success: false, error: 'Not authenticated.' };
+    }
+
+    const eventId = input.eventId?.trim();
+    if (!eventId) {
+      return { success: false, error: 'Invalid event id.' };
+    }
+
+    const [updatedEvent] = await db
+      .update(events)
+      .set({ kindooLicenseCreated: input.kindooLicenseCreated })
+      .where(and(eq(events.id, eventId), eq(events.userId, session.user.id)))
+      .returning();
+
+    if (!updatedEvent) {
+      return { success: false, error: 'Event not found.' };
+    }
+
+    revalidateTag(`events-${session.user.id}`, 'everything');
+    revalidateTag(`events-${session.user.id}-${updatedEvent.building}`, 'everything');
+
+    return { success: true, data: updatedEvent };
+  } catch (error) {
+    console.error('[setKindooLicenseCreated] Error:', error);
+    return { success: false, error: 'Failed to update Kindoo license status.' };
   }
 }

@@ -20,6 +20,7 @@ import {
   useAddEvent,
   useBulkDeleteEvents,
   useDeleteEvent,
+  useSetKindooLicenseCreated,
   useEvents,
   useUpdateEvent,
 } from '@/hooks/useEvents';
@@ -96,6 +97,7 @@ export function DashboardClient({
   const bulkDeleteMaplesEvents = useBulkDeleteEvents('Maples Building');
   const updateEvent = useUpdateEvent();
   const addEvent = useAddEvent();
+  const setKindooLicenseCreated = useSetKindooLicenseCreated();
 
   const [stakeUpcoming, stakeArchived] = useMemo(() => {
     const upcoming: EventWithCreator[] = [];
@@ -300,6 +302,9 @@ export function DashboardClient({
                 onSelectionChange={setSelectedStakeIds}
                 onEdit={(input) => updateEvent.mutateAsync(input).then(() => undefined)}
                 onClone={(input) => addEvent.mutateAsync(input).then(() => undefined)}
+                onSetKindooLicenseCreated={(input) =>
+                  setKindooLicenseCreated.mutateAsync(input).then(() => undefined)
+                }
                 licenseLeadDays={licenseLeadDays}
               />
               {!scLoading && !scError && stakeArchived.length > 0 && (
@@ -328,6 +333,9 @@ export function DashboardClient({
                         }
                         onEdit={(input) => updateEvent.mutateAsync(input).then(() => undefined)}
                         onClone={(input) => addEvent.mutateAsync(input).then(() => undefined)}
+                        onSetKindooLicenseCreated={(input) =>
+                          setKindooLicenseCreated.mutateAsync(input).then(() => undefined)
+                        }
                         licenseLeadDays={licenseLeadDays}
                       />
                     </div>
@@ -381,6 +389,9 @@ export function DashboardClient({
                 onSelectionChange={setSelectedMaplesIds}
                 onEdit={(input) => updateEvent.mutateAsync(input).then(() => undefined)}
                 onClone={(input) => addEvent.mutateAsync(input).then(() => undefined)}
+                onSetKindooLicenseCreated={(input) =>
+                  setKindooLicenseCreated.mutateAsync(input).then(() => undefined)
+                }
                 licenseLeadDays={licenseLeadDays}
               />
               {!mbLoading && !mbError && maplesArchived.length > 0 && (
@@ -409,6 +420,9 @@ export function DashboardClient({
                         }
                         onEdit={(input) => updateEvent.mutateAsync(input).then(() => undefined)}
                         onClone={(input) => addEvent.mutateAsync(input).then(() => undefined)}
+                        onSetKindooLicenseCreated={(input) =>
+                          setKindooLicenseCreated.mutateAsync(input).then(() => undefined)
+                        }
                         licenseLeadDays={licenseLeadDays}
                       />
                     </div>

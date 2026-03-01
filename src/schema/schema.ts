@@ -69,6 +69,9 @@ export const events = sqliteTable('event', {
   phone: text('phone'),
   email: text('email').notNull(),
   description: text('description').notNull(),
+  kindooLicenseCreated: integer('kindoo_license_created', { mode: 'boolean' })
+    .notNull()
+    .default(false),
   userId: text('userId')
     .notNull()
     .references(() => users.id, { onDelete: 'cascade' }),

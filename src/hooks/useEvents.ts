@@ -8,6 +8,7 @@ import {
   deleteEvents,
   updateEvent,
   importEvents,
+  setKindooLicenseCreated,
 } from '@/actions/events';
 import type { Building } from '@/schema/schema';
 import type {
@@ -102,6 +103,7 @@ export function useAddEvent(onSuccess?: () => void) {
         phone: normalizePhone(newEventInput.phone) ?? null,
         email: normalizeEmail(newEventInput.email) ?? '',
         description: newEventInput.description,
+        kindooLicenseCreated: false,
         userId: 'pending',
         createdAt: new Date(),
         creatorName: null,
@@ -252,6 +254,7 @@ export function useUpdateEvent() {
           phone: normalizePhone(input.phone) ?? null,
           email: normalizeEmail(input.email) ?? '',
           description: input.description,
+          kindooLicenseCreated: false,
           creatorName: null,
           creatorEmail: null,
         }),
@@ -303,6 +306,62 @@ export function useUpdateEvent() {
 
     onSuccess: () => {
       toast.success('Event updated.');
+    },
+  });
+}
+
+export function useSetKindooLicenseCreated() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (input: { eventId: string; kindooLicenseCreated: boolean }) => {
+      const result = await setKindooLicenseCreated(input);
+      if (!result.success) throw new Error(result.error);
+      return result.data!;
+    },
+
+    onMutate: async (input) => {
+      await queryClient.cancelQueries({ queryKey: eventKeys.all });
+
+      const stakeKey = eventKeys.byBuilding('Stake Center');
+      const maplesKey = eventKeys.byBuilding('Maples Building');
+
+      const previousStake = queryClient.getQueryData<EventWithCreator[]>(stakeKey);
+      const previousMaples = queryClient.getQueryData<EventWithCreator[]>(maplesKey);
+
+      const applyUpdate = (old: EventWithCreator[] = []) =>
+        old.map((event) =>
+          event.id === input.eventId
+            ? { ...event, kindooLicenseCreated: input.kindooLicenseCreated }
+            : event
+        );
+
+      queryClient.setQueryData<EventWithCreator[]>(stakeKey, applyUpdate);
+      queryClient.setQueryData<EventWithCreator[]>(maplesKey, applyUpdate);
+
+      return { previousStake, previousMaples, stakeKey, maplesKey };
+    },
+
+    onError: (error, _input, context) => {
+      if (context?.previousStake !== undefined) {
+        queryClient.setQueryData(context.stakeKey, context.previousStake);
+      }
+      if (context?.previousMaples !== undefined) {
+        queryClient.setQueryData(context.maplesKey, context.previousMaples);
+      }
+      toast.error(error.message ?? 'Failed to update Kindoo license status.');
+    },
+
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: eventKeys.all });
+    },
+
+    onSuccess: (event) => {
+      toast.success(
+        event.kindooLicenseCreated
+          ? 'Kindoo license marked as completed.'
+          : 'Kindoo license marked as not completed.'
+      );
     },
   });
 }
