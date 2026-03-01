@@ -51,6 +51,8 @@ import {
   Mail,
   Phone,
   Church,
+  Clock,
+  FileText,
   ExternalLink,
   CheckCircle2,
   MoreVertical,
@@ -479,12 +481,20 @@ export function EventTable({
     return sortDir === 'asc' ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />;
   };
 
-  const SortButton = ({ col, label }: { col: SortKey; label: string }) => (
+  const SortButton = ({
+    col,
+    label,
+    className,
+  }: {
+    col: SortKey;
+    label: string;
+    className?: string;
+  }) => (
     <Button
       variant="ghost"
       size="sm"
       onClick={() => handleSort(col)}
-      className="-ml-3 h-8 gap-1 font-medium"
+      className={`-ml-3 h-8 gap-1 font-medium ${className ?? ''}`}
       aria-label={`Sort by ${label}`}
     >
       {label}
@@ -645,7 +655,7 @@ export function EventTable({
         <Table
           className={`${
             isMobileView
-              ? 'table-fixed [&_th]:px-1 [&_td]:px-1 [&_th]:py-1 [&_td]:py-1'
+              ? 'table-fixed [&_th]:px-2 [&_td]:px-2 [&_th]:py-1.5 [&_td]:py-1.5'
               : 'table-auto [&_th]:px-2 [&_td]:px-2 [&_th]:py-2 [&_td]:py-2'
           }`}
         >
@@ -673,10 +683,7 @@ export function EventTable({
                   }}
                 />
               </TableHead>
-              <TableHead className={isMobileView ? 'w-20' : 'w-[150px]'}>
-                <SortButton col="daysUntil" label={isMobileView ? 'Days' : 'Days Until'} />
-              </TableHead>
-              <TableHead className={isMobileView ? 'min-w-0' : 'min-w-[260px]'}>
+              <TableHead className="min-w-0 sm:min-w-[200px]">
                 <SortButton col="eventDate" label="Event" />
               </TableHead>
               {!isMobileView && (
@@ -694,6 +701,10 @@ export function EventTable({
           <TableBody>
             {pagedEvents.map((event) => {
               const isOptimistic = event.id.startsWith('optimistic-');
+              const daysValue = getDaysUntilValue(event.eventDate);
+              const withinWindow =
+                Number.isFinite(daysValue) && daysValue >= 0 && daysValue <= effectiveLeadDays;
+              const isCompleted = !!event.kindooLicenseCreated;
               return (
                 <TableRow
                   key={event.id}
@@ -716,73 +727,55 @@ export function EventTable({
                       }}
                     />
                   </TableCell>
-                  <TableCell
-                    className={
-                      isMobileView ? 'w-20 text-foreground text-sm' : 'text-foreground text-sm'
-                    }
-                  >
-                    {isOptimistic
-                      ? '—'
-                      : (() => {
-                          const daysValue = getDaysUntilValue(event.eventDate);
-                          const withinWindow =
-                            Number.isFinite(daysValue) &&
-                            daysValue >= 0 &&
-                            daysValue <= effectiveLeadDays;
-                          const isCompleted = !!event.kindooLicenseCreated;
-                          return (
-                            <div className="flex flex-col gap-2">
-                              <div
-                                className={
-                                  withinWindow && !isCompleted
-                                    ? 'font-semibold text-yellow-600 animate-pulse'
-                                    : isCompleted
-                                      ? 'font-semibold text-emerald-700'
-                                      : 'text-foreground'
-                                }
-                              >
-                                {getDaysUntil(event.eventDate)}
-                              </div>
-                              {isCompleted ? (
-                                <button
-                                  type="button"
-                                  className="inline-flex w-fit cursor-pointer items-center gap-1.5 text-xs font-medium text-emerald-700 hover:text-emerald-800 disabled:cursor-not-allowed"
-                                  onClick={() => setLicenseEvent(event)}
-                                  disabled={!onSetKindooLicenseCreated || isSavingLicenseStatus}
-                                >
-                                  <CheckCircle2 className="h-3.5 w-3.5" />
-                                  <span className="underline underline-offset-2">
-                                    License created
-                                  </span>
-                                </button>
-                              ) : (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className={`${isMobileView ? 'px-2 text-xs' : 'px-3 text-sm'} ${
-                                    withinWindow
-                                      ? 'border-yellow-500 bg-yellow-500 text-black hover:bg-yellow-600 hover:border-yellow-600'
-                                      : ''
-                                  }`}
-                                  disabled={!withinWindow}
-                                  onClick={() => setLicenseEvent(event)}
-                                >
-                                  {isMobileView ? 'Kindoo' : 'Kindoo License'}
-                                </Button>
-                              )}
-                            </div>
-                          );
-                        })()}
-                  </TableCell>
                   <TableCell className="min-w-0">
-                    <div className="flex items-start justify-between gap-2">
-                      <div>
-                        <div className="text-foreground text-xs font-semibold">
-                          {formatDate(event.eventDate)}
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-baseline gap-2">
+                          <div className="text-foreground text-sm font-semibold">
+                            {formatDate(event.eventDate)}
+                          </div>
+                          {!isOptimistic && (
+                            <div className="text-muted-foreground text-xs">
+                              ({getDaysUntil(event.eventDate)})
+                            </div>
+                          )}
                         </div>
-                        <div className="text-muted-foreground text-xs">
-                          {formatTimeRange(event.startTime, event.endTime)}
+                        <div className="flex items-center gap-1.5 text-muted-foreground text-xs">
+                          <Clock className="h-3.5 w-3.5 shrink-0" />
+                          <span>{formatTimeRange(event.startTime, event.endTime)}</span>
                         </div>
+                        <p
+                          className="flex items-start gap-1.5 text-muted-foreground text-xs line-clamp-2"
+                          title={event.description}
+                        >
+                          <FileText className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                          <span className="min-w-0">{event.description}</span>
+                        </p>
+                        {!isMobileView && !isOptimistic && withinWindow && !isCompleted && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className={`mt-1.5 h-5 px-1.5 text-[10px] sm:h-6 sm:px-2 sm:text-[11px] ${
+                              withinWindow
+                                ? 'border-yellow-500 bg-yellow-500 text-black hover:bg-yellow-600 hover:border-yellow-600'
+                                : ''
+                            }`}
+                            onClick={() => setLicenseEvent(event)}
+                          >
+                            Kindoo License
+                          </Button>
+                        )}
+                        {!isMobileView && !isOptimistic && isCompleted && (
+                          <button
+                            type="button"
+                            className="mt-1.5 inline-flex w-fit cursor-pointer items-center gap-1.5 text-xs font-medium text-emerald-700 hover:text-emerald-800 disabled:cursor-not-allowed"
+                            onClick={() => setLicenseEvent(event)}
+                            disabled={!onSetKindooLicenseCreated || isSavingLicenseStatus}
+                          >
+                            <CheckCircle2 className="h-3.5 w-3.5" />
+                            <span className="underline underline-offset-2">License created</span>
+                          </button>
+                        )}
                       </div>
                       {isMobileView && (
                         <div>
@@ -791,7 +784,7 @@ export function EventTable({
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                className="h-8 w-8"
+                                className="h-8 w-8 border border-border bg-secondary/60 text-foreground hover:bg-secondary"
                                 aria-label={`Actions for ${event.name}`}
                               >
                                 <MoreVertical className="h-4 w-4" />
@@ -837,34 +830,47 @@ export function EventTable({
                         </div>
                       )}
                     </div>
-                    <p
-                      className="text-muted-foreground text-xs line-clamp-2"
-                      title={event.description}
-                    >
-                      {event.description}
-                    </p>
                     {isMobileView && (
-                      <div className="mt-2 space-y-1.5">
-                        <div
-                          className="truncate text-foreground text-sm font-semibold"
-                          title={event.name}
-                        >
-                          {event.name}
-                        </div>
-                        <div className="flex items-center gap-1.5 text-muted-foreground text-xs">
-                          <Church className="h-3.5 w-3.5 shrink-0" />
-                          <span>{event.ward ?? '—'}</span>
+                      <div className="mt-2">
+                        <div className="flex flex-wrap items-baseline gap-1">
+                          <div
+                            className="truncate text-foreground text-sm font-semibold"
+                            title={event.name}
+                          >
+                            {event.name}
+                          </div>
+                          <span className="text-muted-foreground text-xs">
+                            ({event.ward ?? '—'})
+                          </span>
                         </div>
                         <div className="flex items-center gap-1.5 text-muted-foreground text-xs">
                           <Mail className="h-3.5 w-3.5 shrink-0" />
                           {event.email ? (
-                            <a
-                              href={`mailto:${event.email}`}
-                              className="max-w-44 truncate font-semibold text-foreground hover:underline"
-                              title={event.email}
-                            >
-                              {event.email}
-                            </a>
+                            <div className="flex min-w-0 items-center gap-1.5">
+                              <a
+                                href={`mailto:${event.email}`}
+                                className="max-w-44 truncate font-semibold text-foreground hover:underline"
+                                title={event.email}
+                              >
+                                {event.email}
+                              </a>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-5 w-5 p-0"
+                                aria-label={`Copy email for ${event.name}`}
+                                onClick={async () => {
+                                  try {
+                                    await navigator.clipboard.writeText(event.email ?? '');
+                                    toast.success('Email copied.');
+                                  } catch {
+                                    toast.error('Failed to copy.');
+                                  }
+                                }}
+                              >
+                                <Copy className="h-3.5 w-3.5" />
+                              </Button>
+                            </div>
                           ) : (
                             <span className="text-muted-foreground/50">—</span>
                           )}
@@ -872,25 +878,60 @@ export function EventTable({
                         <div className="flex items-center gap-1.5 text-muted-foreground text-xs">
                           <Phone className="h-3.5 w-3.5 shrink-0" />
                           {event.phone ? (
-                            <a
-                              href={`tel:${event.phone.replace(/\D/g, '')}`}
-                              className="max-w-44 truncate hover:text-foreground hover:underline"
-                              title={formatPhone(event.phone)}
-                            >
-                              {formatPhone(event.phone)}
-                            </a>
+                            <div className="flex min-w-0 items-center gap-1.5">
+                              <a
+                                href={`tel:${event.phone.replace(/\D/g, '')}`}
+                                className="max-w-44 truncate hover:text-foreground hover:underline"
+                                title={formatPhone(event.phone)}
+                              >
+                                {formatPhone(event.phone)}
+                              </a>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-5 w-5 p-0"
+                                aria-label={`Copy phone for ${event.name}`}
+                                onClick={async () => {
+                                  try {
+                                    await navigator.clipboard.writeText(event.phone ?? '');
+                                    toast.success('Phone copied.');
+                                  } catch {
+                                    toast.error('Failed to copy.');
+                                  }
+                                }}
+                              >
+                                <Copy className="h-3.5 w-3.5" />
+                              </Button>
+                            </div>
                           ) : (
                             <span className="text-muted-foreground/50">—</span>
                           )}
                         </div>
-                        <div className="text-muted-foreground text-xs">
-                          Created by {event.creatorName || event.creatorEmail || '—'} ·{' '}
-                          {new Date(event.createdAt).toLocaleDateString('en-US', {
-                            month: 'short',
-                            day: 'numeric',
-                            year: 'numeric',
-                          })}
-                        </div>
+                        {!isOptimistic && withinWindow && !isCompleted && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className={`h-5 px-1.5 text-[10px] ${
+                              withinWindow
+                                ? 'border-yellow-500 bg-yellow-500 text-black hover:bg-yellow-600 hover:border-yellow-600'
+                                : ''
+                            }`}
+                            onClick={() => setLicenseEvent(event)}
+                          >
+                            Kindoo License
+                          </Button>
+                        )}
+                        {!isOptimistic && isCompleted && (
+                          <button
+                            type="button"
+                            className="inline-flex w-fit cursor-pointer items-center gap-1.5 text-xs font-medium text-emerald-700 hover:text-emerald-800 disabled:cursor-not-allowed"
+                            onClick={() => setLicenseEvent(event)}
+                            disabled={!onSetKindooLicenseCreated || isSavingLicenseStatus}
+                          >
+                            <CheckCircle2 className="h-3.5 w-3.5" />
+                            <span className="underline underline-offset-2">License created</span>
+                          </button>
+                        )}
                       </div>
                     )}
                   </TableCell>
