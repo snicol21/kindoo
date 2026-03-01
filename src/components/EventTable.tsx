@@ -39,6 +39,7 @@ import {
   Pencil,
   Trash2,
   MessageSquare,
+  Copy,
   CopyPlus,
   Mail,
   Phone,
@@ -620,7 +621,9 @@ export function EventTable({
                     {isOptimistic ? '—' : getDaysUntil(event.eventDate)}
                   </TableCell>
                   <TableCell>
-                    <div className="text-foreground text-sm">{formatDate(event.eventDate)}</div>
+                    <div className="text-foreground text-xs font-semibold">
+                      {formatDate(event.eventDate)}
+                    </div>
                     <div className="text-muted-foreground text-xs">
                       {formatTimeRange(event.startTime, event.endTime)}
                     </div>
@@ -633,7 +636,10 @@ export function EventTable({
                   </TableCell>
                   <TableCell className="max-w-[360px]">
                     <div className="space-y-1.5">
-                      <div className="truncate text-foreground" title={event.name}>
+                      <div
+                        className="truncate text-foreground text-sm font-semibold"
+                        title={event.name}
+                      >
                         {event.name}
                       </div>
                       <div className="flex items-center gap-1.5 text-muted-foreground text-xs">
@@ -647,13 +653,36 @@ export function EventTable({
                       <div className="flex items-center gap-1.5 text-muted-foreground text-xs">
                         <Mail className="h-3.5 w-3.5 shrink-0" />
                         {event.email ? (
-                          <a
-                            href={`mailto:${event.email}`}
-                            className="truncate hover:text-foreground hover:underline"
-                            title={event.email}
-                          >
-                            {event.email}
-                          </a>
+                          <div className="flex min-w-0 items-center gap-1.5">
+                            <a
+                              href={`mailto:${event.email}`}
+                              className="truncate font-semibold text-foreground hover:underline"
+                              title={event.email}
+                            >
+                              {event.email}
+                            </a>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-6 w-6"
+                                  aria-label={`Copy email for ${event.name}`}
+                                  onClick={async () => {
+                                    try {
+                                      await navigator.clipboard.writeText(event.email ?? '');
+                                      toast.success('Email copied.');
+                                    } catch {
+                                      toast.error('Failed to copy.');
+                                    }
+                                  }}
+                                >
+                                  <Copy className="h-3.5 w-3.5" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>Copy email</TooltipContent>
+                            </Tooltip>
+                          </div>
                         ) : (
                           <span className="text-muted-foreground/50">—</span>
                         )}
@@ -661,13 +690,36 @@ export function EventTable({
                       <div className="flex items-center gap-1.5 text-muted-foreground text-xs">
                         <Phone className="h-3.5 w-3.5 shrink-0" />
                         {event.phone ? (
-                          <a
-                            href={`tel:${event.phone.replace(/\D/g, '')}`}
-                            className="truncate hover:text-foreground hover:underline"
-                            title={formatPhone(event.phone)}
-                          >
-                            {formatPhone(event.phone)}
-                          </a>
+                          <div className="flex min-w-0 items-center gap-1.5">
+                            <a
+                              href={`tel:${event.phone.replace(/\D/g, '')}`}
+                              className="truncate hover:text-foreground hover:underline"
+                              title={formatPhone(event.phone)}
+                            >
+                              {formatPhone(event.phone)}
+                            </a>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-6 w-6"
+                                  aria-label={`Copy phone for ${event.name}`}
+                                  onClick={async () => {
+                                    try {
+                                      await navigator.clipboard.writeText(formatPhone(event.phone));
+                                      toast.success('Phone copied.');
+                                    } catch {
+                                      toast.error('Failed to copy.');
+                                    }
+                                  }}
+                                >
+                                  <Copy className="h-3.5 w-3.5" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>Copy phone</TooltipContent>
+                            </Tooltip>
+                          </div>
                         ) : (
                           <span className="text-muted-foreground/50">—</span>
                         )}
