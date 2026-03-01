@@ -4,6 +4,7 @@ import type { Metadata } from 'next';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
 import { changeProfile, changePassword } from '@/actions/auth';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
@@ -33,8 +34,8 @@ export default async function AccountPasswordPage({ searchParams }: AccountPassw
         : null;
 
   return (
-    <div className="container mx-auto max-w-md px-4 py-8">
-      <div className="mb-4">
+    <div className="container mx-auto max-w-2xl px-4 py-8">
+      <div className="mb-6">
         <Button asChild variant="ghost" size="sm" className="gap-2">
           <Link href="/dashboard">
             <ArrowLeft className="h-4 w-4" />
@@ -42,72 +43,93 @@ export default async function AccountPasswordPage({ searchParams }: AccountPassw
           </Link>
         </Button>
       </div>
-      <Card>
-        <CardHeader>
-          <CardTitle>Account Settings</CardTitle>
-          <CardDescription>Update your name and password for this account.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {message && (
-            <div className="rounded-md border border-border bg-muted/40 p-3 text-sm">{message}</div>
-          )}
+      <div className="space-y-6">
+        {message && (
+          <div className="rounded-md border border-border bg-muted/40 p-3 text-sm">{message}</div>
+        )}
 
-          <form
-            action={async (formData: FormData) => {
-              'use server';
-              const result = await changeProfile({
-                name: String(formData.get('name') ?? ''),
-              });
+        <Card>
+          <CardHeader>
+            <CardTitle>Profile</CardTitle>
+            <CardDescription>Update how your name appears in the app.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form
+              action={async (formData: FormData) => {
+                'use server';
+                const result = await changeProfile({
+                  name: String(formData.get('name') ?? ''),
+                });
 
-              if (!result.success) {
-                const msg = encodeURIComponent(result.error ?? 'Failed to update name.');
-                redirect(`/account/password?error=${msg}`);
-              }
+                if (!result.success) {
+                  const msg = encodeURIComponent(result.error ?? 'Failed to update name.');
+                  redirect(`/account/password?error=${msg}`);
+                }
 
-              redirect('/account/password?nameUpdated=1');
-            }}
-            className="space-y-3"
-          >
-            <Input
-              name="name"
-              type="text"
-              placeholder="Your name"
-              defaultValue={session.user.name ?? ''}
-            />
-            <Button type="submit" variant="secondary" className="w-full">
-              Save name
-            </Button>
-          </form>
+                redirect('/account/password?nameUpdated=1');
+              }}
+              className="space-y-4"
+            >
+              <div className="space-y-3">
+                <Label htmlFor="name">Display name</Label>
+                <Input
+                  id="name"
+                  name="name"
+                  type="text"
+                  placeholder="Your name"
+                  defaultValue={session.user.name ?? ''}
+                />
+              </div>
+              <Button type="submit" className="w-full">
+                Save profile name
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
 
-          <div className="h-px bg-border" />
+        <Card>
+          <CardHeader>
+            <CardTitle>Password</CardTitle>
+            <CardDescription>Change your password to keep your account secure.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form
+              action={async (formData: FormData) => {
+                'use server';
+                const result = await changePassword({
+                  currentPassword: String(formData.get('currentPassword') ?? ''),
+                  newPassword: String(formData.get('newPassword') ?? ''),
+                  confirmPassword: String(formData.get('confirmPassword') ?? ''),
+                });
 
-          <form
-            action={async (formData: FormData) => {
-              'use server';
-              const result = await changePassword({
-                currentPassword: String(formData.get('currentPassword') ?? ''),
-                newPassword: String(formData.get('newPassword') ?? ''),
-                confirmPassword: String(formData.get('confirmPassword') ?? ''),
-              });
+                if (!result.success) {
+                  const msg = encodeURIComponent(result.error ?? 'Failed to update password.');
+                  redirect(`/account/password?error=${msg}`);
+                }
 
-              if (!result.success) {
-                const msg = encodeURIComponent(result.error ?? 'Failed to update password.');
-                redirect(`/account/password?error=${msg}`);
-              }
-
-              redirect('/account/password?updated=1');
-            }}
-            className="space-y-3"
-          >
-            <Input name="currentPassword" type="password" placeholder="Current password" />
-            <Input name="newPassword" type="password" placeholder="New password" />
-            <Input name="confirmPassword" type="password" placeholder="Confirm new password" />
-            <Button type="submit" className="w-full">
-              Save password
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
+                redirect('/account/password?updated=1');
+              }}
+              className="space-y-4"
+            >
+              <div className="space-y-3">
+                <Label htmlFor="currentPassword">Current password</Label>
+                <Input id="currentPassword" name="currentPassword" type="password" />
+              </div>
+              <div className="space-y-3">
+                <Label htmlFor="newPassword">New password</Label>
+                <Input id="newPassword" name="newPassword" type="password" />
+              </div>
+              <div className="space-y-3">
+                <Label htmlFor="confirmPassword">Confirm new password</Label>
+                <Input id="confirmPassword" name="confirmPassword" type="password" />
+              </div>
+              <Button type="submit" className="w-full">
+                Update password
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
