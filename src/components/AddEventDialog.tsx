@@ -94,6 +94,16 @@ function getTomorrowYmd() {
   return formatYmd(tomorrow);
 }
 
+function parseTimeToMinutes(value: string) {
+  const match = /^(\d{1,2}):(\d{2})$/.exec(value.trim());
+  if (!match) return null;
+  const hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  if (!Number.isFinite(hours) || !Number.isFinite(minutes)) return null;
+  if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) return null;
+  return hours * 60 + minutes;
+}
+
 function SubmitButton() {
   const { pending } = useFormStatus();
 
@@ -174,6 +184,24 @@ export function AddEventDialog({
       }
       if (!endTime?.trim()) {
         errors.endTime = 'End time is required.';
+      }
+      if (startTime?.trim() && endTime?.trim()) {
+        const startMinutes = parseTimeToMinutes(startTime);
+        const endMinutes = parseTimeToMinutes(endTime);
+        const earliestMinutes = 5 * 60;
+        const latestMinutes = 23 * 60;
+        if (startMinutes === null) {
+          errors.startTime = 'Start time is invalid.';
+        } else if (startMinutes < earliestMinutes || startMinutes > latestMinutes) {
+          errors.startTime = 'Start time must be between 5:00 AM and 11:00 PM.';
+        }
+        if (endMinutes === null) {
+          errors.endTime = 'End time is invalid.';
+        } else if (endMinutes > latestMinutes) {
+          errors.endTime = 'End time must be no later than 11:00 PM.';
+        } else if (startMinutes !== null && endMinutes <= startMinutes) {
+          errors.endTime = 'End time must be after start time.';
+        }
       }
       if (email?.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
         errors.email = 'Email must be valid if provided.';
@@ -379,6 +407,8 @@ export function AddEventDialog({
                 id="startTime"
                 name="startTime"
                 type="time"
+                min="05:00"
+                max="23:00"
                 defaultValue={state.values?.startTime}
                 className={state.errors?.startTime ? 'border-destructive' : ''}
               />
@@ -394,6 +424,8 @@ export function AddEventDialog({
                 id="endTime"
                 name="endTime"
                 type="time"
+                min="05:00"
+                max="23:00"
                 defaultValue={state.values?.endTime}
                 className={state.errors?.endTime ? 'border-destructive' : ''}
               />

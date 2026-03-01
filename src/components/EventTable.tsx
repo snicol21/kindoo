@@ -73,6 +73,36 @@ function parseYmd(dateStr: string) {
   return { year, month, day };
 }
 
+function parseTimeToMinutes(value: string) {
+  const match = /^(\d{1,2}):(\d{2})$/.exec(value.trim());
+  if (!match) return null;
+  const hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  if (!Number.isFinite(hours) || !Number.isFinite(minutes)) return null;
+  if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) return null;
+  return hours * 60 + minutes;
+}
+
+function validateTimeWindow(startTime: string, endTime: string) {
+  const startMinutes = parseTimeToMinutes(startTime);
+  const endMinutes = parseTimeToMinutes(endTime);
+  const earliestMinutes = 5 * 60;
+  const latestMinutes = 23 * 60;
+  if (startMinutes === null || endMinutes === null) {
+    return 'Start and end times are required.';
+  }
+  if (startMinutes < earliestMinutes || startMinutes > latestMinutes) {
+    return 'Start time must be between 5:00 AM and 11:00 PM.';
+  }
+  if (endMinutes > latestMinutes) {
+    return 'End time must be no later than 11:00 PM.';
+  }
+  if (endMinutes <= startMinutes) {
+    return 'End time must be after start time.';
+  }
+  return null;
+}
+
 function toLocalDate(dateStr: string) {
   const parsed = parseYmd(dateStr);
   if (parsed) {
@@ -420,6 +450,11 @@ export function EventTable({
         toast.error('Ward is required.');
         return;
       }
+      const timeError = validateTimeWindow(editStartTime, editEndTime);
+      if (timeError) {
+        toast.error(timeError);
+        return;
+      }
       await onEdit({
         id: editingEvent.id,
         building: editBuilding,
@@ -470,6 +505,11 @@ export function EventTable({
     }
     if (!cloneWard) {
       toast.error('Ward is required.');
+      return;
+    }
+    const timeError = validateTimeWindow(cloneStartTime, cloneEndTime);
+    if (timeError) {
+      toast.error(timeError);
       return;
     }
     if (!cloneEventDate.trim()) {
@@ -849,6 +889,8 @@ export function EventTable({
                 <Input
                   id="edit-start-time"
                   type="time"
+                  min="05:00"
+                  max="23:00"
                   value={editStartTime}
                   onChange={(e) => setEditStartTime(e.target.value)}
                 />
@@ -858,6 +900,8 @@ export function EventTable({
                 <Input
                   id="edit-end-time"
                   type="time"
+                  min="05:00"
+                  max="23:00"
                   value={editEndTime}
                   onChange={(e) => setEditEndTime(e.target.value)}
                 />
@@ -972,6 +1016,8 @@ export function EventTable({
                 <Input
                   id="clone-start-time"
                   type="time"
+                  min="05:00"
+                  max="23:00"
                   value={cloneStartTime}
                   onChange={(e) => setCloneStartTime(e.target.value)}
                 />
@@ -981,6 +1027,8 @@ export function EventTable({
                 <Input
                   id="clone-end-time"
                   type="time"
+                  min="05:00"
+                  max="23:00"
                   value={cloneEndTime}
                   onChange={(e) => setCloneEndTime(e.target.value)}
                 />

@@ -72,6 +72,16 @@ function isFutureDate(ymd: string) {
   return targetUtc > todayUtc;
 }
 
+function parseTimeToMinutes(value: string) {
+  const match = /^(\d{1,2}):(\d{2})$/.exec(value.trim());
+  if (!match) return null;
+  const hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  if (!Number.isFinite(hours) || !Number.isFinite(minutes)) return null;
+  if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) return null;
+  return hours * 60 + minutes;
+}
+
 function formatPhoneForStorage(value?: string) {
   if (!value) return undefined;
   const digits = value.replace(/\D/g, '');
@@ -120,6 +130,21 @@ function validateEventInput(input: AddEventInput): string | null {
   }
   if (!input.startTime?.trim()) return 'Start time is required.';
   if (!input.endTime?.trim()) return 'End time is required.';
+  const startMinutes = parseTimeToMinutes(input.startTime);
+  const endMinutes = parseTimeToMinutes(input.endTime);
+  const earliestMinutes = 5 * 60;
+  const latestMinutes = 23 * 60;
+  if (startMinutes === null) return 'Start time is invalid.';
+  if (endMinutes === null) return 'End time is invalid.';
+  if (startMinutes < earliestMinutes || startMinutes > latestMinutes) {
+    return 'Start time must be between 5:00 AM and 11:00 PM.';
+  }
+  if (endMinutes > latestMinutes) {
+    return 'End time must be no later than 11:00 PM.';
+  }
+  if (endMinutes <= startMinutes) {
+    return 'End time must be after start time.';
+  }
   if (input.email?.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.email)) {
     return 'Email must be valid if provided.';
   }
