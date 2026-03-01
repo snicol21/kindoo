@@ -38,7 +38,7 @@ import {
   Inbox,
   Pencil,
   Trash2,
-  Copy,
+  MessageSquare,
   CopyPlus,
   Mail,
   Phone,
@@ -663,10 +663,10 @@ export function EventTable({
                             disabled={isOptimistic}
                             onClick={() => setCopyingEvent(event)}
                           >
-                            <Copy className="h-4 w-4" />
+                            <MessageSquare className="h-4 w-4" />
                           </Button>
                         </TooltipTrigger>
-                        <TooltipContent>Copy message templates</TooltipContent>
+                        <TooltipContent>Message templates</TooltipContent>
                       </Tooltip>
                       <Tooltip>
                         <TooltipTrigger asChild>
@@ -1033,48 +1033,108 @@ export function EventTable({
       </Dialog>
 
       <Dialog open={!!copyingEvent} onOpenChange={(open) => !open && setCopyingEvent(null)}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-3xl">
           <DialogHeader>
-            <DialogTitle>Copy event details</DialogTitle>
+            <DialogTitle>Message templates</DialogTitle>
             <DialogDescription>Copy a formatted message to share.</DialogDescription>
           </DialogHeader>
           {copyingEvent && (
             <div className="space-y-4">
-              <div className="space-y-2">
-                <Label>Availability inquiry text</Label>
-                <Textarea readOnly rows={4} value={buildShortMessage(copyingEvent)} />
-                <Button
-                  variant="outline"
-                  onClick={async () => {
-                    try {
-                      await navigator.clipboard.writeText(buildShortMessage(copyingEvent));
-                      toast.success('Availability inquiry text copied.');
-                    } catch {
-                      toast.error('Failed to copy.');
-                    }
-                  }}
-                >
-                  Copy Message
-                </Button>
-              </div>
-              <div className="space-y-2">
-                <Label>Calendar item description</Label>
-                <Textarea readOnly rows={6} value={buildCalendarItemDescription(copyingEvent)} />
-                <Button
-                  variant="outline"
-                  onClick={async () => {
-                    try {
-                      await navigator.clipboard.writeText(
-                        buildCalendarItemDescription(copyingEvent)
-                      );
-                      toast.success('Calendar item description copied.');
-                    } catch {
-                      toast.error('Failed to copy.');
-                    }
-                  }}
-                >
-                  Copy Message
-                </Button>
+              {(copyingEvent.email?.trim() || copyingEvent.phone?.trim()) && (
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  {copyingEvent.email?.trim() && (
+                    <div className="space-y-2">
+                      <Label>Email</Label>
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                        <Input readOnly value={copyingEvent.email} />
+                        <Button
+                          variant="outline"
+                          onClick={async () => {
+                            try {
+                              await navigator.clipboard.writeText(copyingEvent.email ?? '');
+                              toast.success('Email copied.');
+                            } catch {
+                              toast.error('Failed to copy.');
+                            }
+                          }}
+                        >
+                          Copy
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                  {copyingEvent.phone?.trim() && (
+                    <div className="space-y-2">
+                      <Label>Phone</Label>
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                        <Input readOnly value={formatPhone(copyingEvent.phone)} />
+                        <Button
+                          variant="outline"
+                          onClick={async () => {
+                            try {
+                              await navigator.clipboard.writeText(formatPhone(copyingEvent.phone));
+                              toast.success('Phone copied.');
+                            } catch {
+                              toast.error('Failed to copy.');
+                            }
+                          }}
+                        >
+                          Copy
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+              <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                <div className="flex h-full flex-col gap-2">
+                  <Label>Availability inquiry text</Label>
+                  <Textarea
+                    readOnly
+                    rows={4}
+                    className="flex-1 min-h-[140px]"
+                    value={buildShortMessage(copyingEvent)}
+                  />
+                  <Button
+                    variant="outline"
+                    className="self-start"
+                    onClick={async () => {
+                      try {
+                        await navigator.clipboard.writeText(buildShortMessage(copyingEvent));
+                        toast.success('Availability inquiry text copied.');
+                      } catch {
+                        toast.error('Failed to copy.');
+                      }
+                    }}
+                  >
+                    Copy Message
+                  </Button>
+                </div>
+                <div className="flex h-full flex-col gap-2">
+                  <Label>Calendar item description</Label>
+                  <Textarea
+                    readOnly
+                    rows={6}
+                    className="flex-1 min-h-[140px]"
+                    value={buildCalendarItemDescription(copyingEvent)}
+                  />
+                  <Button
+                    variant="outline"
+                    className="self-start"
+                    onClick={async () => {
+                      try {
+                        await navigator.clipboard.writeText(
+                          buildCalendarItemDescription(copyingEvent)
+                        );
+                        toast.success('Calendar item description copied.');
+                      } catch {
+                        toast.error('Failed to copy.');
+                      }
+                    }}
+                  >
+                    Copy Message
+                  </Button>
+                </div>
               </div>
               <div className="space-y-2">
                 <Label>Availability confirmed + policy text</Label>
