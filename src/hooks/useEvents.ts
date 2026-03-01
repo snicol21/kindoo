@@ -18,8 +18,8 @@ import type {
 } from '@/actions/events';
 import { toast } from 'sonner';
 
-function normalizeEmail(email: string) {
-  return email.trim().toLowerCase();
+function normalizeEmail(email?: string) {
+  return email?.trim().toLowerCase() || undefined;
 }
 
 function normalizePhone(phone?: string) {
@@ -100,7 +100,7 @@ export function useAddEvent(onSuccess?: () => void) {
         startTime: newEventInput.startTime,
         endTime: newEventInput.endTime,
         phone: normalizePhone(newEventInput.phone) ?? null,
-        email: normalizeEmail(newEventInput.email),
+        email: normalizeEmail(newEventInput.email) ?? '',
         description: newEventInput.description,
         userId: 'pending',
         createdAt: new Date(),
@@ -250,7 +250,7 @@ export function useUpdateEvent() {
           startTime: input.startTime,
           endTime: input.endTime,
           phone: normalizePhone(input.phone) ?? null,
-          email: normalizeEmail(input.email),
+          email: normalizeEmail(input.email) ?? '',
           description: input.description,
           creatorName: null,
           creatorEmail: null,
@@ -262,7 +262,7 @@ export function useUpdateEvent() {
         startTime: input.startTime,
         endTime: input.endTime,
         phone: normalizePhone(input.phone) ?? null,
-        email: normalizeEmail(input.email),
+        email: normalizeEmail(input.email) ?? '',
         description: input.description,
       });
 

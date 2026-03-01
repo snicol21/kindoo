@@ -120,6 +120,16 @@ function formatDate(dateStr: string) {
   });
 }
 
+function formatDateNoYear(dateStr: string) {
+  const date = toLocalDate(dateStr);
+  if (!date) return dateStr;
+
+  return date.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+  });
+}
+
 function formatTime(timeStr: string) {
   const [hours, minutes] = timeStr.split(':').map((value) => Number(value));
   const dt = new Date();
@@ -155,28 +165,48 @@ function getDaysUntilValue(dateStr: string) {
   return Math.floor((targetUtc - todayUtc) / (1000 * 60 * 60 * 24));
 }
 
+function getFirstName(fullName: string) {
+  const parts = fullName.trim().split(/\s+/).filter(Boolean);
+  return parts[0] || fullName;
+}
+
 function buildShortMessage(event: EventWithCreator) {
-  const phone = formatPhone(event.phone);
-  const date = formatDate(event.eventDate);
+  const firstName = getFirstName(event.name);
+  const date = formatDateNoYear(event.eventDate);
   const time = formatTimeRange(event.startTime, event.endTime);
-  const contact = [event.name, phone].filter(Boolean).join(' ');
-  return `Event at ${event.building} on ${date} ${time}. Contact: ${contact}. ${event.description}`;
+  return `Hey ${firstName}, thanks for reaching out. Let me check the calendar to see if we have some availability for your private event (${event.description}) on ${date} (${time}) at the ${event.building}. I’ll follow up as soon as I confirm availability.`;
 }
 
 function buildFullMessage(event: EventWithCreator) {
-  const phone = formatPhone(event.phone);
-  const contactLine = [event.name, phone, event.email].filter(Boolean).join(' | ');
-  const creator = event.creatorName || event.creatorEmail || '—';
-
+  const firstName = getFirstName(event.name);
+  const date = formatDateNoYear(event.eventDate);
+  const time = formatTimeRange(event.startTime, event.endTime);
   return [
-    `Event details: ${event.description}`,
-    `Date: ${formatDate(event.eventDate)}`,
-    `Time: ${formatTimeRange(event.startTime, event.endTime)}`,
-    `Building: ${event.building}`,
-    `Contact: ${contactLine || '—'}`,
-    `Ward: ${event.ward ?? '—'}`,
-    `Created by: ${creator}`,
+    `I was able to confirm availability for your private event on ${date} from ${time} at the ${event.building}.`,
+    '',
+    'We will need your email address that you use on your church membership record so we can issue your temporary Kindoo access.',
+    '',
+    'Also we require you to please review the Stake Meetinghouse Use Policies here:',
+    'https://drive.google.com/file/d/1LBukeaPHsg8eB-EtAyXXiPbq--o7wV1h/view?usp=sharing',
+    '',
+    `Thanks, ${firstName}!`,
   ].join('\n');
+}
+
+function buildCalendarItemDescription(event: EventWithCreator) {
+  const phone = formatPhone(event.phone);
+  const lines = [
+    `Member: ${event.name}`,
+    `Event details: ${event.description}`,
+    `Ward: ${event.ward ?? '—'}`,
+    `Phone: ${phone || '—'}`,
+  ];
+
+  if (event.email?.trim()) {
+    lines.push(`Email: ${event.email}`);
+  }
+
+  return lines.join('\n');
 }
 
 export function EventTable({
@@ -363,7 +393,7 @@ export function EventTable({
     setEditStartTime(event.startTime);
     setEditEndTime(event.endTime);
     setEditPhone(formatPhone(event.phone ?? ''));
-    setEditEmail(event.email);
+    setEditEmail(event.email ?? '');
     setEditDescription(event.description);
   };
 
@@ -487,13 +517,17 @@ export function EventTable({
                     <div className="space-y-1.5">
                       <div className="flex items-center gap-1.5 text-muted-foreground text-xs">
                         <Mail className="h-3.5 w-3.5 shrink-0" />
-                        <a
-                          href={`mailto:${event.email}`}
-                          className="truncate hover:text-foreground hover:underline"
-                          title={event.email}
-                        >
-                          {event.email}
-                        </a>
+                        {event.email ? (
+                          <a
+                            href={`mailto:${event.email}`}
+                            className="truncate hover:text-foreground hover:underline"
+                            title={event.email}
+                          >
+                            {event.email}
+                          </a>
+                        ) : (
+                          <span className="text-muted-foreground/50">—</span>
+                        )}
                       </div>
                       <div className="flex items-center gap-1.5 text-muted-foreground text-xs">
                         <Phone className="h-3.5 w-3.5 shrink-0" />
@@ -766,37 +800,56 @@ export function EventTable({
           {copyingEvent && (
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label>Short message</Label>
-                <Textarea readOnly rows={3} value={buildShortMessage(copyingEvent)} />
+                <Label>Availability inquiry text</Label>
+                <Textarea readOnly rows={4} value={buildShortMessage(copyingEvent)} />
                 <Button
                   variant="outline"
                   onClick={async () => {
                     try {
                       await navigator.clipboard.writeText(buildShortMessage(copyingEvent));
-                      toast.success('Short message copied.');
+                      toast.success('Availability inquiry text copied.');
                     } catch {
                       toast.error('Failed to copy.');
                     }
                   }}
                 >
-                  Copy short message
+                  Copy Message
                 </Button>
               </div>
               <div className="space-y-2">
-                <Label>Full details</Label>
-                <Textarea readOnly rows={7} value={buildFullMessage(copyingEvent)} />
+                <Label>Calendar item description</Label>
+                <Textarea readOnly rows={6} value={buildCalendarItemDescription(copyingEvent)} />
+                <Button
+                  variant="outline"
+                  onClick={async () => {
+                    try {
+                      await navigator.clipboard.writeText(
+                        buildCalendarItemDescription(copyingEvent)
+                      );
+                      toast.success('Calendar item description copied.');
+                    } catch {
+                      toast.error('Failed to copy.');
+                    }
+                  }}
+                >
+                  Copy Message
+                </Button>
+              </div>
+              <div className="space-y-2">
+                <Label>Availability confirmed + policy text</Label>
+                <Textarea readOnly rows={9} value={buildFullMessage(copyingEvent)} />
                 <Button
                   variant="outline"
                   onClick={async () => {
                     try {
                       await navigator.clipboard.writeText(buildFullMessage(copyingEvent));
-                      toast.success('Full details copied.');
+                      toast.success('Availability confirmed + policy text copied.');
                     } catch {
                       toast.error('Failed to copy.');
                     }
                   }}
                 >
-                  Copy full details
+                  Copy Message
                 </Button>
               </div>
             </div>

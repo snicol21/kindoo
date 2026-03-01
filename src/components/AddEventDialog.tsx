@@ -175,8 +175,8 @@ export function AddEventDialog({
       if (!endTime?.trim()) {
         errors.endTime = 'End time is required.';
       }
-      if (!email?.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-        errors.email = 'A valid email is required.';
+      if (email?.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        errors.email = 'Email must be valid if provided.';
       }
       if (!description?.trim()) {
         errors.description = 'Description is required.';
@@ -214,7 +214,7 @@ export function AddEventDialog({
               startTime: startTime!,
               endTime: endTime!,
               phone: formattedPhone || undefined,
-              email: email!.trim().toLowerCase(),
+              email: email?.trim() ? email.trim().toLowerCase() : undefined,
               description: description!.trim(),
             },
             {
@@ -423,14 +423,12 @@ export function AddEventDialog({
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="email">
-                Email <span className="text-destructive">*</span>
-              </Label>
+              <Label htmlFor="email">Email</Label>
               <Input
                 id="email"
                 name="email"
                 type="email"
-                placeholder="name@example.com"
+                placeholder="name@example.com (optional)"
                 defaultValue={state.values?.email}
                 className={state.errors?.email ? 'border-destructive' : ''}
                 autoComplete="email"

@@ -25,7 +25,7 @@ export interface AddEventInput {
   startTime: string;
   endTime: string;
   phone?: string;
-  email: string;
+  email?: string;
   description: string;
 }
 
@@ -100,7 +100,7 @@ function normalizeEventInput(input: AddEventInput): AddEventInput {
     startTime: input.startTime.trim(),
     endTime: input.endTime.trim(),
     phone: formatPhoneForStorage(input.phone),
-    email: input.email.trim().toLowerCase(),
+    email: input.email?.trim().toLowerCase() || undefined,
     description: input.description.trim(),
   };
 }
@@ -120,8 +120,8 @@ function validateEventInput(input: AddEventInput): string | null {
   }
   if (!input.startTime?.trim()) return 'Start time is required.';
   if (!input.endTime?.trim()) return 'End time is required.';
-  if (!input.email?.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.email)) {
-    return 'Valid email is required.';
+  if (input.email?.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.email)) {
+    return 'Email must be valid if provided.';
   }
   if (!input.description?.trim()) return 'Description is required.';
   if (input.phone && !/^[\d\s\-+().]{7,20}$/.test(input.phone)) {
@@ -156,7 +156,7 @@ export async function addEvent(input: AddEventInput): Promise<ActionResult<Event
         startTime: normalizedInput.startTime,
         endTime: normalizedInput.endTime,
         phone: normalizedInput.phone || null,
-        email: normalizedInput.email,
+        email: normalizedInput.email || '',
         description: normalizedInput.description,
         userId: session.user.id,
       })
@@ -289,7 +289,7 @@ export async function updateEvent(input: UpdateEventInput): Promise<ActionResult
         startTime: normalizedInput.startTime,
         endTime: normalizedInput.endTime,
         phone: normalizedInput.phone || null,
-        email: normalizedInput.email,
+        email: normalizedInput.email || '',
         description: normalizedInput.description,
       })
       .where(and(eq(events.id, input.id), eq(events.userId, session.user.id)))
@@ -348,7 +348,7 @@ export async function importEvents(input: {
       startTime: event.startTime,
       endTime: event.endTime,
       phone: event.phone || null,
-      email: event.email,
+      email: event.email || '',
       description: event.description,
       userId: session.user.id,
     }));

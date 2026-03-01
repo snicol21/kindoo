@@ -248,8 +248,8 @@ function mapRowsToEvents(rows: string[][]) {
       return;
     }
 
-    if (!data.email) {
-      errors.push(`Row ${index + 2}: email is required.`);
+    if (data.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(data.email))) {
+      errors.push(`Row ${index + 2}: email must be valid if provided.`);
       return;
     }
 
@@ -265,7 +265,7 @@ function mapRowsToEvents(rows: string[][]) {
       eventDate: normalizedDate,
       startTime: normalizedStart,
       endTime: normalizedEnd,
-      email: String(data.email ?? ''),
+      email: data.email ? String(data.email) : undefined,
       phone: data.phone ? String(data.phone) : undefined,
       description: String(data.description ?? ''),
     });
