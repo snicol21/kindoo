@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type MouseEvent } from 'react';
 import {
   Table,
   TableBody,
@@ -438,6 +438,17 @@ export function EventTable({
     }
   };
 
+  const handleRowClick = (
+    event: MouseEvent<HTMLTableRowElement>,
+    rowEvent: EventWithCreator,
+    isOptimisticRow: boolean
+  ) => {
+    if (!onEdit || isOptimisticRow) return;
+    const target = event.target as HTMLElement | null;
+    if (target?.closest('button, a, input, textarea, select, [data-no-row-click]')) return;
+    openEditDialog(rowEvent);
+  };
+
   const openCloneDialog = (event: EventWithCreator) => {
     setCloningEvent(event);
     setCloneBuilding(event.building);
@@ -542,7 +553,13 @@ export function EventTable({
             {pagedEvents.map((event) => {
               const isOptimistic = event.id.startsWith('optimistic-');
               return (
-                <TableRow key={event.id} className={isOptimistic ? 'opacity-60 animate-pulse' : ''}>
+                <TableRow
+                  key={event.id}
+                  onClick={(e) => handleRowClick(e, event, isOptimistic)}
+                  className={`${isOptimistic ? 'opacity-60 animate-pulse' : ''} ${
+                    !isOptimistic && onEdit ? 'cursor-pointer hover:bg-muted/40' : ''
+                  }`}
+                >
                   <TableCell className="w-[36px]">
                     <input
                       type="checkbox"
