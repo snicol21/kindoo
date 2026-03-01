@@ -1372,7 +1372,7 @@ export function EventTable({
       </Dialog>
 
       <Dialog open={!!licenseEvent} onOpenChange={(open) => !open && setLicenseEvent(null)}>
-        <DialogContent className="sm:max-w-xl">
+        <DialogContent className="sm:max-w-xl" onOpenAutoFocus={(event) => event.preventDefault()}>
           <DialogHeader>
             <DialogTitle>Kindoo License</DialogTitle>
             <DialogDescription>Copy these values into the Kindoo setup form.</DialogDescription>
