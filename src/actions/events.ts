@@ -72,6 +72,26 @@ function isFutureDate(ymd: string) {
   return targetUtc > todayUtc;
 }
 
+function formatPhoneForStorage(value?: string) {
+  if (!value) return undefined;
+  const digits = value.replace(/\D/g, '');
+  if (!digits) return undefined;
+
+  let normalized = digits;
+  if (normalized.length === 11 && normalized.startsWith('1')) {
+    normalized = normalized.slice(1);
+  }
+  if (normalized.length > 10) {
+    normalized = normalized.slice(0, 10);
+  }
+
+  if (normalized.length <= 3) return normalized;
+  if (normalized.length <= 6) {
+    return `(${normalized.slice(0, 3)}) ${normalized.slice(3)}`;
+  }
+  return `(${normalized.slice(0, 3)}) ${normalized.slice(3, 6)}-${normalized.slice(6)}`;
+}
+
 function normalizeEventInput(input: AddEventInput): AddEventInput {
   return {
     ...input,
@@ -79,7 +99,7 @@ function normalizeEventInput(input: AddEventInput): AddEventInput {
     eventDate: input.eventDate.trim(),
     startTime: input.startTime.trim(),
     endTime: input.endTime.trim(),
-    phone: input.phone?.trim() || undefined,
+    phone: formatPhoneForStorage(input.phone),
     email: input.email.trim().toLowerCase(),
     description: input.description.trim(),
   };

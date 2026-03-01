@@ -22,6 +22,26 @@ function normalizeEmail(email: string) {
   return email.trim().toLowerCase();
 }
 
+function normalizePhone(phone?: string) {
+  if (!phone) return undefined;
+  const digits = phone.replace(/\D/g, '');
+  if (!digits) return undefined;
+
+  let normalized = digits;
+  if (normalized.length === 11 && normalized.startsWith('1')) {
+    normalized = normalized.slice(1);
+  }
+  if (normalized.length > 10) {
+    normalized = normalized.slice(0, 10);
+  }
+
+  if (normalized.length <= 3) return normalized;
+  if (normalized.length <= 6) {
+    return `(${normalized.slice(0, 3)}) ${normalized.slice(3)}`;
+  }
+  return `(${normalized.slice(0, 3)}) ${normalized.slice(3, 6)}-${normalized.slice(6)}`;
+}
+
 // ─── Query Keys ───────────────────────────────────────────────────────────────
 
 export const eventKeys = {
@@ -51,7 +71,11 @@ export function useAddEvent(onSuccess?: () => void) {
 
   return useMutation({
     mutationFn: async (input: AddEventInput) => {
-      const result = await addEvent({ ...input, email: normalizeEmail(input.email) });
+      const result = await addEvent({
+        ...input,
+        email: normalizeEmail(input.email),
+        phone: normalizePhone(input.phone),
+      });
       if (!result.success) throw new Error(result.error);
       return result.data!;
     },
@@ -75,7 +99,7 @@ export function useAddEvent(onSuccess?: () => void) {
         eventDate: newEventInput.eventDate,
         startTime: newEventInput.startTime,
         endTime: newEventInput.endTime,
-        phone: newEventInput.phone ?? null,
+        phone: normalizePhone(newEventInput.phone) ?? null,
         email: normalizeEmail(newEventInput.email),
         description: newEventInput.description,
         userId: 'pending',
@@ -196,7 +220,11 @@ export function useUpdateEvent() {
 
   return useMutation({
     mutationFn: async (input: UpdateEventInput) => {
-      const result = await updateEvent({ ...input, email: normalizeEmail(input.email) });
+      const result = await updateEvent({
+        ...input,
+        email: normalizeEmail(input.email),
+        phone: normalizePhone(input.phone),
+      });
       if (!result.success) throw new Error(result.error);
       return result.data!;
     },
@@ -221,7 +249,7 @@ export function useUpdateEvent() {
           eventDate: input.eventDate,
           startTime: input.startTime,
           endTime: input.endTime,
-          phone: input.phone ?? null,
+          phone: normalizePhone(input.phone) ?? null,
           email: normalizeEmail(input.email),
           description: input.description,
           creatorName: null,
@@ -233,7 +261,7 @@ export function useUpdateEvent() {
         eventDate: input.eventDate,
         startTime: input.startTime,
         endTime: input.endTime,
-        phone: input.phone ?? null,
+        phone: normalizePhone(input.phone) ?? null,
         email: normalizeEmail(input.email),
         description: input.description,
       });
@@ -288,6 +316,7 @@ export function useImportEvents() {
         events: events.map((event) => ({
           ...event,
           email: normalizeEmail(event.email),
+          phone: normalizePhone(event.phone),
         })),
       });
       if (!result.success) throw new Error(result.error);

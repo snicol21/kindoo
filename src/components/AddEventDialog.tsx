@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useEffect } from 'react';
+import { useMemo, useRef, useEffect, useState } from 'react';
 import type { ChangeEvent } from 'react';
 import { useActionState } from 'react';
 import { useFormStatus } from 'react-dom';
@@ -20,6 +20,7 @@ import {
   Select,
   SelectContent,
   SelectItem,
+  SelectSeparator,
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
@@ -116,10 +117,19 @@ export function AddEventDialog({
   defaultBuilding = 'Stake Center',
 }: AddEventDialogProps) {
   const formRef = useRef<HTMLFormElement>(null);
+  const [selectedBuilding, setSelectedBuilding] = useState<Building>(defaultBuilding);
   const { mutate: addEventMutation, isPending } = useAddEvent(() => {
     onOpenChange(false);
   });
   const minEventDate = getTomorrowYmd();
+
+  const prioritizedWards = useMemo(() => {
+    const stakePriority: Ward[] = ['3rd Ward', '4th Ward', '6th Ward'];
+    const maplesPriority: Ward[] = ['1st Ward', '2nd Ward', '5th Ward', 'Park Ridge Ward'];
+    const priority = selectedBuilding === 'Stake Center' ? stakePriority : maplesPriority;
+    const remaining = WARDS.filter((ward) => !priority.includes(ward));
+    return { priority, remaining };
+  }, [selectedBuilding]);
 
   const handlePhoneInput = (event: ChangeEvent<HTMLInputElement>) => {
     event.target.value = formatPhone(event.target.value);
@@ -246,6 +256,12 @@ export function AddEventDialog({
     }
   }, [open]);
 
+  useEffect(() => {
+    if (open) {
+      setSelectedBuilding(defaultBuilding);
+    }
+  }, [open, defaultBuilding]);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[520px]">
@@ -269,7 +285,11 @@ export function AddEventDialog({
             <Label htmlFor="building">
               Building <span className="text-destructive">*</span>
             </Label>
-            <Select name="building" defaultValue={state.values?.building ?? defaultBuilding}>
+            <Select
+              name="building"
+              defaultValue={state.values?.building ?? defaultBuilding}
+              onValueChange={(value) => setSelectedBuilding(value as Building)}
+            >
               <SelectTrigger
                 id="building"
                 className={state.errors?.building ? 'border-destructive' : ''}
@@ -299,7 +319,15 @@ export function AddEventDialog({
                 <SelectValue placeholder="Select a ward…" />
               </SelectTrigger>
               <SelectContent>
-                {WARDS.map((ward) => (
+                {prioritizedWards.priority.map((ward) => (
+                  <SelectItem key={ward} value={ward}>
+                    {ward}
+                  </SelectItem>
+                ))}
+                {prioritizedWards.remaining.length > 0 && (
+                  <SelectSeparator className="border-t border-dashed border-muted-foreground/40" />
+                )}
+                {prioritizedWards.remaining.map((ward) => (
                   <SelectItem key={ward} value={ward}>
                     {ward}
                   </SelectItem>

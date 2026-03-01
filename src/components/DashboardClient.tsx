@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -34,6 +34,17 @@ interface DashboardClientProps {
   initialMaplesEvents: EventWithCreator[];
 }
 
+function isPastEvent(eventDate: string, endTime: string) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(eventDate);
+  if (!match) return false;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const [hours, minutes] = endTime.split(':').map((value) => Number(value));
+  const eventEnd = new Date(year, month - 1, day, hours || 0, minutes || 0, 0, 0).getTime();
+  return eventEnd < Date.now();
+}
+
 export function DashboardClient({
   user,
   initialStakeCenterEvents,
@@ -45,6 +56,8 @@ export function DashboardClient({
   const [selectedStakeIds, setSelectedStakeIds] = useState<string[]>([]);
   const [selectedMaplesIds, setSelectedMaplesIds] = useState<string[]>([]);
   const [bulkDeleteTarget, setBulkDeleteTarget] = useState<Building | null>(null);
+  const [showStakeArchived, setShowStakeArchived] = useState(false);
+  const [showMaplesArchived, setShowMaplesArchived] = useState(false);
 
   const {
     data: stakeCenterEvents = [],
@@ -63,6 +76,42 @@ export function DashboardClient({
   const bulkDeleteStakeCenterEvents = useBulkDeleteEvents('Stake Center');
   const bulkDeleteMaplesEvents = useBulkDeleteEvents('Maples Building');
   const updateEvent = useUpdateEvent();
+
+  const [stakeUpcoming, stakeArchived] = useMemo(() => {
+    const upcoming: EventWithCreator[] = [];
+    const archived: EventWithCreator[] = [];
+    for (const event of stakeCenterEvents) {
+      if (isPastEvent(event.eventDate, event.endTime)) {
+        archived.push(event);
+      } else {
+        upcoming.push(event);
+      }
+    }
+    return [upcoming, archived];
+  }, [stakeCenterEvents]);
+
+  const [maplesUpcoming, maplesArchived] = useMemo(() => {
+    const upcoming: EventWithCreator[] = [];
+    const archived: EventWithCreator[] = [];
+    for (const event of maplesEvents) {
+      if (isPastEvent(event.eventDate, event.endTime)) {
+        archived.push(event);
+      } else {
+        upcoming.push(event);
+      }
+    }
+    return [upcoming, archived];
+  }, [maplesEvents]);
+
+  useEffect(() => {
+    const upcomingIds = new Set(stakeUpcoming.map((event) => event.id));
+    setSelectedStakeIds((prev) => prev.filter((id) => upcomingIds.has(id)));
+  }, [stakeUpcoming]);
+
+  useEffect(() => {
+    const upcomingIds = new Set(maplesUpcoming.map((event) => event.id));
+    setSelectedMaplesIds((prev) => prev.filter((id) => upcomingIds.has(id)));
+  }, [maplesUpcoming]);
 
   const userInitials = user.name
     ? user.name
@@ -207,7 +256,7 @@ export function DashboardClient({
             </CardHeader>
             <CardContent>
               <EventTable
-                events={stakeCenterEvents}
+                events={stakeUpcoming}
                 isLoading={scLoading}
                 isError={scError}
                 building="Stake Center"
@@ -218,6 +267,36 @@ export function DashboardClient({
                 onSelectionChange={setSelectedStakeIds}
                 onEdit={(input) => updateEvent.mutateAsync(input).then(() => undefined)}
               />
+              {!scLoading && !scError && stakeArchived.length > 0 && (
+                <div className="mt-6 border-t pt-4">
+                  <div className="flex items-center justify-between">
+                    <div className="text-sm text-muted-foreground">
+                      Archived events ({stakeArchived.length})
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setShowStakeArchived((prev) => !prev)}
+                    >
+                      {showStakeArchived ? 'Hide archived' : 'Show archived'}
+                    </Button>
+                  </div>
+                  {showStakeArchived && (
+                    <div className="mt-4">
+                      <EventTable
+                        events={stakeArchived}
+                        isLoading={false}
+                        isError={false}
+                        building="Stake Center"
+                        onDelete={(eventId) =>
+                          deleteStakeCenterEvent.mutateAsync(eventId).then(() => undefined)
+                        }
+                        onEdit={(input) => updateEvent.mutateAsync(input).then(() => undefined)}
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -256,7 +335,7 @@ export function DashboardClient({
             </CardHeader>
             <CardContent>
               <EventTable
-                events={maplesEvents}
+                events={maplesUpcoming}
                 isLoading={mbLoading}
                 isError={mbError}
                 building="Maples Building"
@@ -265,6 +344,36 @@ export function DashboardClient({
                 onSelectionChange={setSelectedMaplesIds}
                 onEdit={(input) => updateEvent.mutateAsync(input).then(() => undefined)}
               />
+              {!mbLoading && !mbError && maplesArchived.length > 0 && (
+                <div className="mt-6 border-t pt-4">
+                  <div className="flex items-center justify-between">
+                    <div className="text-sm text-muted-foreground">
+                      Archived events ({maplesArchived.length})
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setShowMaplesArchived((prev) => !prev)}
+                    >
+                      {showMaplesArchived ? 'Hide archived' : 'Show archived'}
+                    </Button>
+                  </div>
+                  {showMaplesArchived && (
+                    <div className="mt-4">
+                      <EventTable
+                        events={maplesArchived}
+                        isLoading={false}
+                        isError={false}
+                        building="Maples Building"
+                        onDelete={(eventId) =>
+                          deleteMaplesEvent.mutateAsync(eventId).then(() => undefined)
+                        }
+                        onEdit={(input) => updateEvent.mutateAsync(input).then(() => undefined)}
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
