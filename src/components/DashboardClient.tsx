@@ -16,7 +16,13 @@ import {
 import { EventTable } from '@/components/EventTable';
 import { AddEventDialog } from '@/components/AddEventDialog';
 import { CsvImportDialog } from '@/components/CsvImportDialog';
-import { useBulkDeleteEvents, useDeleteEvent, useEvents, useUpdateEvent } from '@/hooks/useEvents';
+import {
+  useAddEvent,
+  useBulkDeleteEvents,
+  useDeleteEvent,
+  useEvents,
+  useUpdateEvent,
+} from '@/hooks/useEvents';
 import { Building2, Plus, CalendarDays, Upload } from 'lucide-react';
 import type { Building } from '@/schema/schema';
 import type { EventWithCreator } from '@/actions/events';
@@ -76,6 +82,7 @@ export function DashboardClient({
   const bulkDeleteStakeCenterEvents = useBulkDeleteEvents('Stake Center');
   const bulkDeleteMaplesEvents = useBulkDeleteEvents('Maples Building');
   const updateEvent = useUpdateEvent();
+  const addEvent = useAddEvent();
 
   const [stakeUpcoming, stakeArchived] = useMemo(() => {
     const upcoming: EventWithCreator[] = [];
@@ -266,6 +273,7 @@ export function DashboardClient({
                 selectedIds={selectedStakeIds}
                 onSelectionChange={setSelectedStakeIds}
                 onEdit={(input) => updateEvent.mutateAsync(input).then(() => undefined)}
+                onClone={(input) => addEvent.mutateAsync(input).then(() => undefined)}
               />
               {!scLoading && !scError && stakeArchived.length > 0 && (
                 <div className="mt-6 border-t pt-4">
@@ -292,6 +300,7 @@ export function DashboardClient({
                           deleteStakeCenterEvent.mutateAsync(eventId).then(() => undefined)
                         }
                         onEdit={(input) => updateEvent.mutateAsync(input).then(() => undefined)}
+                        onClone={(input) => addEvent.mutateAsync(input).then(() => undefined)}
                       />
                     </div>
                   )}
@@ -343,6 +352,7 @@ export function DashboardClient({
                 selectedIds={selectedMaplesIds}
                 onSelectionChange={setSelectedMaplesIds}
                 onEdit={(input) => updateEvent.mutateAsync(input).then(() => undefined)}
+                onClone={(input) => addEvent.mutateAsync(input).then(() => undefined)}
               />
               {!mbLoading && !mbError && maplesArchived.length > 0 && (
                 <div className="mt-6 border-t pt-4">
@@ -369,6 +379,7 @@ export function DashboardClient({
                           deleteMaplesEvent.mutateAsync(eventId).then(() => undefined)
                         }
                         onEdit={(input) => updateEvent.mutateAsync(input).then(() => undefined)}
+                        onClone={(input) => addEvent.mutateAsync(input).then(() => undefined)}
                       />
                     </div>
                   )}

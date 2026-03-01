@@ -38,12 +38,13 @@ import {
   Pencil,
   Trash2,
   Copy,
+  CopyPlus,
   Mail,
   Phone,
   Church,
 } from 'lucide-react';
 import { BUILDINGS, WARDS, type Building, type Ward } from '@/schema/schema';
-import type { EventWithCreator, UpdateEventInput } from '@/actions/events';
+import type { AddEventInput, EventWithCreator, UpdateEventInput } from '@/actions/events';
 import { toast } from 'sonner';
 
 interface EventTableProps {
@@ -53,6 +54,7 @@ interface EventTableProps {
   building: string;
   onDelete?: (eventId: string) => Promise<void>;
   onEdit?: (input: UpdateEventInput) => Promise<void>;
+  onClone?: (input: AddEventInput) => Promise<void>;
   selectedIds?: string[];
   onSelectionChange?: (eventIds: string[]) => void;
 }
@@ -216,6 +218,7 @@ export function EventTable({
   building,
   onDelete,
   onEdit,
+  onClone,
   selectedIds,
   onSelectionChange,
 }: EventTableProps) {
@@ -227,6 +230,7 @@ export function EventTable({
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [pendingDeleteEvent, setPendingDeleteEvent] = useState<EventWithCreator | null>(null);
   const [editingEvent, setEditingEvent] = useState<EventWithCreator | null>(null);
+  const [cloningEvent, setCloningEvent] = useState<EventWithCreator | null>(null);
   const [copyingEvent, setCopyingEvent] = useState<EventWithCreator | null>(null);
   const [editBuilding, setEditBuilding] = useState<Building>('Stake Center');
   const [editName, setEditName] = useState('');
@@ -238,6 +242,16 @@ export function EventTable({
   const [editEmail, setEditEmail] = useState('');
   const [editDescription, setEditDescription] = useState('');
   const [isSavingEdit, setIsSavingEdit] = useState(false);
+  const [cloneBuilding, setCloneBuilding] = useState<Building>('Stake Center');
+  const [cloneName, setCloneName] = useState('');
+  const [cloneWard, setCloneWard] = useState<Ward | ''>('');
+  const [cloneEventDate, setCloneEventDate] = useState('');
+  const [cloneStartTime, setCloneStartTime] = useState('');
+  const [cloneEndTime, setCloneEndTime] = useState('');
+  const [clonePhone, setClonePhone] = useState('');
+  const [cloneEmail, setCloneEmail] = useState('');
+  const [cloneDescription, setCloneDescription] = useState('');
+  const [isSavingClone, setIsSavingClone] = useState(false);
   const [internalSelectedIds, setInternalSelectedIds] = useState<Set<string>>(new Set());
 
   const selectedIdSet = useMemo(
@@ -423,6 +437,63 @@ export function EventTable({
     }
   };
 
+  const openCloneDialog = (event: EventWithCreator) => {
+    setCloningEvent(event);
+    setCloneBuilding(event.building);
+    setCloneName(event.name);
+    setCloneWard(event.ward ?? '');
+    setCloneEventDate(event.eventDate);
+    setCloneStartTime(event.startTime);
+    setCloneEndTime(event.endTime);
+    setClonePhone(formatPhone(event.phone ?? ''));
+    setCloneEmail(event.email ?? '');
+    setCloneDescription(event.description);
+  };
+
+  const submitClone = async () => {
+    if (!onClone || !cloningEvent) return;
+    if (!cloneName.trim()) {
+      toast.error('Name is required.');
+      return;
+    }
+    if (!cloneWard) {
+      toast.error('Ward is required.');
+      return;
+    }
+    if (!cloneEventDate.trim()) {
+      toast.error('Event date is required.');
+      return;
+    }
+    if (!cloneStartTime.trim() || !cloneEndTime.trim()) {
+      toast.error('Start and end times are required.');
+      return;
+    }
+    if (!cloneDescription.trim()) {
+      toast.error('Description is required.');
+      return;
+    }
+
+    setIsSavingClone(true);
+    try {
+      await onClone({
+        building: cloneBuilding,
+        ward: cloneWard as Ward,
+        name: cloneName.trim(),
+        eventDate: cloneEventDate,
+        startTime: cloneStartTime,
+        endTime: cloneEndTime,
+        phone: clonePhone,
+        email: cloneEmail,
+        description: cloneDescription.trim(),
+      });
+      setCloningEvent(null);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to clone event.');
+    } finally {
+      setIsSavingClone(false);
+    }
+  };
+
   return (
     <>
       <div className="rounded-md border overflow-x-auto">
@@ -573,6 +644,15 @@ export function EventTable({
                         onClick={() => setCopyingEvent(event)}
                       >
                         <Copy className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        aria-label={`Clone ${event.name}`}
+                        disabled={isOptimistic || !onClone}
+                        onClick={() => openCloneDialog(event)}
+                      >
+                        <CopyPlus className="h-4 w-4" />
                       </Button>
                       <Button
                         variant="ghost"
@@ -785,6 +865,129 @@ export function EventTable({
                 </>
               ) : (
                 'Save changes'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!cloningEvent} onOpenChange={(open) => !open && setCloningEvent(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Clone event</DialogTitle>
+            <DialogDescription>Adjust the details and save as a new event.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="clone-building">Building</Label>
+              <Select
+                value={cloneBuilding}
+                onValueChange={(value) => setCloneBuilding(value as Building)}
+              >
+                <SelectTrigger id="clone-building">
+                  <SelectValue placeholder="Select building" />
+                </SelectTrigger>
+                <SelectContent>
+                  {BUILDINGS.map((b) => (
+                    <SelectItem key={b} value={b}>
+                      {b}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="clone-name">Member Name</Label>
+              <Input
+                id="clone-name"
+                value={cloneName}
+                onChange={(e) => setCloneName(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="clone-ward">Ward</Label>
+              <Select value={cloneWard} onValueChange={(value) => setCloneWard(value as Ward)}>
+                <SelectTrigger id="clone-ward">
+                  <SelectValue placeholder="Select ward" />
+                </SelectTrigger>
+                <SelectContent>
+                  {WARDS.map((ward) => (
+                    <SelectItem key={ward} value={ward}>
+                      {ward}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="clone-event-date">Date</Label>
+                <Input
+                  id="clone-event-date"
+                  type="date"
+                  value={cloneEventDate}
+                  onChange={(e) => setCloneEventDate(e.target.value)}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="clone-start-time">Start</Label>
+                <Input
+                  id="clone-start-time"
+                  type="time"
+                  value={cloneStartTime}
+                  onChange={(e) => setCloneStartTime(e.target.value)}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="clone-end-time">End</Label>
+                <Input
+                  id="clone-end-time"
+                  type="time"
+                  value={cloneEndTime}
+                  onChange={(e) => setCloneEndTime(e.target.value)}
+                />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="clone-phone">Phone</Label>
+              <Input
+                id="clone-phone"
+                type="tel"
+                value={clonePhone}
+                onChange={(e) => setClonePhone(formatPhone(e.target.value))}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="clone-email">Email</Label>
+              <Input
+                id="clone-email"
+                type="email"
+                value={cloneEmail}
+                onChange={(e) => setCloneEmail(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="clone-description">Description</Label>
+              <Textarea
+                id="clone-description"
+                rows={4}
+                value={cloneDescription}
+                onChange={(e) => setCloneDescription(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCloningEvent(null)}>
+              Cancel
+            </Button>
+            <Button onClick={submitClone} disabled={!cloningEvent || isSavingClone || !onClone}>
+              {isSavingClone ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Saving…
+                </>
+              ) : (
+                'Save new event'
               )}
             </Button>
           </DialogFooter>
