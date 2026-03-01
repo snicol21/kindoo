@@ -51,6 +51,18 @@ function isPastEvent(eventDate: string, endTime: string) {
   return eventEnd < Date.now();
 }
 
+const LICENSE_LEAD_KEY = 'kindoo.licenseLeadDays';
+const DEFAULT_LICENSE_LEAD_DAYS = 2;
+const MAX_LICENSE_LEAD_DAYS = 14;
+
+function parseLicenseLeadDays(value: string | null) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return DEFAULT_LICENSE_LEAD_DAYS;
+  const normalized = Math.round(parsed);
+  if (normalized < 0 || normalized > MAX_LICENSE_LEAD_DAYS) return DEFAULT_LICENSE_LEAD_DAYS;
+  return normalized;
+}
+
 export function DashboardClient({
   user,
   initialStakeCenterEvents,
@@ -64,6 +76,7 @@ export function DashboardClient({
   const [bulkDeleteTarget, setBulkDeleteTarget] = useState<Building | null>(null);
   const [showStakeArchived, setShowStakeArchived] = useState(false);
   const [showMaplesArchived, setShowMaplesArchived] = useState(false);
+  const [licenseLeadDays, setLicenseLeadDays] = useState(DEFAULT_LICENSE_LEAD_DAYS);
 
   const {
     data: stakeCenterEvents = [],
@@ -119,6 +132,19 @@ export function DashboardClient({
     const upcomingIds = new Set(maplesUpcoming.map((event) => event.id));
     setSelectedMaplesIds((prev) => prev.filter((id) => upcomingIds.has(id)));
   }, [maplesUpcoming]);
+
+  useEffect(() => {
+    const stored = window.localStorage.getItem(LICENSE_LEAD_KEY);
+    setLicenseLeadDays(parseLicenseLeadDays(stored));
+
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key !== LICENSE_LEAD_KEY) return;
+      setLicenseLeadDays(parseLicenseLeadDays(event.newValue));
+    };
+
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
+  }, []);
 
   const userInitials = user.name
     ? user.name
@@ -274,6 +300,7 @@ export function DashboardClient({
                 onSelectionChange={setSelectedStakeIds}
                 onEdit={(input) => updateEvent.mutateAsync(input).then(() => undefined)}
                 onClone={(input) => addEvent.mutateAsync(input).then(() => undefined)}
+                licenseLeadDays={licenseLeadDays}
               />
               {!scLoading && !scError && stakeArchived.length > 0 && (
                 <div className="mt-6 border-t pt-4">
@@ -301,6 +328,7 @@ export function DashboardClient({
                         }
                         onEdit={(input) => updateEvent.mutateAsync(input).then(() => undefined)}
                         onClone={(input) => addEvent.mutateAsync(input).then(() => undefined)}
+                        licenseLeadDays={licenseLeadDays}
                       />
                     </div>
                   )}
@@ -353,6 +381,7 @@ export function DashboardClient({
                 onSelectionChange={setSelectedMaplesIds}
                 onEdit={(input) => updateEvent.mutateAsync(input).then(() => undefined)}
                 onClone={(input) => addEvent.mutateAsync(input).then(() => undefined)}
+                licenseLeadDays={licenseLeadDays}
               />
               {!mbLoading && !mbError && maplesArchived.length > 0 && (
                 <div className="mt-6 border-t pt-4">
@@ -380,6 +409,7 @@ export function DashboardClient({
                         }
                         onEdit={(input) => updateEvent.mutateAsync(input).then(() => undefined)}
                         onClone={(input) => addEvent.mutateAsync(input).then(() => undefined)}
+                        licenseLeadDays={licenseLeadDays}
                       />
                     </div>
                   )}

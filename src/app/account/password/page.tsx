@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
+import { LicenseLeadTimeSetting } from '@/components/LicenseLeadTimeSetting';
 import { changeProfile, changePassword } from '@/actions/auth';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
@@ -127,6 +128,18 @@ export default async function AccountPasswordPage({ searchParams }: AccountPassw
                 Update password
               </Button>
             </form>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Kindoo License</CardTitle>
+            <CardDescription>
+              Choose how many days before an event you want to enable license creation.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <LicenseLeadTimeSetting />
           </CardContent>
         </Card>
       </div>

@@ -44,6 +44,7 @@ import {
   Mail,
   Phone,
   Church,
+  ExternalLink,
 } from 'lucide-react';
 import { BUILDINGS, WARDS, type Building, type Ward } from '@/schema/schema';
 import type { AddEventInput, EventWithCreator, UpdateEventInput } from '@/actions/events';
@@ -57,6 +58,7 @@ interface EventTableProps {
   onDelete?: (eventId: string) => Promise<void>;
   onEdit?: (input: UpdateEventInput) => Promise<void>;
   onClone?: (input: AddEventInput) => Promise<void>;
+  licenseLeadDays?: number;
   selectedIds?: string[];
   onSelectionChange?: (eventIds: string[]) => void;
 }
@@ -82,6 +84,39 @@ function parseTimeToMinutes(value: string) {
   if (!Number.isFinite(hours) || !Number.isFinite(minutes)) return null;
   if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) return null;
   return hours * 60 + minutes;
+}
+
+function formatLicenseDate(ymd: string) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(ymd);
+  if (!match) return ymd;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  return `${String(month).padStart(2, '0')}/${String(day).padStart(2, '0')}/${year}`;
+}
+
+function formatLicenseTime(minutes: number) {
+  const hours24 = Math.floor(minutes / 60) % 24;
+  const mins = minutes % 60;
+  const period = hours24 >= 12 ? 'PM' : 'AM';
+  const hours12 = hours24 % 12 || 12;
+  return `${hours12}:${String(mins).padStart(2, '0')} ${period}`;
+}
+
+function getLicenseTimes(event: EventWithCreator) {
+  const startMinutes = parseTimeToMinutes(event.startTime);
+  const endMinutes = parseTimeToMinutes(event.endTime);
+  if (startMinutes === null || endMinutes === null) return null;
+  const earliestMinutes = 5 * 60;
+  const latestMinutes = 23 * 60;
+  const start = Math.max(earliestMinutes, startMinutes - 120);
+  const end = Math.min(latestMinutes, endMinutes + 120);
+  return {
+    startDate: formatLicenseDate(event.eventDate),
+    startTime: formatLicenseTime(start),
+    endDate: formatLicenseDate(event.eventDate),
+    endTime: formatLicenseTime(end),
+  };
 }
 
 function validateTimeWindow(startTime: string, endTime: string) {
@@ -251,10 +286,14 @@ export function EventTable({
   onDelete,
   onEdit,
   onClone,
+  licenseLeadDays,
   selectedIds,
   onSelectionChange,
 }: EventTableProps) {
   const PAGE_SIZE = 10;
+  const effectiveLeadDays = Number.isFinite(licenseLeadDays)
+    ? Math.max(0, licenseLeadDays as number)
+    : 2;
 
   const [sortKey, setSortKey] = useState<SortKey>('eventDate');
   const [sortDir, setSortDir] = useState<SortDir>('asc');
@@ -262,6 +301,7 @@ export function EventTable({
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [pendingDeleteEvent, setPendingDeleteEvent] = useState<EventWithCreator | null>(null);
   const [editingEvent, setEditingEvent] = useState<EventWithCreator | null>(null);
+  const [licenseEvent, setLicenseEvent] = useState<EventWithCreator | null>(null);
   const [cloningEvent, setCloningEvent] = useState<EventWithCreator | null>(null);
   const [copyingEvent, setCopyingEvent] = useState<EventWithCreator | null>(null);
   const [editBuilding, setEditBuilding] = useState<Building>('Stake Center');
@@ -575,7 +615,7 @@ export function EventTable({
                   }}
                 />
               </TableHead>
-              <TableHead className="w-[110px]">
+              <TableHead className="w-[150px]">
                 <SortButton col="daysUntil" label="Days Until" />
               </TableHead>
               <TableHead className="min-w-[260px]">
@@ -618,7 +658,41 @@ export function EventTable({
                     />
                   </TableCell>
                   <TableCell className="text-foreground text-sm">
-                    {isOptimistic ? '—' : getDaysUntil(event.eventDate)}
+                    {isOptimistic
+                      ? '—'
+                      : (() => {
+                          const daysValue = getDaysUntilValue(event.eventDate);
+                          const withinWindow =
+                            Number.isFinite(daysValue) &&
+                            daysValue >= 0 &&
+                            daysValue <= effectiveLeadDays;
+                          return (
+                            <div className="flex flex-col gap-2">
+                              <div
+                                className={
+                                  withinWindow
+                                    ? 'font-semibold text-emerald-600 animate-pulse'
+                                    : 'text-foreground'
+                                }
+                              >
+                                {getDaysUntil(event.eventDate)}
+                              </div>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className={
+                                  withinWindow
+                                    ? 'border-emerald-600 bg-emerald-600 text-white hover:bg-emerald-700 hover:border-emerald-700'
+                                    : ''
+                                }
+                                disabled={!withinWindow}
+                                onClick={() => setLicenseEvent(event)}
+                              >
+                                Kindoo License
+                              </Button>
+                            </div>
+                          );
+                        })()}
                   </TableCell>
                   <TableCell>
                     <div className="text-foreground text-xs font-semibold">
@@ -1257,6 +1331,179 @@ export function EventTable({
           )}
           <DialogFooter>
             <Button variant="outline" onClick={() => setCopyingEvent(null)}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!licenseEvent} onOpenChange={(open) => !open && setLicenseEvent(null)}>
+        <DialogContent className="sm:max-w-xl">
+          <DialogHeader>
+            <DialogTitle>Kindoo License</DialogTitle>
+            <DialogDescription>Copy these values into the Kindoo setup form.</DialogDescription>
+          </DialogHeader>
+          {licenseEvent && (
+            <div className="space-y-4">
+              <div className="rounded-md border border-border bg-muted/40 p-3 text-sm">
+                <p className="font-medium text-foreground">License timing reference</p>
+                <p className="text-muted-foreground">
+                  Event: {formatDate(licenseEvent.eventDate)} ·{' '}
+                  {formatTimeRange(licenseEvent.startTime, licenseEvent.endTime)}
+                </p>
+                <p className="text-muted-foreground">
+                  Generated values use 2 hours before event start and 2 hours after event end,
+                  capped to the allowed 5:00 AM–11:00 PM window.
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label>Email of the new user</Label>
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                  <Input readOnly value={licenseEvent.email || ''} placeholder="No email" />
+                  <Button
+                    variant="secondary"
+                    size="icon"
+                    className="shrink-0 sm:mr-3"
+                    aria-label="Copy email"
+                    disabled={!licenseEvent.email}
+                    onClick={async () => {
+                      try {
+                        await navigator.clipboard.writeText(licenseEvent.email ?? '');
+                        toast.success('Email copied.');
+                      } catch {
+                        toast.error('Failed to copy.');
+                      }
+                    }}
+                  >
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+              {(() => {
+                const licenseTimes = getLicenseTimes(licenseEvent);
+                if (!licenseTimes) return null;
+                return (
+                  <>
+                    <div className="space-y-2">
+                      <Label>Rights activated starting</Label>
+                      <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_auto_1fr_auto] sm:items-center">
+                        <Input readOnly value={licenseTimes.startDate} />
+                        <Button
+                          variant="secondary"
+                          size="icon"
+                          className="shrink-0 sm:mr-3"
+                          aria-label="Copy start date"
+                          onClick={async () => {
+                            try {
+                              await navigator.clipboard.writeText(licenseTimes.startDate);
+                              toast.success('Start date copied.');
+                            } catch {
+                              toast.error('Failed to copy.');
+                            }
+                          }}
+                        >
+                          <Copy className="h-4 w-4" />
+                        </Button>
+                        <Input readOnly value={licenseTimes.startTime} />
+                        <Button
+                          variant="secondary"
+                          size="icon"
+                          className="shrink-0 sm:mr-3"
+                          aria-label="Copy start time"
+                          onClick={async () => {
+                            try {
+                              await navigator.clipboard.writeText(licenseTimes.startTime);
+                              toast.success('Start time copied.');
+                            } catch {
+                              toast.error('Failed to copy.');
+                            }
+                          }}
+                        >
+                          <Copy className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>User expiry date and time</Label>
+                      <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_auto_1fr_auto] sm:items-center">
+                        <Input readOnly value={licenseTimes.endDate} />
+                        <Button
+                          variant="secondary"
+                          size="icon"
+                          className="shrink-0 sm:mr-3"
+                          aria-label="Copy expiry date"
+                          onClick={async () => {
+                            try {
+                              await navigator.clipboard.writeText(licenseTimes.endDate);
+                              toast.success('Expiry date copied.');
+                            } catch {
+                              toast.error('Failed to copy.');
+                            }
+                          }}
+                        >
+                          <Copy className="h-4 w-4" />
+                        </Button>
+                        <Input readOnly value={licenseTimes.endTime} />
+                        <Button
+                          variant="secondary"
+                          size="icon"
+                          className="shrink-0 sm:mr-3"
+                          aria-label="Copy expiry time"
+                          onClick={async () => {
+                            try {
+                              await navigator.clipboard.writeText(licenseTimes.endTime);
+                              toast.success('Expiry time copied.');
+                            } catch {
+                              toast.error('Failed to copy.');
+                            }
+                          }}
+                        >
+                          <Copy className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </>
+                );
+              })()}
+              <div className="space-y-2">
+                <Label>User description</Label>
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                  <Input readOnly value={`[${licenseEvent.ward ?? ''}] - [${licenseEvent.name}]`} />
+                  <Button
+                    variant="secondary"
+                    size="icon"
+                    className="shrink-0 sm:mr-3"
+                    aria-label="Copy user description"
+                    onClick={async () => {
+                      try {
+                        await navigator.clipboard.writeText(
+                          `[${licenseEvent.ward ?? ''}] - [${licenseEvent.name}]`
+                        );
+                        toast.success('User description copied.');
+                      } catch {
+                        toast.error('Failed to copy.');
+                      }
+                    }}
+                  >
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+              <div>
+                <a
+                  href="https://web.kindoo.tech/"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1 text-sm font-medium text-foreground underline underline-offset-4 hover:text-primary"
+                >
+                  Open Kindoo
+                  <ExternalLink className="h-3.5 w-3.5" />
+                </a>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setLicenseEvent(null)}>
               Close
             </Button>
           </DialogFooter>
