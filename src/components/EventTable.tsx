@@ -1033,7 +1033,7 @@ export function EventTable({
       </Dialog>
 
       <Dialog open={!!copyingEvent} onOpenChange={(open) => !open && setCopyingEvent(null)}>
-        <DialogContent className="sm:max-w-3xl">
+        <DialogContent className="sm:max-w-3xl" onOpenAutoFocus={(event) => event.preventDefault()}>
           <DialogHeader>
             <DialogTitle>Message templates</DialogTitle>
             <DialogDescription>Copy a formatted message to share.</DialogDescription>
