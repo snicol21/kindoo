@@ -291,6 +291,15 @@ function buildCalendarItemDescription(event: EventWithCreator) {
   return lines.join('\n');
 }
 
+function buildKindooLicenseCreatedMessage(event: EventWithCreator) {
+  const firstName = getFirstName(event.name);
+  const licenseTimes = getLicenseTimes(event);
+  const timeframe = licenseTimes
+    ? `Your access window is ${licenseTimes.startDate} at ${licenseTimes.startTime} through ${licenseTimes.endDate} at ${licenseTimes.endTime}. `
+    : '';
+  return `Hi ${firstName}, we just created a temporary Kindoo license for you. ${timeframe}You should receive an invitation email shortly with a link to download the app. After installing, sign in with the same email/Church account, allow Bluetooth + Location, and near the entrance open the app and tap Open to unlock the door.`;
+}
+
 export function EventTable({
   events,
   isLoading,
@@ -1682,7 +1691,10 @@ export function EventTable({
               <div className="space-y-2">
                 <Label>User description</Label>
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                  <Input readOnly value={`[${licenseEvent.ward ?? ''}] - [${licenseEvent.name}]`} />
+                  <Input
+                    readOnly
+                    value={`[${licenseEvent.ward ?? ''}] - [Private Event] - [${licenseEvent.name}]`}
+                  />
                   <Button
                     variant="secondary"
                     size="icon"
@@ -1691,7 +1703,7 @@ export function EventTable({
                     onClick={async () => {
                       try {
                         await navigator.clipboard.writeText(
-                          `[${licenseEvent.ward ?? ''}] - [${licenseEvent.name}]`
+                          `[${licenseEvent.ward ?? ''}] - [Private Event] - [${licenseEvent.name}]`
                         );
                         toast.success('User description copied.');
                       } catch {
@@ -1730,6 +1742,32 @@ export function EventTable({
                 <p className="mt-1 text-xs text-muted-foreground">
                   Mark this when setup is complete so the table shows the event as finished.
                 </p>
+                <div className="mt-3 border-t border-border pt-3 space-y-2">
+                  <Label className="text-xs text-muted-foreground">
+                    Temporary license created text
+                  </Label>
+                  <Textarea
+                    readOnly
+                    rows={3}
+                    value={buildKindooLicenseCreatedMessage(licenseEvent)}
+                  />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={async () => {
+                      try {
+                        await navigator.clipboard.writeText(
+                          buildKindooLicenseCreatedMessage(licenseEvent)
+                        );
+                        toast.success('Temporary license message copied.');
+                      } catch {
+                        toast.error('Failed to copy.');
+                      }
+                    }}
+                  >
+                    Copy Message
+                  </Button>
+                </div>
               </div>
             </div>
           )}
