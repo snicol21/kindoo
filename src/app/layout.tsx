@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import { Inter } from 'next/font/google';
 import { Suspense } from 'react';
+import NextTopLoader from 'nextjs-toploader';
 import { Providers } from '@/providers/providers';
 import { Navbar } from '@/components/Navbar';
 import '@/app/globals.css';
@@ -42,6 +43,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" suppressHydrationWarning className={inter.variable}>
       <body className="font-inter antialiased bg-background text-foreground min-h-screen">
+        <NextTopLoader color="#2563eb" height={3} showSpinner={false} />
         <Suspense fallback={<NavbarSkeleton />}>
           <Providers>
             {/* Navbar is now a static shell — auth is isolated inside NavbarUserSection */}
