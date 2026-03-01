@@ -241,6 +241,14 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
           </div>
         </CardContent>
       </Card>
+      <div>
+        <Button asChild variant="ghost" size="sm" className="gap-2">
+          <Link href="/dashboard">
+            <ArrowLeft className="h-4 w-4" />
+            Back to dashboard
+          </Link>
+        </Button>
+      </div>
     </div>
   );
 }
