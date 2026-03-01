@@ -200,12 +200,19 @@ export function DashboardClient({
           </div>
         </div>
 
-        <div className="flex flex-col sm:flex-row gap-2 shrink-0">
-          <Button variant="outline" onClick={() => setImportOpen(true)} className="gap-2">
+        <div className="flex w-full flex-row flex-wrap gap-2 sm:w-auto sm:flex-nowrap">
+          <Button
+            variant="outline"
+            onClick={() => setImportOpen(true)}
+            className="flex-1 gap-2 sm:flex-none"
+          >
             <Upload className="h-4 w-4" />
             Import CSV
           </Button>
-          <Button onClick={() => openDialogFor('Stake Center')} className="gap-2">
+          <Button
+            onClick={() => openDialogFor('Stake Center')}
+            className="flex-1 gap-2 sm:flex-none"
+          >
             <Plus className="h-4 w-4" />
             Add Event
           </Button>
@@ -239,16 +246,16 @@ export function DashboardClient({
       {/* Tabs */}
       <Tabs defaultValue="stake-center" className="space-y-4">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-          <TabsList>
-            <TabsTrigger value="stake-center" className="gap-2">
-              <Building2 className="h-4 w-4" />
+          <TabsList className="w-full sm:w-auto">
+            <TabsTrigger value="stake-center" className="flex-1 gap-2 sm:flex-none">
+              <Building2 className="hidden h-4 w-4 sm:inline-block" />
               Stake Center
               <span className="ml-1 rounded-full bg-primary/10 px-2 py-0.5 text-xs">
                 {stakeCenterEvents.length}
               </span>
             </TabsTrigger>
-            <TabsTrigger value="maples-building" className="gap-2">
-              <Building2 className="h-4 w-4" />
+            <TabsTrigger value="maples-building" className="flex-1 gap-2 sm:flex-none">
+              <Building2 className="hidden h-4 w-4 sm:inline-block" />
               Maples Building
               <span className="ml-1 rounded-full bg-primary/10 px-2 py-0.5 text-xs">
                 {maplesEvents.length}

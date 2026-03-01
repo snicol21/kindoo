@@ -1581,8 +1581,13 @@ export function EventTable({
               </div>
               <div className="space-y-2">
                 <Label>Email of the new user</Label>
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                  <Input readOnly value={licenseEvent.email || ''} placeholder="No email" />
+                <div className="flex w-full items-center gap-2">
+                  <Input
+                    readOnly
+                    value={licenseEvent.email || ''}
+                    placeholder="No email"
+                    className="min-w-0 flex-1"
+                  />
                   <Button
                     variant="secondary"
                     size="icon"
@@ -1609,80 +1614,96 @@ export function EventTable({
                   <>
                     <div className="space-y-2">
                       <Label>Rights activated starting</Label>
-                      <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_auto_1fr_auto] sm:items-center">
-                        <Input readOnly value={licenseTimes.startDate} />
-                        <Button
-                          variant="secondary"
-                          size="icon"
-                          className="shrink-0 sm:mr-3"
-                          aria-label="Copy start date"
-                          onClick={async () => {
-                            try {
-                              await navigator.clipboard.writeText(licenseTimes.startDate);
-                              toast.success('Start date copied.');
-                            } catch {
-                              toast.error('Failed to copy.');
-                            }
-                          }}
-                        >
-                          <Copy className="h-4 w-4" />
-                        </Button>
-                        <Input readOnly value={licenseTimes.startTime} />
-                        <Button
-                          variant="secondary"
-                          size="icon"
-                          className="shrink-0 sm:mr-3"
-                          aria-label="Copy start time"
-                          onClick={async () => {
-                            try {
-                              await navigator.clipboard.writeText(licenseTimes.startTime);
-                              toast.success('Start time copied.');
-                            } catch {
-                              toast.error('Failed to copy.');
-                            }
-                          }}
-                        >
-                          <Copy className="h-4 w-4" />
-                        </Button>
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                          <Input
+                            readOnly
+                            value={licenseTimes.startDate}
+                            className="min-w-0 flex-1"
+                          />
+                          <Button
+                            variant="secondary"
+                            size="icon"
+                            className="shrink-0 sm:mr-3"
+                            aria-label="Copy start date"
+                            onClick={async () => {
+                              try {
+                                await navigator.clipboard.writeText(licenseTimes.startDate);
+                                toast.success('Start date copied.');
+                              } catch {
+                                toast.error('Failed to copy.');
+                              }
+                            }}
+                          >
+                            <Copy className="h-4 w-4" />
+                          </Button>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Input
+                            readOnly
+                            value={licenseTimes.startTime}
+                            className="min-w-0 flex-1"
+                          />
+                          <Button
+                            variant="secondary"
+                            size="icon"
+                            className="shrink-0 sm:mr-3"
+                            aria-label="Copy start time"
+                            onClick={async () => {
+                              try {
+                                await navigator.clipboard.writeText(licenseTimes.startTime);
+                                toast.success('Start time copied.');
+                              } catch {
+                                toast.error('Failed to copy.');
+                              }
+                            }}
+                          >
+                            <Copy className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </div>
                     </div>
                     <div className="space-y-2">
                       <Label>User expiry date and time</Label>
-                      <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_auto_1fr_auto] sm:items-center">
-                        <Input readOnly value={licenseTimes.endDate} />
-                        <Button
-                          variant="secondary"
-                          size="icon"
-                          className="shrink-0 sm:mr-3"
-                          aria-label="Copy expiry date"
-                          onClick={async () => {
-                            try {
-                              await navigator.clipboard.writeText(licenseTimes.endDate);
-                              toast.success('Expiry date copied.');
-                            } catch {
-                              toast.error('Failed to copy.');
-                            }
-                          }}
-                        >
-                          <Copy className="h-4 w-4" />
-                        </Button>
-                        <Input readOnly value={licenseTimes.endTime} />
-                        <Button
-                          variant="secondary"
-                          size="icon"
-                          className="shrink-0 sm:mr-3"
-                          aria-label="Copy expiry time"
-                          onClick={async () => {
-                            try {
-                              await navigator.clipboard.writeText(licenseTimes.endTime);
-                              toast.success('Expiry time copied.');
-                            } catch {
-                              toast.error('Failed to copy.');
-                            }
-                          }}
-                        >
-                          <Copy className="h-4 w-4" />
-                        </Button>
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                          <Input readOnly value={licenseTimes.endDate} className="min-w-0 flex-1" />
+                          <Button
+                            variant="secondary"
+                            size="icon"
+                            className="shrink-0 sm:mr-3"
+                            aria-label="Copy expiry date"
+                            onClick={async () => {
+                              try {
+                                await navigator.clipboard.writeText(licenseTimes.endDate);
+                                toast.success('Expiry date copied.');
+                              } catch {
+                                toast.error('Failed to copy.');
+                              }
+                            }}
+                          >
+                            <Copy className="h-4 w-4" />
+                          </Button>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Input readOnly value={licenseTimes.endTime} className="min-w-0 flex-1" />
+                          <Button
+                            variant="secondary"
+                            size="icon"
+                            className="shrink-0 sm:mr-3"
+                            aria-label="Copy expiry time"
+                            onClick={async () => {
+                              try {
+                                await navigator.clipboard.writeText(licenseTimes.endTime);
+                                toast.success('Expiry time copied.');
+                              } catch {
+                                toast.error('Failed to copy.');
+                              }
+                            }}
+                          >
+                            <Copy className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </div>
                     </div>
                   </>
@@ -1690,9 +1711,10 @@ export function EventTable({
               })()}
               <div className="space-y-2">
                 <Label>User description</Label>
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <div className="flex w-full items-center gap-2">
                   <Input
                     readOnly
+                    className="min-w-0 flex-1"
                     value={`[${licenseEvent.ward ?? ''}] - [Private Event] - [${licenseEvent.name}]`}
                   />
                   <Button
