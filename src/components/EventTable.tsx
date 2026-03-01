@@ -28,6 +28,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   ArrowUpDown,
   ArrowUp,
@@ -495,7 +496,7 @@ export function EventTable({
   };
 
   return (
-    <>
+    <TooltipProvider delayDuration={200}>
       <div className="rounded-md border overflow-x-auto">
         <Table>
           <TableHeader className="[&_th]:text-xs">
@@ -636,46 +637,66 @@ export function EventTable({
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-1">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        aria-label={`Copy ${event.name}`}
-                        disabled={isOptimistic}
-                        onClick={() => setCopyingEvent(event)}
-                      >
-                        <Copy className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        aria-label={`Clone ${event.name}`}
-                        disabled={isOptimistic || !onClone}
-                        onClick={() => openCloneDialog(event)}
-                      >
-                        <CopyPlus className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        aria-label={`Edit ${event.name}`}
-                        disabled={isOptimistic || !onEdit}
-                        onClick={() => openEditDialog(event)}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        aria-label={`Delete ${event.name}`}
-                        disabled={isOptimistic || deletingId === event.id || !onDelete}
-                        onClick={() => setPendingDeleteEvent(event)}
-                      >
-                        {deletingId === event.id ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        )}
-                      </Button>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            aria-label={`Copy ${event.name}`}
+                            disabled={isOptimistic}
+                            onClick={() => setCopyingEvent(event)}
+                          >
+                            <Copy className="h-4 w-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Copy message templates</TooltipContent>
+                      </Tooltip>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            aria-label={`Clone ${event.name}`}
+                            disabled={isOptimistic || !onClone}
+                            onClick={() => openCloneDialog(event)}
+                          >
+                            <CopyPlus className="h-4 w-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Clone event</TooltipContent>
+                      </Tooltip>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            aria-label={`Edit ${event.name}`}
+                            disabled={isOptimistic || !onEdit}
+                            onClick={() => openEditDialog(event)}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Edit event</TooltipContent>
+                      </Tooltip>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            aria-label={`Delete ${event.name}`}
+                            disabled={isOptimistic || deletingId === event.id || !onDelete}
+                            onClick={() => setPendingDeleteEvent(event)}
+                          >
+                            {deletingId === event.id ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            )}
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Delete event</TooltipContent>
+                      </Tooltip>
                     </div>
                   </TableCell>
                 </TableRow>
@@ -1064,6 +1085,6 @@ export function EventTable({
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </>
+    </TooltipProvider>
   );
 }
