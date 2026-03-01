@@ -537,10 +537,9 @@ export function EventTable({
               <TableHead className="w-[110px]">
                 <SortButton col="daysUntil" label="Days Until" />
               </TableHead>
-              <TableHead className="w-[170px]">
-                <SortButton col="eventDate" label="Event Date" />
+              <TableHead className="min-w-[260px]">
+                <SortButton col="eventDate" label="Event" />
               </TableHead>
-              <TableHead className="min-w-[220px]">Event Description</TableHead>
               <TableHead className="w-[240px]">
                 <SortButton col="name" label="Member" />
               </TableHead>
@@ -580,14 +579,15 @@ export function EventTable({
                   <TableCell className="text-foreground text-sm">
                     {isOptimistic ? '—' : getDaysUntil(event.eventDate)}
                   </TableCell>
-                  <TableCell className="whitespace-nowrap">
+                  <TableCell>
                     <div className="text-foreground text-sm">{formatDate(event.eventDate)}</div>
                     <div className="text-muted-foreground text-xs">
                       {formatTimeRange(event.startTime, event.endTime)}
                     </div>
-                  </TableCell>
-                  <TableCell className="text-muted-foreground max-w-[320px]">
-                    <p className="truncate" title={event.description}>
+                    <p
+                      className="text-muted-foreground text-xs line-clamp-2"
+                      title={event.description}
+                    >
                       {event.description}
                     </p>
                   </TableCell>
