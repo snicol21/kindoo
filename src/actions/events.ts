@@ -82,6 +82,31 @@ function parseTimeToMinutes(value: string) {
   return hours * 60 + minutes;
 }
 
+function minutesToTime(minutes: number) {
+  const normalized = Math.max(0, Math.min(23 * 60 + 59, Math.floor(minutes)));
+  const hours = Math.floor(normalized / 60);
+  const mins = normalized % 60;
+  return `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
+}
+
+function clampImportTimes(input: AddEventInput): AddEventInput {
+  const earliestMinutes = 5 * 60;
+  const latestMinutes = 23 * 60;
+
+  const startMinutes = parseTimeToMinutes(input.startTime);
+  const endMinutes = parseTimeToMinutes(input.endTime);
+
+  return {
+    ...input,
+    startTime:
+      startMinutes === null
+        ? input.startTime
+        : minutesToTime(Math.max(startMinutes, earliestMinutes)),
+    endTime:
+      endMinutes === null ? input.endTime : minutesToTime(Math.min(endMinutes, latestMinutes)),
+  };
+}
+
 function formatPhoneForStorage(value?: string) {
   if (!value) return undefined;
   const digits = value.replace(/\D/g, '');
@@ -350,7 +375,7 @@ export async function importEvents(input: {
     const validRows: AddEventInput[] = [];
 
     input.events.forEach((event, index) => {
-      const normalizedEvent = normalizeEventInput(event);
+      const normalizedEvent = clampImportTimes(normalizeEventInput(event));
       const error = validateEventInput(normalizedEvent);
       if (error) {
         rowErrors.push({ row: index + 2, message: error });
