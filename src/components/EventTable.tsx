@@ -1417,10 +1417,13 @@ export function EventTable({
                   {copyingEvent.email?.trim() && (
                     <div className="space-y-2">
                       <Label>Email</Label>
-                      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                        <Input readOnly value={copyingEvent.email} />
+                      <div className="flex w-full items-center gap-2">
+                        <Input readOnly value={copyingEvent.email} className="min-w-0 flex-1" />
                         <Button
-                          variant="outline"
+                          variant="secondary"
+                          size="icon"
+                          className="shrink-0 sm:mr-3"
+                          aria-label="Copy email"
                           onClick={async () => {
                             try {
                               await navigator.clipboard.writeText(copyingEvent.email ?? '');
@@ -1430,7 +1433,7 @@ export function EventTable({
                             }
                           }}
                         >
-                          Copy
+                          <Copy className="h-4 w-4" />
                         </Button>
                       </div>
                     </div>
@@ -1438,10 +1441,17 @@ export function EventTable({
                   {copyingEvent.phone?.trim() && (
                     <div className="space-y-2">
                       <Label>Phone</Label>
-                      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                        <Input readOnly value={formatPhone(copyingEvent.phone)} />
+                      <div className="flex w-full items-center gap-2">
+                        <Input
+                          readOnly
+                          value={formatPhone(copyingEvent.phone)}
+                          className="min-w-0 flex-1"
+                        />
                         <Button
-                          variant="outline"
+                          variant="secondary"
+                          size="icon"
+                          className="shrink-0 sm:mr-3"
+                          aria-label="Copy phone"
                           onClick={async () => {
                             try {
                               await navigator.clipboard.writeText(formatPhone(copyingEvent.phone));
@@ -1451,7 +1461,7 @@ export function EventTable({
                             }
                           }}
                         >
-                          Copy
+                          <Copy className="h-4 w-4" />
                         </Button>
                       </div>
                     </div>
@@ -1464,11 +1474,12 @@ export function EventTable({
                   <Textarea
                     readOnly
                     rows={4}
-                    className="flex-1 min-h-[140px]"
+                    className="min-w-0 flex-1 min-h-[140px]"
                     value={buildShortMessage(copyingEvent)}
                   />
                   <Button
-                    variant="outline"
+                    variant="secondary"
+                    size="sm"
                     className="self-start"
                     onClick={async () => {
                       try {
@@ -1479,6 +1490,7 @@ export function EventTable({
                       }
                     }}
                   >
+                    <Copy className="mr-2 h-4 w-4" />
                     Copy Message
                   </Button>
                 </div>
@@ -1487,11 +1499,12 @@ export function EventTable({
                   <Textarea
                     readOnly
                     rows={6}
-                    className="flex-1 min-h-[140px]"
+                    className="min-w-0 flex-1 min-h-[140px]"
                     value={buildCalendarItemDescription(copyingEvent)}
                   />
                   <Button
-                    variant="outline"
+                    variant="secondary"
+                    size="sm"
                     className="self-start"
                     onClick={async () => {
                       try {
@@ -1504,15 +1517,22 @@ export function EventTable({
                       }
                     }}
                   >
+                    <Copy className="mr-2 h-4 w-4" />
                     Copy Message
                   </Button>
                 </div>
               </div>
               <div className="space-y-2">
                 <Label>Availability confirmed + policy text</Label>
-                <Textarea readOnly rows={9} value={buildFullMessage(copyingEvent)} />
+                <Textarea
+                  readOnly
+                  rows={9}
+                  className="min-w-0"
+                  value={buildFullMessage(copyingEvent)}
+                />
                 <Button
-                  variant="outline"
+                  variant="secondary"
+                  size="sm"
                   onClick={async () => {
                     try {
                       await navigator.clipboard.writeText(buildFullMessage(copyingEvent));
@@ -1522,6 +1542,7 @@ export function EventTable({
                     }
                   }}
                 >
+                  <Copy className="mr-2 h-4 w-4" />
                   Copy Message
                 </Button>
               </div>
@@ -1759,7 +1780,7 @@ export function EventTable({
                     value={buildKindooLicenseCreatedMessage(licenseEvent)}
                   />
                   <Button
-                    variant="outline"
+                    variant="secondary"
                     size="sm"
                     onClick={async () => {
                       try {
@@ -1772,6 +1793,7 @@ export function EventTable({
                       }
                     }}
                   >
+                    <Copy className="mr-2 h-4 w-4" />
                     Copy Message
                   </Button>
                 </div>
