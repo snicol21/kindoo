@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState, type MouseEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type MouseEvent } from 'react';
 import {
   Table,
   TableBody,
@@ -308,18 +308,25 @@ export function EventTable({
   const [pendingDeleteEvent, setPendingDeleteEvent] = useState<EventWithCreator | null>(null);
   const [editingEvent, setEditingEvent] = useState<EventWithCreator | null>(null);
   const [licenseEvent, setLicenseEvent] = useState<EventWithCreator | null>(null);
+  const licenseDialogContentRef = useRef<HTMLDivElement | null>(null);
   const [isSavingLicenseStatus, setIsSavingLicenseStatus] = useState(false);
   const submitKindooLicenseStatus = async (event: EventWithCreator, nextValue: boolean) => {
-    if (!onSetKindooLicenseCreated) return;
+    if (!onSetKindooLicenseCreated || isSavingLicenseStatus) return;
+    const previousValue = !!event.kindooLicenseCreated;
+    setLicenseEvent((prev) =>
+      prev && prev.id === event.id ? { ...prev, kindooLicenseCreated: nextValue } : prev
+    );
     setIsSavingLicenseStatus(true);
     try {
       await onSetKindooLicenseCreated({
         eventId: event.id,
         kindooLicenseCreated: nextValue,
       });
+    } catch {
       setLicenseEvent((prev) =>
-        prev && prev.id === event.id ? { ...prev, kindooLicenseCreated: nextValue } : prev
+        prev && prev.id === event.id ? { ...prev, kindooLicenseCreated: previousValue } : prev
       );
+      toast.error('Failed to update license status.');
     } finally {
       setIsSavingLicenseStatus(false);
     }
@@ -695,7 +702,7 @@ export function EventTable({
                               <div
                                 className={
                                   withinWindow && !isCompleted
-                                    ? 'font-semibold text-emerald-600 animate-pulse'
+                                    ? 'font-semibold text-yellow-600 animate-pulse'
                                     : isCompleted
                                       ? 'font-semibold text-emerald-700'
                                       : 'text-foreground'
@@ -703,26 +710,32 @@ export function EventTable({
                               >
                                 {getDaysUntil(event.eventDate)}
                               </div>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className={
-                                  isCompleted
-                                    ? 'border-emerald-600 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 hover:border-emerald-700'
-                                    : withinWindow
-                                      ? 'border-emerald-600 bg-emerald-600 text-white hover:bg-emerald-700 hover:border-emerald-700'
-                                      : ''
-                                }
-                                disabled={!withinWindow && !isCompleted}
-                                onClick={() => setLicenseEvent(event)}
-                              >
-                                {isCompleted ? 'License Completed' : 'Kindoo License'}
-                              </Button>
-                              {isCompleted && (
-                                <div className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-700">
+                              {isCompleted ? (
+                                <button
+                                  type="button"
+                                  className="inline-flex w-fit cursor-pointer items-center gap-1.5 text-xs font-medium text-emerald-700 hover:text-emerald-800 disabled:cursor-not-allowed"
+                                  onClick={() => setLicenseEvent(event)}
+                                  disabled={!onSetKindooLicenseCreated || isSavingLicenseStatus}
+                                >
                                   <CheckCircle2 className="h-3.5 w-3.5" />
-                                  Finished
-                                </div>
+                                  <span className="underline underline-offset-2">
+                                    License created
+                                  </span>
+                                </button>
+                              ) : (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className={
+                                    withinWindow
+                                      ? 'border-yellow-500 bg-yellow-500 text-black hover:bg-yellow-600 hover:border-yellow-600'
+                                      : ''
+                                  }
+                                  disabled={!withinWindow}
+                                  onClick={() => setLicenseEvent(event)}
+                                >
+                                  Kindoo License
+                                </Button>
                               )}
                             </div>
                           );
@@ -764,7 +777,7 @@ export function EventTable({
                           <div className="flex min-w-0 items-center gap-1.5">
                             <a
                               href={`mailto:${event.email}`}
-                              className="truncate font-semibold text-foreground hover:underline"
+                              className="truncate cursor-pointer font-semibold text-foreground hover:underline"
                               title={event.email}
                             >
                               {event.email}
@@ -801,7 +814,7 @@ export function EventTable({
                           <div className="flex min-w-0 items-center gap-1.5">
                             <a
                               href={`tel:${event.phone.replace(/\D/g, '')}`}
-                              className="truncate hover:text-foreground hover:underline"
+                              className="truncate cursor-pointer hover:text-foreground hover:underline"
                               title={formatPhone(event.phone)}
                             >
                               {formatPhone(event.phone)}
@@ -1372,7 +1385,17 @@ export function EventTable({
       </Dialog>
 
       <Dialog open={!!licenseEvent} onOpenChange={(open) => !open && setLicenseEvent(null)}>
-        <DialogContent className="sm:max-w-xl" onOpenAutoFocus={(event) => event.preventDefault()}>
+        <DialogContent
+          ref={licenseDialogContentRef}
+          tabIndex={-1}
+          className="sm:max-w-xl"
+          onOpenAutoFocus={(event) => {
+            event.preventDefault();
+            requestAnimationFrame(() => {
+              licenseDialogContentRef.current?.focus();
+            });
+          }}
+        >
           <DialogHeader>
             <DialogTitle>Kindoo License</DialogTitle>
             <DialogDescription>Copy these values into the Kindoo setup form.</DialogDescription>
@@ -1528,7 +1551,7 @@ export function EventTable({
                   href="https://web.kindoo.tech/"
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex items-center gap-1 text-sm font-medium text-foreground underline underline-offset-4 hover:text-primary"
+                  className="inline-flex cursor-pointer items-center gap-1 text-sm font-medium text-foreground underline underline-offset-4 hover:text-primary"
                 >
                   Open Kindoo
                   <ExternalLink className="h-3.5 w-3.5" />
@@ -1540,7 +1563,7 @@ export function EventTable({
                     type="checkbox"
                     className="h-4 w-4 accent-emerald-600"
                     checked={!!licenseEvent.kindooLicenseCreated}
-                    disabled={!onSetKindooLicenseCreated || isSavingLicenseStatus}
+                    disabled={!onSetKindooLicenseCreated}
                     onChange={(e) => {
                       void submitKindooLicenseStatus(licenseEvent, e.target.checked);
                     }}
