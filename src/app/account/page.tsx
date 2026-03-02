@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { LicenseLeadTimeSetting } from '@/components/LicenseLeadTimeSetting';
+import { DefaultBuildingSetting } from '@/components/DefaultBuildingSetting';
 import { changeProfile, changePassword } from '@/actions/auth';
 import { db } from '@/lib/db';
 import { users } from '@/schema/schema';
@@ -14,14 +15,14 @@ import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 
 export const metadata: Metadata = {
-  title: 'Change Password',
+  title: 'Account Settings',
 };
 
-interface AccountPasswordPageProps {
+interface AccountPageProps {
   searchParams: Promise<{ updated?: string; nameUpdated?: string; error?: string }>;
 }
 
-export default async function AccountPasswordPage({ searchParams }: AccountPasswordPageProps) {
+export default async function AccountPage({ searchParams }: AccountPageProps) {
   const session = await auth();
   const params = await searchParams;
 
@@ -30,11 +31,15 @@ export default async function AccountPasswordPage({ searchParams }: AccountPassw
   }
 
   const userRecord = await db
-    .select({ licenseLeadDays: users.licenseLeadDays })
+    .select({
+      licenseLeadDays: users.licenseLeadDays,
+      defaultBuilding: users.defaultBuilding,
+    })
     .from(users)
     .where(eq(users.id, session.user.id))
     .limit(1);
   const licenseLeadDays = userRecord[0]?.licenseLeadDays ?? null;
+  const defaultBuilding = userRecord[0]?.defaultBuilding ?? 'Stake Center';
 
   const message = params.error
     ? decodeURIComponent(params.error)
@@ -74,10 +79,10 @@ export default async function AccountPasswordPage({ searchParams }: AccountPassw
 
                 if (!result.success) {
                   const msg = encodeURIComponent(result.error ?? 'Failed to update name.');
-                  redirect(`/account/password?error=${msg}`);
+                  redirect(`/account?error=${msg}`);
                 }
 
-                redirect('/account/password?nameUpdated=1');
+                redirect('/account?nameUpdated=1');
               }}
               className="space-y-4"
             >
@@ -115,10 +120,10 @@ export default async function AccountPasswordPage({ searchParams }: AccountPassw
 
                 if (!result.success) {
                   const msg = encodeURIComponent(result.error ?? 'Failed to update password.');
-                  redirect(`/account/password?error=${msg}`);
+                  redirect(`/account?error=${msg}`);
                 }
 
-                redirect('/account/password?updated=1');
+                redirect('/account?updated=1');
               }}
               className="space-y-4"
             >
@@ -138,6 +143,18 @@ export default async function AccountPasswordPage({ searchParams }: AccountPassw
                 Update password
               </Button>
             </form>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Dashboard</CardTitle>
+            <CardDescription>
+              Choose your default building for dashboard and new events.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <DefaultBuildingSetting initialDefaultBuilding={defaultBuilding} />
           </CardContent>
         </Card>
 

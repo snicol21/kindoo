@@ -315,7 +315,7 @@ export function AddEventDialog({
             </Label>
             <Select
               name="building"
-              defaultValue={state.values?.building ?? defaultBuilding}
+              value={selectedBuilding}
               onValueChange={(value) => setSelectedBuilding(value as Building)}
             >
               <SelectTrigger

@@ -41,7 +41,23 @@ interface DashboardClientProps {
   initialStakeCenterEvents: EventWithCreator[];
   initialMaplesEvents: EventWithCreator[];
   initialLicenseLeadDays?: number | null;
+  initialDefaultBuilding?: Building;
+  initialTab?: DashboardTab;
   messageTemplates: MessageTemplateMap;
+}
+
+type DashboardTab = 'stake-center' | 'maples-building';
+
+function buildingToTab(building: Building): DashboardTab {
+  return building === 'Maples Building' ? 'maples-building' : 'stake-center';
+}
+
+function tabToBuilding(tab: string): Building {
+  return tab === 'maples-building' ? 'Maples Building' : 'Stake Center';
+}
+
+function normalizeTab(tab: string | null | undefined): DashboardTab {
+  return tab === 'maples-building' ? 'maples-building' : 'stake-center';
 }
 
 function isPastEvent(eventDate: string, endTime: string) {
@@ -72,11 +88,16 @@ export function DashboardClient({
   initialStakeCenterEvents,
   initialMaplesEvents,
   initialLicenseLeadDays,
+  initialDefaultBuilding = 'Stake Center',
+  initialTab,
   messageTemplates,
 }: DashboardClientProps) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
-  const [defaultBuilding, setDefaultBuilding] = useState<Building>('Stake Center');
+  const [defaultBuilding, setDefaultBuilding] = useState<Building>(initialDefaultBuilding);
+  const [activeTab, setActiveTab] = useState<DashboardTab>(
+    initialTab ?? buildingToTab(initialDefaultBuilding)
+  );
   const [selectedStakeIds, setSelectedStakeIds] = useState<string[]>([]);
   const [selectedMaplesIds, setSelectedMaplesIds] = useState<string[]>([]);
   const [bulkDeleteTarget, setBulkDeleteTarget] = useState<Building | null>(null);
@@ -141,6 +162,23 @@ export function DashboardClient({
     const upcomingIds = new Set(maplesUpcoming.map((event) => event.id));
     setSelectedMaplesIds((prev) => prev.filter((id) => upcomingIds.has(id)));
   }, [maplesUpcoming]);
+
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    const rawBuilding = url.searchParams.get('building');
+    const hasValidBuilding = rawBuilding === 'stake-center' || rawBuilding === 'maples-building';
+    const current = hasValidBuilding ? rawBuilding : null;
+
+    if (current !== activeTab) {
+      url.searchParams.set('building', activeTab);
+      window.history.replaceState(
+        window.history.state,
+        '',
+        `${url.pathname}?${url.searchParams.toString()}${url.hash}`
+      );
+    }
+    setDefaultBuilding(tabToBuilding(activeTab));
+  }, [activeTab]);
 
   useEffect(() => {
     if (Number.isFinite(initialLicenseLeadDays)) {
@@ -225,7 +263,7 @@ export function DashboardClient({
             Import CSV
           </Button>
           <Button
-            onClick={() => openDialogFor('Stake Center')}
+            onClick={() => openDialogFor(tabToBuilding(activeTab))}
             className="flex-1 gap-2 sm:flex-none"
           >
             <Plus className="h-4 w-4" />
@@ -259,7 +297,11 @@ export function DashboardClient({
       </div>
 
       {/* Tabs */}
-      <Tabs defaultValue="stake-center" className="space-y-4">
+      <Tabs
+        value={activeTab}
+        onValueChange={(value) => setActiveTab(normalizeTab(value))}
+        className="space-y-4"
+      >
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <TabsList className="w-full sm:w-auto">
             <TabsTrigger value="stake-center" className="flex-1 gap-2 sm:flex-none">

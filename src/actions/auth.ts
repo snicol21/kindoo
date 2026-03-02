@@ -3,6 +3,7 @@
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { users } from '@/schema/schema';
+import { BUILDINGS, type Building } from '@/schema/schema';
 import { eq } from 'drizzle-orm';
 import { getAdminEmails, isAdminEmail } from '@/lib/admin';
 import { hashPassword, verifyPassword } from '@/lib/password';
@@ -200,6 +201,23 @@ export async function updateLicenseLeadDays(input: {
 
   await db.update(users).set({ licenseLeadDays: leadDays }).where(eq(users.id, userId));
   return { success: true, data: { leadDays } };
+}
+
+export async function updateDefaultBuilding(input: {
+  defaultBuilding: Building;
+}): Promise<ActionResult<{ defaultBuilding: Building }>> {
+  const session = await auth();
+  const userId = session?.user?.id ?? null;
+
+  if (!userId) return { success: false, error: 'Not authenticated.' };
+
+  const defaultBuilding = input.defaultBuilding;
+  if (!BUILDINGS.includes(defaultBuilding)) {
+    return { success: false, error: 'Invalid building selection.' };
+  }
+
+  await db.update(users).set({ defaultBuilding }).where(eq(users.id, userId));
+  return { success: true, data: { defaultBuilding } };
 }
 
 export async function listAdmins(): Promise<ActionResult<{ emails: string[] }>> {

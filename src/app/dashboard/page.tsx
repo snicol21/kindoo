@@ -10,23 +10,63 @@ import { connection } from 'next/server';
 import { getMessageTemplates } from '@/actions/message-templates';
 import { EMPTY_MESSAGE_TEMPLATES } from '@/lib/message-templates';
 
+type DashboardTab = 'stake-center' | 'maples-building';
+
+function normalizeDashboardTab(value: string | null | undefined): DashboardTab | null {
+  if (value === 'stake-center' || value === 'maples-building') {
+    return value;
+  }
+  return null;
+}
+
 export const metadata: Metadata = {
   title: 'Dashboard',
 };
 
-export default async function DashboardPage() {
+interface DashboardPageProps {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}
+
+export default async function DashboardPage({ searchParams }: DashboardPageProps) {
   await connection();
   const session = await auth();
+  const params = await searchParams;
 
   if (!session?.user?.id) {
     redirect('/auth/signin');
   }
 
   const userPreference = await db
-    .select({ licenseLeadDays: users.licenseLeadDays })
+    .select({
+      licenseLeadDays: users.licenseLeadDays,
+      defaultBuilding: users.defaultBuilding,
+    })
     .from(users)
     .where(eq(users.id, session.user.id))
     .limit(1);
+
+  const initialDefaultBuilding = userPreference[0]?.defaultBuilding ?? 'Stake Center';
+  const fallbackTab =
+    initialDefaultBuilding === 'Maples Building' ? 'maples-building' : 'stake-center';
+  const rawBuilding = Array.isArray(params.building) ? params.building[0] : params.building;
+  const normalizedBuilding = normalizeDashboardTab(rawBuilding);
+
+  if (rawBuilding && !normalizedBuilding) {
+    const nextParams = new URLSearchParams();
+    for (const [key, value] of Object.entries(params)) {
+      if (Array.isArray(value)) {
+        for (const entry of value) {
+          nextParams.append(key, entry);
+        }
+      } else if (typeof value === 'string') {
+        nextParams.set(key, value);
+      }
+    }
+    nextParams.set('building', fallbackTab);
+    redirect(`/dashboard?${nextParams.toString()}`);
+  }
+
+  const initialTab = normalizedBuilding ?? fallbackTab;
 
   // Initial data fetch for both buildings (runs in parallel)
   const [stakeCenterEvents, maplesEvents] = await Promise.all([
@@ -91,6 +131,8 @@ export default async function DashboardPage() {
         image: session.user.image ?? null,
       }}
       initialLicenseLeadDays={userPreference[0]?.licenseLeadDays ?? null}
+      initialDefaultBuilding={initialDefaultBuilding}
+      initialTab={initialTab}
       initialStakeCenterEvents={stakeCenterEvents}
       initialMaplesEvents={maplesEvents}
       messageTemplates={messageTemplates}

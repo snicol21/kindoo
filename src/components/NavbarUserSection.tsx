@@ -71,7 +71,7 @@ export async function NavbarUserSection() {
               </Link>
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
-              <Link href="/account/password" className="gap-2 cursor-pointer">
+              <Link href="/account" className="gap-2 cursor-pointer">
                 <Settings className="h-4 w-4" />
                 Account Settings
               </Link>

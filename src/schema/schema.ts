@@ -13,6 +13,12 @@ export const users = sqliteTable('user', {
   emailVerified: integer('emailVerified', { mode: 'timestamp_ms' }),
   image: text('image'),
   licenseLeadDays: integer('license_lead_days').notNull().default(2),
+  defaultBuilding: text('default_building', {
+    enum: ['Stake Center', 'Maples Building'],
+  })
+    .notNull()
+    .$type<Building>()
+    .default('Stake Center'),
   createdAt: integer('created_at', { mode: 'timestamp' })
     .notNull()
     .default(sql`(unixepoch())`),
