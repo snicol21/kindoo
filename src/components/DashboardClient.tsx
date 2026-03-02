@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   Dialog,
   DialogContent,
@@ -29,15 +28,7 @@ import type { Building } from '@/schema/schema';
 import type { EventWithCreator } from '@/actions/events';
 import type { MessageTemplateMap } from '@/lib/message-templates';
 
-interface DashboardUser {
-  id: string;
-  name: string | null;
-  email: string | null;
-  image: string | null;
-}
-
 interface DashboardClientProps {
-  user: DashboardUser;
   initialStakeCenterEvents: EventWithCreator[];
   initialMaplesEvents: EventWithCreator[];
   initialLicenseLeadDays?: number | null;
@@ -115,7 +106,6 @@ function normalizeLicenseLeadDays(value: string | number | null | undefined) {
 }
 
 export function DashboardClient({
-  user,
   initialStakeCenterEvents,
   initialMaplesEvents,
   initialLicenseLeadDays,
@@ -215,6 +205,11 @@ export function DashboardClient({
   const activeBuildingKey = activeTab === 'maples-building' ? 'maples' : 'stake';
   const activeBuildingEvents = activeTab === 'maples-building' ? maplesEvents : stakeCenterEvents;
   const activeUpcoming = activeTab === 'maples-building' ? maplesUpcoming : stakeUpcoming;
+  const activeBuildingName = activeTab === 'maples-building' ? 'Maples Building' : 'Stake Center';
+  const activeBuildingSubtitle =
+    activeTab === 'maples-building'
+      ? 'All upcoming events at Maples Building'
+      : 'All upcoming events at Stake Center';
   const wardBreakdown = useMemo(() => {
     const byWard = new Map<
       string,
@@ -373,15 +368,6 @@ export function DashboardClient({
     return () => window.removeEventListener('storage', handleStorage);
   }, [initialLicenseLeadDays]);
 
-  const userInitials = user.name
-    ? user.name
-        .split(' ')
-        .map((n) => n[0])
-        .join('')
-        .toUpperCase()
-        .slice(0, 2)
-    : (user.email?.[0]?.toUpperCase() ?? '?');
-
   const openDialogFor = (building: Building) => {
     setDefaultBuilding(building);
     setDialogOpen(true);
@@ -410,40 +396,6 @@ export function DashboardClient({
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-7xl space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <Avatar className="h-12 w-12 border-2 border-border">
-            <AvatarImage src={user.image ?? undefined} alt={user.name ?? 'User avatar'} />
-            <AvatarFallback className="text-sm font-semibold">{userInitials}</AvatarFallback>
-          </Avatar>
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight">
-              Welcome back{user.name ? `, ${user.name.split(' ')[0]}` : ''}!
-            </h1>
-            <p className="text-sm text-muted-foreground">{user.email}</p>
-          </div>
-        </div>
-
-        <div className="flex w-full flex-row flex-wrap gap-2 sm:w-auto sm:flex-nowrap">
-          <Button
-            variant="outline"
-            onClick={() => setImportOpen(true)}
-            className="flex-1 gap-2 sm:flex-none"
-          >
-            <Upload className="h-4 w-4" />
-            Import CSV
-          </Button>
-          <Button
-            onClick={() => openDialogFor(tabToBuilding(activeTab))}
-            className="flex-1 gap-2 sm:flex-none"
-          >
-            <Plus className="h-4 w-4" />
-            Add Event
-          </Button>
-        </div>
-      </div>
-
       {/* Tabs */}
       <Tabs
         value={activeTab}
@@ -451,7 +403,15 @@ export function DashboardClient({
         className="space-y-4"
       >
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-          <TabsList className="w-full sm:w-auto">
+          <Button
+            variant="outline"
+            onClick={() => setImportOpen(true)}
+            className="order-1 w-full gap-2 sm:order-2 sm:w-auto sm:ml-auto"
+          >
+            <Upload className="h-4 w-4" />
+            Import CSV
+          </Button>
+          <TabsList className="w-full sm:w-auto order-2 sm:order-1">
             <TabsTrigger value="stake-center" className="flex-1 gap-2 sm:flex-none">
               <Building2 className="hidden h-4 w-4 sm:inline-block" />
               Stake Center
@@ -468,6 +428,27 @@ export function DashboardClient({
             </TabsTrigger>
           </TabsList>
         </div>
+
+        <Card>
+          <CardHeader className="flex flex-col gap-3 space-y-0 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <CalendarDays className="h-5 w-5 text-muted-foreground" />
+                {activeBuildingName} Events
+              </CardTitle>
+              <CardDescription>{activeBuildingSubtitle}</CardDescription>
+            </div>
+            <div className="flex w-full flex-row flex-wrap gap-2 sm:w-auto sm:flex-nowrap">
+              <Button
+                onClick={() => openDialogFor(tabToBuilding(activeTab))}
+                className="flex-1 gap-2 sm:flex-none"
+              >
+                <Plus className="h-4 w-4" />
+                Add Event
+              </Button>
+            </div>
+          </CardHeader>
+        </Card>
 
         {/* Stats */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
@@ -651,113 +632,81 @@ export function DashboardClient({
         </div>
 
         <TabsContent value="stake-center">
-          <Card>
-            <CardHeader className="flex flex-col gap-3 space-y-0 pb-3 sm:flex-row sm:items-center sm:justify-between sm:pb-4">
-              <div>
-                <CardTitle className="flex items-center gap-2">
-                  <CalendarDays className="h-5 w-5 text-muted-foreground" />
-                  Stake Center Events
-                </CardTitle>
-                <CardDescription>All upcoming events at Stake Center</CardDescription>
-              </div>
-              <div className="flex w-full items-center gap-2 sm:w-auto sm:justify-end">
-                {selectedStakeIds.length > 0 && (
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    className="flex-1 sm:flex-none"
-                    disabled={bulkDeleteStakeCenterEvents.isPending}
-                    onClick={() => setBulkDeleteTarget('Stake Center')}
-                  >
-                    Delete selected ({selectedStakeIds.length})
-                  </Button>
-                )}
+          <div className="space-y-3">
+            {selectedStakeIds.length > 0 && (
+              <div className="flex w-full items-center justify-end">
                 <Button
-                  variant="outline"
+                  variant="destructive"
                   size="sm"
-                  onClick={() => openDialogFor('Stake Center')}
-                  className="gap-2 flex-1 sm:flex-none"
+                  disabled={bulkDeleteStakeCenterEvents.isPending}
+                  onClick={() => setBulkDeleteTarget('Stake Center')}
                 >
-                  <Plus className="h-4 w-4" />
-                  Add
+                  Delete selected ({selectedStakeIds.length})
                 </Button>
               </div>
-            </CardHeader>
-            <CardContent className="px-2 py-2 sm:px-6 sm:py-6">
-              <EventTable
-                events={stakeUpcoming}
-                isLoading={scLoading}
-                isError={scError}
-                building="Stake Center"
-                messageTemplates={messageTemplates}
-                onDelete={(eventId) =>
-                  deleteStakeCenterEvent.mutateAsync(eventId).then(() => undefined)
-                }
-                selectedIds={selectedStakeIds}
-                onSelectionChange={setSelectedStakeIds}
-                onEdit={(input) => updateEvent.mutateAsync(input).then(() => undefined)}
-                onClone={(input) => addEvent.mutateAsync(input).then(() => undefined)}
-                onSetKindooLicenseCreated={(input) =>
-                  setKindooLicenseCreated.mutateAsync(input).then(() => undefined)
-                }
-                licenseLeadDays={licenseLeadDays}
-              />
-            </CardContent>
-          </Card>
+            )}
+            <Card>
+              <CardContent className="p-3 sm:p-4">
+                <EventTable
+                  events={stakeUpcoming}
+                  isLoading={scLoading}
+                  isError={scError}
+                  building="Stake Center"
+                  messageTemplates={messageTemplates}
+                  onDelete={(eventId) =>
+                    deleteStakeCenterEvent.mutateAsync(eventId).then(() => undefined)
+                  }
+                  selectedIds={selectedStakeIds}
+                  onSelectionChange={setSelectedStakeIds}
+                  onEdit={(input) => updateEvent.mutateAsync(input).then(() => undefined)}
+                  onClone={(input) => addEvent.mutateAsync(input).then(() => undefined)}
+                  onSetKindooLicenseCreated={(input) =>
+                    setKindooLicenseCreated.mutateAsync(input).then(() => undefined)
+                  }
+                  licenseLeadDays={licenseLeadDays}
+                />
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
 
         <TabsContent value="maples-building">
-          <Card>
-            <CardHeader className="flex flex-col gap-3 space-y-0 pb-3 sm:flex-row sm:items-center sm:justify-between sm:pb-4">
-              <div>
-                <CardTitle className="flex items-center gap-2">
-                  <CalendarDays className="h-5 w-5 text-muted-foreground" />
-                  Maples Building Events
-                </CardTitle>
-                <CardDescription>All upcoming events at Maples Building</CardDescription>
-              </div>
-              <div className="flex w-full items-center gap-2 sm:w-auto sm:justify-end">
-                {selectedMaplesIds.length > 0 && (
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    className="flex-1 sm:flex-none"
-                    disabled={bulkDeleteMaplesEvents.isPending}
-                    onClick={() => setBulkDeleteTarget('Maples Building')}
-                  >
-                    Delete selected ({selectedMaplesIds.length})
-                  </Button>
-                )}
+          <div className="space-y-3">
+            {selectedMaplesIds.length > 0 && (
+              <div className="flex w-full items-center justify-end">
                 <Button
-                  variant="outline"
+                  variant="destructive"
                   size="sm"
-                  onClick={() => openDialogFor('Maples Building')}
-                  className="gap-2 flex-1 sm:flex-none"
+                  disabled={bulkDeleteMaplesEvents.isPending}
+                  onClick={() => setBulkDeleteTarget('Maples Building')}
                 >
-                  <Plus className="h-4 w-4" />
-                  Add
+                  Delete selected ({selectedMaplesIds.length})
                 </Button>
               </div>
-            </CardHeader>
-            <CardContent className="px-2 py-2 sm:px-6 sm:py-6">
-              <EventTable
-                events={maplesUpcoming}
-                isLoading={mbLoading}
-                isError={mbError}
-                building="Maples Building"
-                messageTemplates={messageTemplates}
-                onDelete={(eventId) => deleteMaplesEvent.mutateAsync(eventId).then(() => undefined)}
-                selectedIds={selectedMaplesIds}
-                onSelectionChange={setSelectedMaplesIds}
-                onEdit={(input) => updateEvent.mutateAsync(input).then(() => undefined)}
-                onClone={(input) => addEvent.mutateAsync(input).then(() => undefined)}
-                onSetKindooLicenseCreated={(input) =>
-                  setKindooLicenseCreated.mutateAsync(input).then(() => undefined)
-                }
-                licenseLeadDays={licenseLeadDays}
-              />
-            </CardContent>
-          </Card>
+            )}
+            <Card>
+              <CardContent className="p-3 sm:p-4">
+                <EventTable
+                  events={maplesUpcoming}
+                  isLoading={mbLoading}
+                  isError={mbError}
+                  building="Maples Building"
+                  messageTemplates={messageTemplates}
+                  onDelete={(eventId) =>
+                    deleteMaplesEvent.mutateAsync(eventId).then(() => undefined)
+                  }
+                  selectedIds={selectedMaplesIds}
+                  onSelectionChange={setSelectedMaplesIds}
+                  onEdit={(input) => updateEvent.mutateAsync(input).then(() => undefined)}
+                  onClone={(input) => addEvent.mutateAsync(input).then(() => undefined)}
+                  onSetKindooLicenseCreated={(input) =>
+                    setKindooLicenseCreated.mutateAsync(input).then(() => undefined)
+                  }
+                  licenseLeadDays={licenseLeadDays}
+                />
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
       </Tabs>
 
