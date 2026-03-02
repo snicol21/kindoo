@@ -3,6 +3,7 @@ import path from 'path';
 
 const nextConfig: NextConfig = {
   cacheComponents: true,
+  reactCompiler: true,
   turbopack: {
     root: path.resolve(__dirname),
   },
