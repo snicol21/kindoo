@@ -578,7 +578,7 @@ export function DashboardClient({
                             const hasUpcoming = day.upcoming > 0;
                             const dotClass =
                               day.count === 0
-                                ? 'bg-muted/80'
+                                ? 'bg-muted-foreground/30'
                                 : hasPending
                                   ? 'bg-yellow-400'
                                   : hasActive
@@ -613,7 +613,7 @@ export function DashboardClient({
                                     className={`inline-block h-3 w-3 rounded-full ${dotClass}`}
                                   />
                                   {isToday && (
-                                    <span className="absolute text-[12px] leading-none text-purple-500">
+                                    <span className="absolute text-[9px] leading-none text-purple-500">
                                       ★
                                     </span>
                                   )}

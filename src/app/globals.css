@@ -5,60 +5,98 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  --background: #ffffff;
-  --foreground: #1f2328;
+  /* ── Canvas ── */
+  --background: #ffffff; /* canvas.default */
+  --foreground: #1f2328; /* fg.default */
+
+  /* ── Cards / Popovers ── */
   --card: #ffffff;
   --card-foreground: #1f2328;
   --popover: #ffffff;
   --popover-foreground: #1f2328;
-  --primary: #0969da;
-  --primary-foreground: #ffffff;
-  --secondary: #f6f8fa;
+
+  /* ── Primary (accent blue) ── */
+  --primary: #0969da; /* accent.fg */
+  --primary-foreground: #ffffff; /* fg.onEmphasis */
+
+  /* ── Secondary (subtle surfaces) ── */
+  --secondary: #f6f8fa; /* canvas.subtle */
   --secondary-foreground: #1f2328;
-  --muted: #f6f8fa;
-  --muted-foreground: #656d76;
-  --accent: #eaeef2;
+
+  /* ── Muted ── */
+  --muted: #eaeef2; /* neutral.muted bg */
+  --muted-foreground: #636c76; /* fg.muted */
+
+  /* ── Accent (hover / active surfaces) ── */
+  --accent: #e7ecf0;
   --accent-foreground: #1f2328;
-  --destructive: #d1242f;
-  --border: #d0d7de;
+
+  /* ── Destructive (danger) ── */
+  --destructive: #cf222e; /* danger.fg */
+
+  /* ── Borders & Inputs ── */
+  --border: #d0d7de; /* border.default */
   --input: #d0d7de;
-  --ring: #0969da;
-  --radius: 0.625rem;
-  --sidebar: #f6f8fa;
+  --ring: #0969da; /* accent.fg */
+
+  /* ── Radius (GitHub uses subtle rounding) ── */
+  --radius: 0.375rem; /* ~6px, matches Primer's rounded-md */
+
+  /* ── Sidebar ── */
+  --sidebar: #f6f8fa; /* canvas.subtle */
   --sidebar-foreground: #1f2328;
   --sidebar-border: #d0d7de;
   --sidebar-ring: #0969da;
-  --sidebar-accent: #eaeef2;
+  --sidebar-accent: #e7ecf0;
   --sidebar-accent-foreground: #1f2328;
   --sidebar-primary: #0969da;
   --sidebar-primary-foreground: #ffffff;
-  --chart-1: #0a4d8c;
-  --chart-2: #1f6feb;
-  --chart-3: #2ea043;
-  --chart-4: #d29922;
-  --chart-5: #da3633;
+
+  /* ── Charts (Primer data-viz scale) ── */
+  --chart-1: #0969da; /* blue */
+  --chart-2: #2da44e; /* green */
+  --chart-3: #bf8700; /* yellow/attention */
+  --chart-4: #8250df; /* purple */
+  --chart-5: #cf222e; /* red/danger */
 }
 
 .dark {
-  --background: #0d1117;
-  --foreground: #e6edf3;
-  --card: #161b22;
+  /* ── Canvas ── */
+  --background: #0d1117; /* canvas.default dark */
+  --foreground: #e6edf3; /* fg.default dark */
+
+  /* ── Cards / Popovers ── */
+  --card: #161b22; /* canvas.overlay dark */
   --card-foreground: #e6edf3;
   --popover: #161b22;
   --popover-foreground: #e6edf3;
-  --primary: #2f81f7;
+
+  /* ── Primary (accent blue) ── */
+  --primary: #2f81f7; /* accent.fg dark */
   --primary-foreground: #ffffff;
-  --secondary: #21262d;
+
+  /* ── Secondary ── */
+  --secondary: #21262d; /* canvas.subtle dark */
   --secondary-foreground: #e6edf3;
+
+  /* ── Muted ── */
   --muted: #21262d;
-  --muted-foreground: #9da7b3;
-  --accent: #30363d;
+  --muted-foreground: #848d97; /* fg.muted dark */
+
+  /* ── Accent ── */
+  --accent: #30363d; /* border.default dark (used for hover bg) */
   --accent-foreground: #e6edf3;
-  --destructive: #da3633;
-  --border: #30363d;
+
+  /* ── Destructive ── */
+  --destructive: #f85149; /* danger.fg dark */
+
+  /* ── Borders & Inputs ── */
+  --border: #30363d; /* border.default dark */
   --input: #30363d;
   --ring: #2f81f7;
-  --sidebar: #0d1117;
+
+  /* ── Sidebar ── */
+  --sidebar: #010409; /* canvas.inset dark */
   --sidebar-foreground: #e6edf3;
   --sidebar-border: #30363d;
   --sidebar-ring: #2f81f7;
@@ -66,11 +104,13 @@
   --sidebar-accent-foreground: #e6edf3;
   --sidebar-primary: #2f81f7;
   --sidebar-primary-foreground: #ffffff;
-  --chart-1: #1f6feb;
-  --chart-2: #2ea043;
-  --chart-3: #d29922;
-  --chart-4: #a371f7;
-  --chart-5: #da3633;
+
+  /* ── Charts ── */
+  --chart-1: #2f81f7; /* blue dark */
+  --chart-2: #3fb950; /* green dark */
+  --chart-3: #d29922; /* yellow dark */
+  --chart-4: #bc8cff; /* purple dark */
+  --chart-5: #f85149; /* red dark */
 }
 
 @theme inline {
@@ -92,11 +132,16 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
-  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --radius-sm: calc(var(--radius) - 2px);
+  --radius-md: var(--radius);
+  --radius-lg: calc(var(--radius) + 2px);
+  --radius-xl: calc(var(--radius) + 6px);
+
+  /* GitHub uses a system-ui stack with -apple-system as the lead */
+  --font-sans:
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif,
+    'Apple Color Emoji', 'Segoe UI Emoji';
+  --font-mono: ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, 'Liberation Mono', monospace;
 }
 
 * {
