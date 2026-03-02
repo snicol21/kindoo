@@ -27,6 +27,7 @@ import {
 import { Building2, Plus, CalendarDays, Upload } from 'lucide-react';
 import type { Building } from '@/schema/schema';
 import type { EventWithCreator } from '@/actions/events';
+import type { MessageTemplateMap } from '@/lib/message-templates';
 
 interface DashboardUser {
   id: string;
@@ -40,6 +41,7 @@ interface DashboardClientProps {
   initialStakeCenterEvents: EventWithCreator[];
   initialMaplesEvents: EventWithCreator[];
   initialLicenseLeadDays?: number | null;
+  messageTemplates: MessageTemplateMap;
 }
 
 function isPastEvent(eventDate: string, endTime: string) {
@@ -70,6 +72,7 @@ export function DashboardClient({
   initialStakeCenterEvents,
   initialMaplesEvents,
   initialLicenseLeadDays,
+  messageTemplates,
 }: DashboardClientProps) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
@@ -315,6 +318,7 @@ export function DashboardClient({
                 isLoading={scLoading}
                 isError={scError}
                 building="Stake Center"
+                messageTemplates={messageTemplates}
                 onDelete={(eventId) =>
                   deleteStakeCenterEvent.mutateAsync(eventId).then(() => undefined)
                 }
@@ -348,6 +352,7 @@ export function DashboardClient({
                         isLoading={false}
                         isError={false}
                         building="Stake Center"
+                        messageTemplates={messageTemplates}
                         onDelete={(eventId) =>
                           deleteStakeCenterEvent.mutateAsync(eventId).then(() => undefined)
                         }
@@ -405,6 +410,7 @@ export function DashboardClient({
                 isLoading={mbLoading}
                 isError={mbError}
                 building="Maples Building"
+                messageTemplates={messageTemplates}
                 onDelete={(eventId) => deleteMaplesEvent.mutateAsync(eventId).then(() => undefined)}
                 selectedIds={selectedMaplesIds}
                 onSelectionChange={setSelectedMaplesIds}
@@ -436,6 +442,7 @@ export function DashboardClient({
                         isLoading={false}
                         isError={false}
                         building="Maples Building"
+                        messageTemplates={messageTemplates}
                         onDelete={(eventId) =>
                           deleteMaplesEvent.mutateAsync(eventId).then(() => undefined)
                         }

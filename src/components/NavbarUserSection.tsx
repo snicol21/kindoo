@@ -13,7 +13,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { ThemeToggle } from '@/components/ThemeToggle';
-import { LayoutDashboard, Settings, Shield, LogOut } from 'lucide-react';
+import { LayoutDashboard, Settings, Shield, LogOut, MessageSquare } from 'lucide-react';
 import { isAdminEmail } from '@/lib/admin';
 
 export async function NavbarUserSection() {
@@ -62,6 +62,12 @@ export async function NavbarUserSection() {
               <Link href="/dashboard" className="gap-2 cursor-pointer">
                 <LayoutDashboard className="h-4 w-4" />
                 Dashboard
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link href="/dashboard/message-templates" className="gap-2 cursor-pointer">
+                <MessageSquare className="h-4 w-4" />
+                Message templates
               </Link>
             </DropdownMenuItem>
             <DropdownMenuItem asChild>

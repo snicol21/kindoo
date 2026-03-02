@@ -1,0 +1,76 @@
+export type MessageTemplateKey =
+  | 'availability_inquiry'
+  | 'calendar_item'
+  | 'availability_confirmed'
+  | 'license_created';
+
+export interface MessageTemplateDefinition {
+  key: MessageTemplateKey;
+  title: string;
+  description: string;
+}
+
+export interface MessageTemplatePlaceholder {
+  token: string;
+  description: string;
+}
+
+export const DEFAULT_POLICY_LINK =
+  'https://drive.google.com/file/d/1LBukeaPHsg8eB-EtAyXXiPbq--o7wV1h/view?usp=sharing';
+
+export const MESSAGE_TEMPLATE_DEFINITIONS: MessageTemplateDefinition[] = [
+  {
+    key: 'availability_inquiry',
+    title: 'Availability inquiry text',
+    description: 'Initial response while you check the calendar.',
+  },
+  {
+    key: 'calendar_item',
+    title: 'Calendar item description',
+    description: 'Internal notes used when creating the calendar item.',
+  },
+  {
+    key: 'availability_confirmed',
+    title: 'Availability confirmed + policy text',
+    description: 'Confirmation plus the meetinghouse use policy link.',
+  },
+  {
+    key: 'license_created',
+    title: 'Temporary license created text',
+    description: 'Sent once a temporary Kindoo license is created.',
+  },
+];
+
+export const MESSAGE_TEMPLATE_KEYS = MESSAGE_TEMPLATE_DEFINITIONS.map((template) => template.key);
+
+export const EMPTY_MESSAGE_TEMPLATES: Record<MessageTemplateKey, string> =
+  MESSAGE_TEMPLATE_KEYS.reduce(
+    (acc, key) => {
+      acc[key] = '';
+      return acc;
+    },
+    {} as Record<MessageTemplateKey, string>
+  );
+
+export const TEMPLATE_PLACEHOLDERS: MessageTemplatePlaceholder[] = [
+  { token: '{firstName}', description: 'First name from the member name' },
+  { token: '{fullName}', description: 'Full member name' },
+  { token: '{building}', description: 'Stake Center or Maples Building' },
+  { token: '{ward}', description: 'Ward selection' },
+  { token: '{eventDate}', description: 'Event date (short, no year)' },
+  { token: '{eventDateLong}', description: 'Event date with year' },
+  { token: '{startTime}', description: 'Formatted start time' },
+  { token: '{endTime}', description: 'Formatted end time' },
+  { token: '{timeRange}', description: 'Start and end time range' },
+  { token: '{description}', description: 'Event description' },
+  { token: '{email}', description: 'Member email' },
+  { token: '{phone}', description: 'Member phone' },
+  { token: '{policyLink}', description: 'Stake meetinghouse use policies link' },
+  { token: '{licenseStartDate}', description: 'License start date' },
+  { token: '{licenseStartTime}', description: 'License start time' },
+  { token: '{licenseEndDate}', description: 'License end date' },
+  { token: '{licenseEndTime}', description: 'License end time' },
+  { token: '{licenseWindow}', description: 'License date + time range' },
+];
+
+export type MessageTemplateMap = Record<MessageTemplateKey, string>;

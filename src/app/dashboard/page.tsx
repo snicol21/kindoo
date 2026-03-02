@@ -7,6 +7,8 @@ import { DashboardClient } from '@/components/DashboardClient';
 import type { Metadata } from 'next';
 import type { Building } from '@/schema/schema';
 import { connection } from 'next/server';
+import { getMessageTemplates } from '@/actions/message-templates';
+import { EMPTY_MESSAGE_TEMPLATES } from '@/lib/message-templates';
 
 export const metadata: Metadata = {
   title: 'Dashboard',
@@ -74,6 +76,12 @@ export default async function DashboardPage() {
       .orderBy(events.createdAt),
   ]);
 
+  const templatesResult = await getMessageTemplates();
+  const messageTemplates =
+    templatesResult.success && templatesResult.data
+      ? templatesResult.data
+      : EMPTY_MESSAGE_TEMPLATES;
+
   return (
     <DashboardClient
       user={{
@@ -85,6 +93,7 @@ export default async function DashboardPage() {
       initialLicenseLeadDays={userPreference[0]?.licenseLeadDays ?? null}
       initialStakeCenterEvents={stakeCenterEvents}
       initialMaplesEvents={maplesEvents}
+      messageTemplates={messageTemplates}
     />
   );
 }

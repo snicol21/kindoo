@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm';
-import { text, integer, sqliteTable } from 'drizzle-orm/sqlite-core';
+import { text, integer, sqliteTable, uniqueIndex } from 'drizzle-orm/sqlite-core';
 
 // ─── Auth.js Required Tables ──────────────────────────────────────────────────
 
@@ -81,6 +81,42 @@ export const events = sqliteTable('event', {
     .default(sql`(unixepoch())`),
 });
 
+// ─── Message Templates ───────────────────────────────────────────────────────
+
+export const messageTemplates = sqliteTable(
+  'message_template',
+  {
+    id: text('id')
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    userId: text('userId')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    key: text('key').notNull(),
+    body: text('body').notNull(),
+    createdAt: integer('created_at', { mode: 'timestamp' })
+      .notNull()
+      .default(sql`(unixepoch())`),
+    updatedAt: integer('updated_at', { mode: 'timestamp' })
+      .notNull()
+      .default(sql`(unixepoch())`),
+  },
+  (table) => ({
+    userKeyUnique: uniqueIndex('message_template_user_key_unique').on(table.userId, table.key),
+  })
+);
+
+export const messageTemplateDefaults = sqliteTable('message_template_default', {
+  key: text('key').primaryKey(),
+  body: text('body').notNull(),
+  createdAt: integer('created_at', { mode: 'timestamp' })
+    .notNull()
+    .default(sql`(unixepoch())`),
+  updatedAt: integer('updated_at', { mode: 'timestamp' })
+    .notNull()
+    .default(sql`(unixepoch())`),
+});
+
 // ─── Inferred Types ───────────────────────────────────────────────────────────
 
 export type User = typeof users.$inferSelect;
@@ -88,3 +124,9 @@ export type NewUser = typeof users.$inferInsert;
 
 export type Event = typeof events.$inferSelect;
 export type NewEvent = typeof events.$inferInsert;
+
+export type MessageTemplate = typeof messageTemplates.$inferSelect;
+export type NewMessageTemplate = typeof messageTemplates.$inferInsert;
+
+export type MessageTemplateDefault = typeof messageTemplateDefaults.$inferSelect;
+export type NewMessageTemplateDefault = typeof messageTemplateDefaults.$inferInsert;

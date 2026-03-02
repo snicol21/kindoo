@@ -60,12 +60,18 @@ import {
 import { BUILDINGS, WARDS, type Building, type Ward } from '@/schema/schema';
 import type { AddEventInput, EventWithCreator, UpdateEventInput } from '@/actions/events';
 import { toast } from 'sonner';
+import {
+  DEFAULT_POLICY_LINK,
+  type MessageTemplateKey,
+  type MessageTemplateMap,
+} from '@/lib/message-templates';
 
 interface EventTableProps {
   events: EventWithCreator[];
   isLoading: boolean;
   isError: boolean;
   building: string;
+  messageTemplates?: MessageTemplateMap;
   onDelete?: (eventId: string) => Promise<void>;
   onEdit?: (input: UpdateEventInput) => Promise<void>;
   onClone?: (input: AddEventInput) => Promise<void>;
@@ -254,50 +260,53 @@ function getFirstName(fullName: string) {
   return parts[0] || fullName;
 }
 
-function buildShortMessage(event: EventWithCreator) {
+function buildTemplateContext(event: EventWithCreator) {
   const firstName = getFirstName(event.name);
-  const date = formatDateNoYear(event.eventDate);
-  const time = formatTimeRange(event.startTime, event.endTime);
-  return `Hey ${firstName}, thanks for reaching out. Let me check the calendar to see if we have some availability for your private event (${event.description}) on ${date} (${time}) at the ${event.building}. I’ll follow up as soon as I confirm availability.`;
-}
-
-function buildFullMessage(event: EventWithCreator) {
-  const firstName = getFirstName(event.name);
-  const date = formatDateNoYear(event.eventDate);
-  const time = formatTimeRange(event.startTime, event.endTime);
-  return [
-    `${firstName}, I was able to confirm availability for your private event on ${date} from ${time} at the ${event.building}.`,
-    '',
-    'We will need your email address that you use on your church membership record so we can issue your temporary Kindoo access.',
-    '',
-    'Also we require you to please review the Stake Meetinghouse Use Policies here:',
-    'https://drive.google.com/file/d/1LBukeaPHsg8eB-EtAyXXiPbq--o7wV1h/view?usp=sharing',
-  ].join('\n');
-}
-
-function buildCalendarItemDescription(event: EventWithCreator) {
-  const phone = formatPhone(event.phone);
-  const lines = [
-    `Member: ${event.name}`,
-    `Event details: ${event.description}`,
-    `Ward: ${event.ward ?? '—'}`,
-    `Phone: ${phone || '—'}`,
-  ];
-
-  if (event.email?.trim()) {
-    lines.push(`Email: ${event.email}`);
-  }
-
-  return lines.join('\n');
-}
-
-function buildKindooLicenseCreatedMessage(event: EventWithCreator) {
-  const firstName = getFirstName(event.name);
+  const dateShort = formatDateNoYear(event.eventDate);
+  const dateLong = formatDate(event.eventDate);
+  const timeRange = formatTimeRange(event.startTime, event.endTime);
+  const phone = formatPhone(event.phone) || '—';
+  const email = event.email?.trim() ? event.email : '—';
   const licenseTimes = getLicenseTimes(event);
-  const timeframe = licenseTimes
-    ? `Your access window is ${licenseTimes.startDate} at ${licenseTimes.startTime} through ${licenseTimes.endDate} at ${licenseTimes.endTime}. `
+  const licenseWindow = licenseTimes
+    ? licenseTimes.startDate === licenseTimes.endDate
+      ? `${licenseTimes.startDate} (${licenseTimes.startTime} – ${licenseTimes.endTime})`
+      : `${licenseTimes.startDate} ${licenseTimes.startTime} – ${licenseTimes.endDate} ${licenseTimes.endTime}`
     : '';
-  return `Hi ${firstName}, we just created a temporary Kindoo license for you. ${timeframe}You should receive an invitation email shortly with a link to download the app. After installing, sign in with the same email/Church account, allow Bluetooth + Location, and near the entrance open the app and tap Open to unlock the door.`;
+
+  return {
+    '{firstName}': firstName,
+    '{fullName}': event.name,
+    '{building}': event.building,
+    '{ward}': event.ward ?? '—',
+    '{eventDate}': dateShort,
+    '{eventDateLong}': dateLong,
+    '{startTime}': formatTime(event.startTime),
+    '{endTime}': formatTime(event.endTime),
+    '{timeRange}': timeRange,
+    '{description}': event.description,
+    '{email}': email,
+    '{phone}': phone,
+    '{policyLink}': DEFAULT_POLICY_LINK,
+    '{licenseStartDate}': licenseTimes?.startDate ?? '',
+    '{licenseStartTime}': licenseTimes?.startTime ?? '',
+    '{licenseEndDate}': licenseTimes?.endDate ?? '',
+    '{licenseEndTime}': licenseTimes?.endTime ?? '',
+    '{licenseWindow}': licenseWindow,
+  };
+}
+
+function applyTemplate(template: string, context: Record<string, string>) {
+  return template.replace(/\{[a-zA-Z0-9_]+\}/g, (token) => context[token] ?? token);
+}
+
+function renderMessageTemplate(
+  event: EventWithCreator,
+  key: MessageTemplateKey,
+  templates?: MessageTemplateMap
+) {
+  const template = templates?.[key] ?? '';
+  return applyTemplate(template, buildTemplateContext(event));
 }
 
 export function EventTable({
@@ -305,6 +314,7 @@ export function EventTable({
   isLoading,
   isError,
   building,
+  messageTemplates,
   onDelete,
   onEdit,
   onClone,
@@ -1514,7 +1524,11 @@ export function EventTable({
                     readOnly
                     rows={4}
                     className="min-w-0 flex-1 min-h-[140px]"
-                    value={buildShortMessage(copyingEvent)}
+                    value={renderMessageTemplate(
+                      copyingEvent,
+                      'availability_inquiry',
+                      messageTemplates
+                    )}
                   />
                   <Button
                     variant="secondary"
@@ -1522,7 +1536,13 @@ export function EventTable({
                     className="self-start"
                     onClick={async () => {
                       try {
-                        await navigator.clipboard.writeText(buildShortMessage(copyingEvent));
+                        await navigator.clipboard.writeText(
+                          renderMessageTemplate(
+                            copyingEvent,
+                            'availability_inquiry',
+                            messageTemplates
+                          )
+                        );
                         toast.success('Availability inquiry text copied.');
                       } catch {
                         toast.error('Failed to copy.');
@@ -1539,7 +1559,7 @@ export function EventTable({
                     readOnly
                     rows={6}
                     className="min-w-0 flex-1 min-h-[140px]"
-                    value={buildCalendarItemDescription(copyingEvent)}
+                    value={renderMessageTemplate(copyingEvent, 'calendar_item', messageTemplates)}
                   />
                   <Button
                     variant="secondary"
@@ -1548,7 +1568,7 @@ export function EventTable({
                     onClick={async () => {
                       try {
                         await navigator.clipboard.writeText(
-                          buildCalendarItemDescription(copyingEvent)
+                          renderMessageTemplate(copyingEvent, 'calendar_item', messageTemplates)
                         );
                         toast.success('Calendar item description copied.');
                       } catch {
@@ -1567,14 +1587,24 @@ export function EventTable({
                   readOnly
                   rows={9}
                   className="min-w-0"
-                  value={buildFullMessage(copyingEvent)}
+                  value={renderMessageTemplate(
+                    copyingEvent,
+                    'availability_confirmed',
+                    messageTemplates
+                  )}
                 />
                 <Button
                   variant="secondary"
                   size="sm"
                   onClick={async () => {
                     try {
-                      await navigator.clipboard.writeText(buildFullMessage(copyingEvent));
+                      await navigator.clipboard.writeText(
+                        renderMessageTemplate(
+                          copyingEvent,
+                          'availability_confirmed',
+                          messageTemplates
+                        )
+                      );
                       toast.success('Availability confirmed + policy text copied.');
                     } catch {
                       toast.error('Failed to copy.');
@@ -1816,7 +1846,7 @@ export function EventTable({
                   <Textarea
                     readOnly
                     rows={3}
-                    value={buildKindooLicenseCreatedMessage(licenseEvent)}
+                    value={renderMessageTemplate(licenseEvent, 'license_created', messageTemplates)}
                   />
                   <Button
                     variant="secondary"
@@ -1824,7 +1854,7 @@ export function EventTable({
                     onClick={async () => {
                       try {
                         await navigator.clipboard.writeText(
-                          buildKindooLicenseCreatedMessage(licenseEvent)
+                          renderMessageTemplate(licenseEvent, 'license_created', messageTemplates)
                         );
                         toast.success('Temporary license message copied.');
                       } catch {

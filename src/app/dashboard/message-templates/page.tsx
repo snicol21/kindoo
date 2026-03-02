@@ -1,0 +1,48 @@
+import type { Metadata } from 'next';
+import Link from 'next/link';
+import { redirect } from 'next/navigation';
+import { ArrowLeft } from 'lucide-react';
+import { auth } from '@/lib/auth';
+import { MessageTemplatesEditor } from '@/components/MessageTemplatesEditor';
+import { Button } from '@/components/ui/button';
+import { EMPTY_MESSAGE_TEMPLATES } from '@/lib/message-templates';
+import { getMessageTemplates } from '@/actions/message-templates';
+
+export const metadata: Metadata = {
+  title: 'Message Templates',
+};
+
+export default async function MessageTemplatesPage() {
+  const session = await auth();
+
+  if (!session?.user?.id) {
+    redirect('/auth/signin');
+  }
+
+  const result = await getMessageTemplates();
+  const templates = result.success && result.data ? result.data : EMPTY_MESSAGE_TEMPLATES;
+
+  return (
+    <div className="container mx-auto max-w-4xl px-4 py-8">
+      <div className="sticky top-2 z-10 mb-6 w-fit rounded-md bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/80 sm:static sm:bg-transparent sm:backdrop-blur-none">
+        <Button asChild variant="ghost" size="sm" className="gap-2">
+          <Link href="/dashboard">
+            <ArrowLeft className="h-4 w-4" />
+            Back to dashboard
+          </Link>
+        </Button>
+      </div>
+
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Message templates</h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Customize the messages you copy for members. Use placeholders to insert event data.
+          </p>
+        </div>
+
+        <MessageTemplatesEditor initialTemplates={templates} />
+      </div>
+    </div>
+  );
+}
