@@ -71,6 +71,37 @@ function isPastEvent(eventDate: string, endTime: string) {
   return eventEnd < Date.now();
 }
 
+function getDaysUntilValue(dateStr: string) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateStr);
+  if (!match) return Number.NaN;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const eventDate = new Date(year, month - 1, day);
+  if (Number.isNaN(eventDate.getTime())) return Number.NaN;
+
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const diffMs = eventDate.getTime() - today.getTime();
+  return Math.round(diffMs / (1000 * 60 * 60 * 24));
+}
+
+function parseYmdToDate(dateStr: string) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateStr);
+  if (!match) return null;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const date = new Date(year, month - 1, day);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function formatShortDate(dateStr: string) {
+  const date = parseYmdToDate(dateStr);
+  if (!date) return dateStr;
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
 const LICENSE_LEAD_KEY = 'kindoo.licenseLeadDays';
 const DEFAULT_LICENSE_LEAD_DAYS = 2;
 const MAX_LICENSE_LEAD_DAYS = 14;
@@ -101,8 +132,6 @@ export function DashboardClient({
   const [selectedStakeIds, setSelectedStakeIds] = useState<string[]>([]);
   const [selectedMaplesIds, setSelectedMaplesIds] = useState<string[]>([]);
   const [bulkDeleteTarget, setBulkDeleteTarget] = useState<Building | null>(null);
-  const [showStakeArchived, setShowStakeArchived] = useState(false);
-  const [showMaplesArchived, setShowMaplesArchived] = useState(false);
   const [licenseLeadDays, setLicenseLeadDays] = useState(() =>
     normalizeLicenseLeadDays(initialLicenseLeadDays)
   );
@@ -127,31 +156,174 @@ export function DashboardClient({
   const addEvent = useAddEvent();
   const setKindooLicenseCreated = useSetKindooLicenseCreated();
 
-  const [stakeUpcoming, stakeArchived] = useMemo(() => {
-    const upcoming: EventWithCreator[] = [];
-    const archived: EventWithCreator[] = [];
-    for (const event of stakeCenterEvents) {
-      if (isPastEvent(event.eventDate, event.endTime)) {
-        archived.push(event);
-      } else {
-        upcoming.push(event);
-      }
-    }
-    return [upcoming, archived];
-  }, [stakeCenterEvents]);
+  const stakeUpcoming = useMemo(
+    () => stakeCenterEvents.filter((event) => !isPastEvent(event.eventDate, event.endTime)),
+    [stakeCenterEvents]
+  );
 
-  const [maplesUpcoming, maplesArchived] = useMemo(() => {
-    const upcoming: EventWithCreator[] = [];
-    const archived: EventWithCreator[] = [];
-    for (const event of maplesEvents) {
+  const maplesUpcoming = useMemo(
+    () => maplesEvents.filter((event) => !isPastEvent(event.eventDate, event.endTime)),
+    [maplesEvents]
+  );
+
+  const dashboardCounts = useMemo(() => {
+    const withinLeadWindow = (event: EventWithCreator) => {
+      const daysUntil = getDaysUntilValue(event.eventDate);
+      return Number.isFinite(daysUntil) && daysUntil >= 0 && daysUntil <= licenseLeadDays;
+    };
+
+    const stakeWindowed = stakeUpcoming.filter(withinLeadWindow);
+    const maplesWindowed = maplesUpcoming.filter(withinLeadWindow);
+    const stakeOutsideWindow = stakeUpcoming.length - stakeWindowed.length;
+    const maplesOutsideWindow = maplesUpcoming.length - maplesWindowed.length;
+    const stakePast = stakeCenterEvents.length - stakeUpcoming.length;
+    const maplesPast = maplesEvents.length - maplesUpcoming.length;
+    const stakePending = stakeWindowed.filter((event) => !event.kindooLicenseCreated).length;
+    const maplesPending = maplesWindowed.filter((event) => !event.kindooLicenseCreated).length;
+    const stakeActive = stakeWindowed.length - stakePending;
+    const maplesActive = maplesWindowed.length - maplesPending;
+    return {
+      pendingLicense: {
+        stake: stakePending,
+        maples: maplesPending,
+        total: stakePending + maplesPending,
+      },
+      activeLicense: {
+        stake: stakeActive,
+        maples: maplesActive,
+        total: stakeActive + maplesActive,
+      },
+      upcoming: {
+        stake: stakeOutsideWindow,
+        maples: maplesOutsideWindow,
+        total: stakeOutsideWindow + maplesOutsideWindow,
+      },
+      past: {
+        stake: stakePast,
+        maples: maplesPast,
+        total: stakePast + maplesPast,
+      },
+    };
+  }, [
+    licenseLeadDays,
+    maplesEvents.length,
+    maplesUpcoming,
+    stakeCenterEvents.length,
+    stakeUpcoming,
+  ]);
+
+  const activeBuildingKey = activeTab === 'maples-building' ? 'maples' : 'stake';
+  const activeBuildingEvents = activeTab === 'maples-building' ? maplesEvents : stakeCenterEvents;
+  const activeUpcoming = activeTab === 'maples-building' ? maplesUpcoming : stakeUpcoming;
+  const wardBreakdown = useMemo(() => {
+    const byWard = new Map<
+      string,
+      { pending: number; active: number; upcoming: number; past: number; total: number }
+    >();
+
+    for (const event of activeBuildingEvents) {
+      const key = event.ward ?? 'Unknown';
+      const current = byWard.get(key) ?? {
+        pending: 0,
+        active: 0,
+        upcoming: 0,
+        past: 0,
+        total: 0,
+      };
+
+      current.total += 1;
       if (isPastEvent(event.eventDate, event.endTime)) {
-        archived.push(event);
+        current.past += 1;
       } else {
-        upcoming.push(event);
+        const daysUntil = getDaysUntilValue(event.eventDate);
+        const withinWindow =
+          Number.isFinite(daysUntil) && daysUntil >= 0 && daysUntil <= licenseLeadDays;
+        if (withinWindow && event.kindooLicenseCreated) {
+          current.active += 1;
+        } else if (withinWindow) {
+          current.pending += 1;
+        } else {
+          current.upcoming += 1;
+        }
       }
+
+      byWard.set(key, current);
     }
-    return [upcoming, archived];
-  }, [maplesEvents]);
+
+    return Array.from(byWard.entries())
+      .map(([ward, counts]) => ({ ward, ...counts }))
+      .filter((row) => row.total > 0)
+      .sort((a, b) => a.ward.localeCompare(b.ward));
+  }, [activeBuildingEvents, licenseLeadDays]);
+  const wardBreakdownVisible = wardBreakdown.slice(0, 8);
+  const wardBreakdownRemaining = Math.max(0, wardBreakdown.length - wardBreakdownVisible.length);
+
+  const weekdayLabels = ['S', 'M', 'T', 'W', 'T', 'F', 'S'] as const;
+
+  const todayYmd = useMemo(() => {
+    const today = new Date();
+    return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(
+      today.getDate()
+    ).padStart(2, '0')}`;
+  }, []);
+
+  const dotCalendarDays = useMemo(() => {
+    const counts = new Map<
+      string,
+      { total: number; pending: number; active: number; upcoming: number }
+    >();
+    for (const event of activeUpcoming) {
+      const current = counts.get(event.eventDate) ?? {
+        total: 0,
+        pending: 0,
+        active: 0,
+        upcoming: 0,
+      };
+      current.total += 1;
+
+      const daysUntil = getDaysUntilValue(event.eventDate);
+      const withinWindow =
+        Number.isFinite(daysUntil) && daysUntil >= 0 && daysUntil <= licenseLeadDays;
+      if (withinWindow && event.kindooLicenseCreated) {
+        current.active += 1;
+      } else if (withinWindow) {
+        current.pending += 1;
+      } else {
+        current.upcoming += 1;
+      }
+
+      counts.set(event.eventDate, current);
+    }
+
+    const today = new Date();
+    const start = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    start.setDate(start.getDate() - start.getDay());
+    const days: Array<{
+      ymd: string;
+      count: number;
+      pending: number;
+      active: number;
+      upcoming: number;
+    }> = [];
+
+    for (let i = 0; i < 28; i += 1) {
+      const date = new Date(start);
+      date.setDate(start.getDate() + i);
+      const ymd = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(
+        date.getDate()
+      ).padStart(2, '0')}`;
+      const dayCounts = counts.get(ymd) ?? { total: 0, pending: 0, active: 0, upcoming: 0 };
+      days.push({
+        ymd,
+        count: dayCounts.total,
+        pending: dayCounts.pending,
+        active: dayCounts.active,
+        upcoming: dayCounts.upcoming,
+      });
+    }
+
+    return days;
+  }, [activeUpcoming, licenseLeadDays]);
 
   useEffect(() => {
     const upcomingIds = new Set(stakeUpcoming.map((event) => event.id));
@@ -272,30 +444,6 @@ export function DashboardClient({
         </div>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Card className="h-full">
-          <CardHeader className="h-full justify-center py-3">
-            <CardDescription>Total Events</CardDescription>
-            <CardTitle className="text-3xl">
-              {stakeCenterEvents.length + maplesEvents.length}
-            </CardTitle>
-          </CardHeader>
-        </Card>
-        <Card className="h-full">
-          <CardHeader className="h-full justify-center py-3">
-            <CardDescription>Stake Center</CardDescription>
-            <CardTitle className="text-3xl">{stakeCenterEvents.length}</CardTitle>
-          </CardHeader>
-        </Card>
-        <Card className="h-full">
-          <CardHeader className="h-full justify-center py-3">
-            <CardDescription>Maples Building</CardDescription>
-            <CardTitle className="text-3xl">{maplesEvents.length}</CardTitle>
-          </CardHeader>
-        </Card>
-      </div>
-
       {/* Tabs */}
       <Tabs
         value={activeTab}
@@ -308,17 +456,198 @@ export function DashboardClient({
               <Building2 className="hidden h-4 w-4 sm:inline-block" />
               Stake Center
               <span className="ml-1 rounded-full bg-primary/10 px-2 py-0.5 text-xs">
-                {stakeCenterEvents.length}
+                {stakeUpcoming.length}
               </span>
             </TabsTrigger>
             <TabsTrigger value="maples-building" className="flex-1 gap-2 sm:flex-none">
               <Building2 className="hidden h-4 w-4 sm:inline-block" />
               Maples Building
               <span className="ml-1 rounded-full bg-primary/10 px-2 py-0.5 text-xs">
-                {maplesEvents.length}
+                {maplesUpcoming.length}
               </span>
             </TabsTrigger>
           </TabsList>
+        </div>
+
+        {/* Stats */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <Card className="h-full">
+            <CardHeader className="h-full py-3 flex flex-col">
+              <CardDescription className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground/80">
+                Event totals
+              </CardDescription>
+              <div className="mt-2 border-t border-border/60" />
+              <div className="mt-3 flex-1 flex items-center">
+                <div className="w-full space-y-2">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Pending</span>
+                    <span className="font-semibold text-yellow-700">
+                      {dashboardCounts.pendingLicense[activeBuildingKey]}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Active</span>
+                    <span className="font-semibold text-emerald-700">
+                      {dashboardCounts.activeLicense[activeBuildingKey]}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Upcoming</span>
+                    <span className="font-semibold">
+                      {dashboardCounts.upcoming[activeBuildingKey]}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Past</span>
+                    <span className="font-semibold text-muted-foreground">
+                      {dashboardCounts.past[activeBuildingKey]}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </CardHeader>
+          </Card>
+          <Card className="h-full">
+            <CardHeader className="h-full py-3 flex flex-col">
+              <CardDescription className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground/80">
+                By ward
+              </CardDescription>
+              <div className="mt-2 border-t border-border/60" />
+              <div className="mt-3 flex-1 flex items-center">
+                {wardBreakdown.length === 0 ? (
+                  <div className="text-xs text-muted-foreground">No events by ward yet.</div>
+                ) : (
+                  <div className="grid w-full grid-cols-2 gap-2 sm:grid-cols-3">
+                    {wardBreakdownVisible.map((row) => (
+                      <div
+                        key={row.ward}
+                        className="rounded-md border border-border/60 bg-background/60 px-2 py-2"
+                      >
+                        <div className="flex items-center justify-between text-[11px]">
+                          <span className="truncate text-muted-foreground">{row.ward}</span>
+                          <span className="font-medium">{row.total}</span>
+                        </div>
+                        <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-muted/70">
+                          <div className="flex h-full w-full">
+                            {row.pending > 0 && (
+                              <div
+                                className="h-full bg-yellow-500"
+                                style={{ width: `${(row.pending / row.total) * 100}%` }}
+                              />
+                            )}
+                            {row.active > 0 && (
+                              <div
+                                className="h-full bg-emerald-600"
+                                style={{ width: `${(row.active / row.total) * 100}%` }}
+                              />
+                            )}
+                            {row.upcoming > 0 && (
+                              <div
+                                className="h-full bg-primary"
+                                style={{ width: `${(row.upcoming / row.total) * 100}%` }}
+                              />
+                            )}
+                            {row.past > 0 && (
+                              <div
+                                className="h-full bg-muted-foreground/50"
+                                style={{ width: `${(row.past / row.total) * 100}%` }}
+                              />
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                    {wardBreakdownRemaining > 0 && (
+                      <div className="rounded-md border border-dashed border-border/60 px-2 py-2 text-[11px] text-muted-foreground">
+                        +{wardBreakdownRemaining} more
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </CardHeader>
+          </Card>
+          <Card className="h-full">
+            <CardHeader className="h-full py-3 flex flex-col">
+              <CardDescription className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground/80">
+                Next 4 weeks
+              </CardDescription>
+              <div className="mt-2 border-t border-border/60" />
+              <div className="mt-3 flex-1 flex items-center">
+                <div className="w-full">
+                  <div className="flex w-full items-center justify-between text-[10px] text-muted-foreground">
+                    {weekdayLabels.map((label, index) => (
+                      <div key={`${label}-${index}`} className="w-4 text-center leading-none">
+                        {label}
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-2 space-y-2">
+                    {[0, 1, 2, 3].map((weekIndex) => {
+                      const week = dotCalendarDays.slice(weekIndex * 7, weekIndex * 7 + 7);
+                      return (
+                        <div
+                          key={`week-${weekIndex}`}
+                          className="flex w-full items-center justify-between"
+                        >
+                          {week.map((day) => {
+                            const isToday = day.ymd === todayYmd;
+                            const hasPending = day.pending > 0;
+                            const hasActive = day.active > 0;
+                            const hasUpcoming = day.upcoming > 0;
+                            const dotClass =
+                              day.count === 0
+                                ? 'bg-muted/80'
+                                : hasPending
+                                  ? 'bg-yellow-500'
+                                  : hasActive
+                                    ? 'bg-emerald-600'
+                                    : hasUpcoming
+                                      ? 'bg-primary'
+                                      : 'bg-primary';
+                            const statusLabel =
+                              day.count === 0
+                                ? 'no events'
+                                : [
+                                    day.pending > 0 ? `${day.pending} pending` : null,
+                                    day.active > 0 ? `${day.active} active` : null,
+                                    day.upcoming > 0 ? `${day.upcoming} upcoming` : null,
+                                  ]
+                                    .filter(Boolean)
+                                    .join(', ');
+                            const title = `${formatShortDate(day.ymd)}${
+                              isToday ? ' (today)' : ''
+                            } - ${day.count} event${day.count === 1 ? '' : 's'}${
+                              day.count > 0 ? ` (${statusLabel})` : ''
+                            }`;
+
+                            return (
+                              <div
+                                key={day.ymd}
+                                title={title}
+                                className="flex h-4 w-4 items-center justify-center"
+                              >
+                                <span className="relative inline-flex h-3 w-3 items-center justify-center">
+                                  <span
+                                    className={`inline-block h-3 w-3 rounded-full ${dotClass}`}
+                                  />
+                                  {isToday && (
+                                    <span className="absolute text-[8px] leading-none text-blue-500">
+                                      ★
+                                    </span>
+                                  )}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            </CardHeader>
+          </Card>
         </div>
 
         <TabsContent value="stake-center">
@@ -373,42 +702,6 @@ export function DashboardClient({
                 }
                 licenseLeadDays={licenseLeadDays}
               />
-              {!scLoading && !scError && stakeArchived.length > 0 && (
-                <div className="mt-6 border-t pt-4">
-                  <div className="flex items-center justify-between">
-                    <div className="text-sm text-muted-foreground">
-                      Archived events ({stakeArchived.length})
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setShowStakeArchived((prev) => !prev)}
-                    >
-                      {showStakeArchived ? 'Hide archived' : 'Show archived'}
-                    </Button>
-                  </div>
-                  {showStakeArchived && (
-                    <div className="mt-4">
-                      <EventTable
-                        events={stakeArchived}
-                        isLoading={false}
-                        isError={false}
-                        building="Stake Center"
-                        messageTemplates={messageTemplates}
-                        onDelete={(eventId) =>
-                          deleteStakeCenterEvent.mutateAsync(eventId).then(() => undefined)
-                        }
-                        onEdit={(input) => updateEvent.mutateAsync(input).then(() => undefined)}
-                        onClone={(input) => addEvent.mutateAsync(input).then(() => undefined)}
-                        onSetKindooLicenseCreated={(input) =>
-                          setKindooLicenseCreated.mutateAsync(input).then(() => undefined)
-                        }
-                        licenseLeadDays={licenseLeadDays}
-                      />
-                    </div>
-                  )}
-                </div>
-              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -463,42 +756,6 @@ export function DashboardClient({
                 }
                 licenseLeadDays={licenseLeadDays}
               />
-              {!mbLoading && !mbError && maplesArchived.length > 0 && (
-                <div className="mt-6 border-t pt-4">
-                  <div className="flex items-center justify-between">
-                    <div className="text-sm text-muted-foreground">
-                      Archived events ({maplesArchived.length})
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setShowMaplesArchived((prev) => !prev)}
-                    >
-                      {showMaplesArchived ? 'Hide archived' : 'Show archived'}
-                    </Button>
-                  </div>
-                  {showMaplesArchived && (
-                    <div className="mt-4">
-                      <EventTable
-                        events={maplesArchived}
-                        isLoading={false}
-                        isError={false}
-                        building="Maples Building"
-                        messageTemplates={messageTemplates}
-                        onDelete={(eventId) =>
-                          deleteMaplesEvent.mutateAsync(eventId).then(() => undefined)
-                        }
-                        onEdit={(input) => updateEvent.mutateAsync(input).then(() => undefined)}
-                        onClone={(input) => addEvent.mutateAsync(input).then(() => undefined)}
-                        onSetKindooLicenseCreated={(input) =>
-                          setKindooLicenseCreated.mutateAsync(input).then(() => undefined)
-                        }
-                        licenseLeadDays={licenseLeadDays}
-                      />
-                    </div>
-                  )}
-                </div>
-              )}
             </CardContent>
           </Card>
         </TabsContent>
