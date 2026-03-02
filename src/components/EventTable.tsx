@@ -806,7 +806,7 @@ export function EventTable({
                                 onSelect={() => setCopyingEvent(event)}
                               >
                                 <MessageSquare className="h-4 w-4" />
-                                Message templates
+                                Event messages
                               </DropdownMenuItem>
                               <DropdownMenuItem
                                 disabled={isOptimistic || !onClone}
@@ -1078,7 +1078,7 @@ export function EventTable({
                               <MessageSquare className="h-4 w-4" />
                             </Button>
                           </TooltipTrigger>
-                          <TooltipContent>Message templates</TooltipContent>
+                          <TooltipContent>Event messages</TooltipContent>
                         </Tooltip>
                         <Tooltip>
                           <TooltipTrigger asChild>
@@ -1456,7 +1456,7 @@ export function EventTable({
       <Dialog open={!!copyingEvent} onOpenChange={(open) => !open && setCopyingEvent(null)}>
         <DialogContent className="sm:max-w-3xl" onOpenAutoFocus={(event) => event.preventDefault()}>
           <DialogHeader>
-            <DialogTitle>Message templates</DialogTitle>
+            <DialogTitle>Event messages</DialogTitle>
             <DialogDescription>Copy a formatted message to share.</DialogDescription>
           </DialogHeader>
           {copyingEvent && (

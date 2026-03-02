@@ -341,7 +341,7 @@ export function MessageTemplatesEditor({ initialTemplates }: MessageTemplatesEdi
                 <div className="space-y-2">
                   <Label>Preview</Label>
                   <div className="flex items-start gap-3">
-                    <div className="mt-1 h-2.5 w-2.5 rounded-full bg-primary/60" />
+                    <div className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full bg-primary/60" />
                     <div className="max-w-2xl rounded-2xl rounded-tl-sm border border-primary/20 bg-primary/5 px-4 py-3 text-sm whitespace-pre-wrap shadow-sm">
                       <div className="text-foreground/90">{renderPreviewText(draftBody)}</div>
                     </div>
