@@ -1,6 +1,21 @@
 import { sql } from 'drizzle-orm';
 import { text, integer, sqliteTable, uniqueIndex } from 'drizzle-orm/sqlite-core';
 
+export const BUILDINGS = ['Stake Center', 'Maples Building'] as const;
+export type Building = (typeof BUILDINGS)[number];
+export const DEFAULT_BUILDING: Building = 'Stake Center';
+
+export const WARDS = [
+  '1st Ward',
+  '2nd Ward',
+  '3rd Ward',
+  '4th Ward',
+  '5th Ward',
+  '6th Ward',
+  'Park Ridge Ward',
+] as const;
+export type Ward = (typeof WARDS)[number];
+
 // ─── Auth.js Required Tables ──────────────────────────────────────────────────
 
 export const users = sqliteTable('user', {
@@ -14,11 +29,11 @@ export const users = sqliteTable('user', {
   image: text('image'),
   licenseLeadDays: integer('license_lead_days').notNull().default(2),
   defaultBuilding: text('default_building', {
-    enum: ['Stake Center', 'Maples Building'],
+    enum: BUILDINGS,
   })
     .notNull()
     .$type<Building>()
-    .default('Stake Center'),
+    .default(DEFAULT_BUILDING),
   createdAt: integer('created_at', { mode: 'timestamp' })
     .notNull()
     .default(sql`(unixepoch())`),
@@ -26,46 +41,17 @@ export const users = sqliteTable('user', {
 
 // ─── Events Table ─────────────────────────────────────────────────────────────
 
-export type Building = 'Stake Center' | 'Maples Building';
-export type Ward =
-  | '1st Ward'
-  | '2nd Ward'
-  | '3rd Ward'
-  | '4th Ward'
-  | '5th Ward'
-  | '6th Ward'
-  | 'Park Ridge Ward';
-
-export const BUILDINGS: Building[] = ['Stake Center', 'Maples Building'];
-export const WARDS: Ward[] = [
-  '1st Ward',
-  '2nd Ward',
-  '3rd Ward',
-  '4th Ward',
-  '5th Ward',
-  '6th Ward',
-  'Park Ridge Ward',
-];
-
 export const events = sqliteTable('event', {
   id: text('id')
     .primaryKey()
     .$defaultFn(() => crypto.randomUUID()),
   building: text('building', {
-    enum: ['Stake Center', 'Maples Building'],
+    enum: BUILDINGS,
   })
     .notNull()
     .$type<Building>(),
   ward: text('ward', {
-    enum: [
-      '1st Ward',
-      '2nd Ward',
-      '3rd Ward',
-      '4th Ward',
-      '5th Ward',
-      '6th Ward',
-      'Park Ridge Ward',
-    ],
+    enum: WARDS,
   })
     .notNull()
     .$type<Ward>(),
