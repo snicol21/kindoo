@@ -20,7 +20,7 @@ export interface ActionResult<T = unknown> {
 const MAX_TEMPLATE_LENGTH = 2000;
 
 function normalizeBody(body: string) {
-  return body.replace(/\r\n/g, '\n');
+  return body.replace(/\r\n/g, '\n').replace(/\\n/g, '\n');
 }
 
 function validateTemplateBody(key: MessageTemplateKey, body: string) {
