@@ -462,13 +462,13 @@ export function DashboardClient({
                 <div className="w-full space-y-2">
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-muted-foreground">Pending</span>
-                    <span className="font-semibold text-yellow-700">
+                    <span className="font-semibold text-yellow-500">
                       {dashboardCounts.pendingLicense[activeBuildingKey]}
                     </span>
                   </div>
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-muted-foreground">Active</span>
-                    <span className="font-semibold text-emerald-700">
+                    <span className="font-semibold text-[#2da44e]">
                       {dashboardCounts.activeLicense[activeBuildingKey]}
                     </span>
                   </div>
@@ -512,7 +512,7 @@ export function DashboardClient({
                           <div className="flex h-full w-full">
                             {row.pending > 0 && (
                               <div
-                                className="h-full bg-yellow-500"
+                                className="h-full bg-yellow-400"
                                 style={{ width: `${(row.pending / row.total) * 100}%` }}
                               />
                             )}
@@ -580,7 +580,7 @@ export function DashboardClient({
                               day.count === 0
                                 ? 'bg-muted/80'
                                 : hasPending
-                                  ? 'bg-yellow-500'
+                                  ? 'bg-yellow-400'
                                   : hasActive
                                     ? 'bg-emerald-600'
                                     : hasUpcoming
@@ -613,7 +613,7 @@ export function DashboardClient({
                                     className={`inline-block h-3 w-3 rounded-full ${dotClass}`}
                                   />
                                   {isToday && (
-                                    <span className="absolute text-[8px] leading-none text-blue-500">
+                                    <span className="absolute text-[12px] leading-none text-purple-500">
                                       ★
                                     </span>
                                   )}

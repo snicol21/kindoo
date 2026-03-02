@@ -769,7 +769,7 @@ export function EventTable({
                             size="sm"
                             className={`mt-1.5 h-5 px-1.5 text-[10px] sm:h-6 sm:px-2 sm:text-[11px] ${
                               withinWindow
-                                ? 'border-yellow-500 bg-yellow-500 text-black hover:bg-yellow-600 hover:border-yellow-600'
+                                ? 'border-yellow-400 bg-yellow-400 text-black hover:bg-yellow-500 hover:border-yellow-500'
                                 : ''
                             }`}
                             onClick={() => setLicenseEvent(event)}
@@ -925,7 +925,7 @@ export function EventTable({
                             size="sm"
                             className={`h-5 px-1.5 text-[10px] ${
                               withinWindow
-                                ? 'border-yellow-500 bg-yellow-500 text-black hover:bg-yellow-600 hover:border-yellow-600'
+                                ? 'border-yellow-400 bg-yellow-400 text-black hover:bg-yellow-500 hover:border-yellow-500'
                                 : ''
                             }`}
                             onClick={() => setLicenseEvent(event)}
