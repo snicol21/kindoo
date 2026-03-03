@@ -199,3 +199,14 @@ body:has([data-radix-dialog-content][data-state="open"]) {
     padding-bottom: env(safe-area-inset-bottom); /* respects bottom safe area/keyboard */
   }
 }
+
+/* Target inputs in dialogs on iOS – reduce padding/margin interference */
+@supports (-webkit-touch-callout: none) {
+  [data-radix-dialog-content] input,
+  [data-radix-dialog-content] textarea {
+    position: relative;              /* helps isolate rendering */
+    z-index: 1;
+    padding: 0.75rem 1rem;           /* consistent Shadcn padding */
+    transform: translateZ(0);        /* force GPU layer, fixes some render glitches */
+  }
+}
