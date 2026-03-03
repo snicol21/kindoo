@@ -863,7 +863,7 @@ export function EventTable({
                             <div className="flex min-w-0 items-center gap-1.5">
                               <a
                                 href={`mailto:${event.email}`}
-                                className="max-w-44 truncate text-foreground hover:underline"
+                                className="max-w-44 truncate text-muted-foreground hover:underline"
                                 title={event.email}
                               >
                                 {event.email}
@@ -974,7 +974,7 @@ export function EventTable({
                             <div className="flex min-w-0 items-center gap-1.5">
                               <a
                                 href={`mailto:${event.email}`}
-                                className="truncate cursor-pointer text-foreground hover:underline"
+                                className="truncate cursor-pointer text-muted-foreground hover:underline"
                                 title={event.email}
                               >
                                 {event.email}
