@@ -166,8 +166,7 @@ input[type="time"] {
 
 @media (max-width: 640px) {
   input,
-  textarea,
-  select {
+  textarea {
     font-size: 16px !important;
   }
 }
