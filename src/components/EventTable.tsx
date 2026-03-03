@@ -1251,7 +1251,7 @@ export function EventTable({
                 </SelectContent>
               </Select>
             </div>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="space-y-1.5">
                 <Label htmlFor="edit-event-date">Date</Label>
                 <Input
@@ -1378,7 +1378,7 @@ export function EventTable({
                 </SelectContent>
               </Select>
             </div>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="space-y-1.5">
                 <Label htmlFor="clone-event-date">Date</Label>
                 <Input
