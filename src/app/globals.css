@@ -164,3 +164,10 @@ input[type="time"] {
   min-width: 0;
 }
 
+@media (max-width: 640px) {
+  input,
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+}
