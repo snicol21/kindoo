@@ -152,21 +152,3 @@ body {
   background-color: var(--color-background);
   color: var(--color-foreground);
 }
-
-/* Hide the calendar icon completely in Chrome/Edge/Safari */
-/* This removes the extra width/padding reserve */
-input[type="date"]::-webkit-calendar-picker-indicator {
-  display: none;
-  -webkit-appearance: none;
-}
-
-/* Optional: Also kill the inner spin button if it shows up (rare on date) */
-input[type="date"]::-webkit-inner-spin-button {
-  display: none;
-  -webkit-appearance: none;
-}
-
-/* Reinforce no extra padding on the right */
-input[type="date"] {
-  padding-right: 0 !important;  /* or a small value like 0.5rem if needed */
-}
