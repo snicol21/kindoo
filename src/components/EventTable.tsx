@@ -1229,14 +1229,6 @@ export function EventTable({
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="edit-name">Member Name</Label>
-              <Input
-                id="edit-name"
-                value={editName}
-                onChange={(e) => setEditName(e.target.value)}
-              />
-            </div>
-            <div className="space-y-1.5">
               <Label htmlFor="edit-ward">Ward</Label>
               <Select value={editWard} onValueChange={(value) => setEditWard(value as Ward)}>
                 <SelectTrigger id="edit-ward">
@@ -1250,6 +1242,14 @@ export function EventTable({
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-name">Member Name</Label>
+              <Input
+                id="edit-name"
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+              />
             </div>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
               <div className="space-y-1.5 min-w-0">
@@ -1356,14 +1356,6 @@ export function EventTable({
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="clone-name">Member Name</Label>
-              <Input
-                id="clone-name"
-                value={cloneName}
-                onChange={(e) => setCloneName(e.target.value)}
-              />
-            </div>
-            <div className="space-y-1.5">
               <Label htmlFor="clone-ward">Ward</Label>
               <Select value={cloneWard} onValueChange={(value) => setCloneWard(value as Ward)}>
                 <SelectTrigger id="clone-ward">
@@ -1377,6 +1369,14 @@ export function EventTable({
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="clone-name">Member Name</Label>
+              <Input
+                id="clone-name"
+                value={cloneName}
+                onChange={(e) => setCloneName(e.target.value)}
+              />
             </div>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
               <div className="space-y-1.5 min-w-0">
