@@ -863,7 +863,7 @@ export function EventTable({
                             <div className="flex min-w-0 items-center gap-1.5">
                               <a
                                 href={`mailto:${event.email}`}
-                                className="max-w-44 truncate text-foreground hover:underline"
+                                className="max-w-44 truncate text-muted-foreground hover:underline"
                                 title={event.email}
                               >
                                 {event.email}
@@ -974,7 +974,7 @@ export function EventTable({
                             <div className="flex min-w-0 items-center gap-1.5">
                               <a
                                 href={`mailto:${event.email}`}
-                                className="truncate cursor-pointer text-foreground hover:underline"
+                                className="truncate cursor-pointer text-muted-foreground hover:underline"
                                 title={event.email}
                               >
                                 {event.email}
@@ -1204,7 +1204,7 @@ export function EventTable({
       </Dialog>
 
       <Dialog open={!!editingEvent} onOpenChange={(open) => !open && setEditingEvent(null)}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-3xl">
           <DialogHeader>
             <DialogTitle>Edit event</DialogTitle>
             <DialogDescription>Update the event details and save your changes.</DialogDescription>
@@ -1331,7 +1331,7 @@ export function EventTable({
       </Dialog>
 
       <Dialog open={!!cloningEvent} onOpenChange={(open) => !open && setCloningEvent(null)}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-3xl">
           <DialogHeader>
             <DialogTitle>Clone event</DialogTitle>
             <DialogDescription>Adjust the details and save as a new event.</DialogDescription>
@@ -1633,7 +1633,7 @@ export function EventTable({
         <DialogContent
           ref={licenseDialogContentRef}
           tabIndex={-1}
-          className="sm:max-w-xl"
+          className="sm:max-w-3xl"
           onOpenAutoFocus={(event) => {
             event.preventDefault();
             requestAnimationFrame(() => {
