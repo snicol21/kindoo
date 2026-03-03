@@ -383,7 +383,7 @@ export function AddEventDialog({
 
           {/* Date + Time row */}
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <div className="space-y-1.5 sm:col-span-1">
+            <div className="space-y-1.5 min-w-0 sm:col-span-1">
               <Label htmlFor="eventDate">
                 Date <span className="text-destructive">*</span>
               </Label>
@@ -399,7 +399,7 @@ export function AddEventDialog({
                 <p className="text-xs text-destructive">{state.errors.eventDate}</p>
               )}
             </div>
-            <div className="space-y-1.5 sm:col-span-1">
+            <div className="space-y-1.5 min-w-0 sm:col-span-1">
               <Label htmlFor="startTime">
                 Start <span className="text-destructive">*</span>
               </Label>
@@ -416,7 +416,7 @@ export function AddEventDialog({
                 <p className="text-xs text-destructive">{state.errors.startTime}</p>
               )}
             </div>
-            <div className="space-y-1.5 sm:col-span-1">
+            <div className="space-y-1.5 min-w-0 sm:col-span-1">
               <Label htmlFor="endTime">
                 End <span className="text-destructive">*</span>
               </Label>

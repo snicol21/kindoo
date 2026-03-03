@@ -1252,7 +1252,7 @@ export function EventTable({
               </Select>
             </div>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-              <div className="space-y-1.5">
+              <div className="space-y-1.5 min-w-0">
                 <Label htmlFor="edit-event-date">Date</Label>
                 <Input
                   id="edit-event-date"
@@ -1261,7 +1261,7 @@ export function EventTable({
                   onChange={(e) => setEditEventDate(e.target.value)}
                 />
               </div>
-              <div className="space-y-1.5">
+              <div className="space-y-1.5 min-w-0">
                 <Label htmlFor="edit-start-time">Start</Label>
                 <Input
                   id="edit-start-time"
@@ -1272,7 +1272,7 @@ export function EventTable({
                   onChange={(e) => setEditStartTime(e.target.value)}
                 />
               </div>
-              <div className="space-y-1.5">
+              <div className="space-y-1.5 min-w-0">
                 <Label htmlFor="edit-end-time">End</Label>
                 <Input
                   id="edit-end-time"
@@ -1379,7 +1379,7 @@ export function EventTable({
               </Select>
             </div>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-              <div className="space-y-1.5">
+              <div className="space-y-1.5 min-w-0">
                 <Label htmlFor="clone-event-date">Date</Label>
                 <Input
                   id="clone-event-date"
@@ -1388,7 +1388,7 @@ export function EventTable({
                   onChange={(e) => setCloneEventDate(e.target.value)}
                 />
               </div>
-              <div className="space-y-1.5">
+              <div className="space-y-1.5 min-w-0">
                 <Label htmlFor="clone-start-time">Start</Label>
                 <Input
                   id="clone-start-time"
@@ -1399,7 +1399,7 @@ export function EventTable({
                   onChange={(e) => setCloneStartTime(e.target.value)}
                 />
               </div>
-              <div className="space-y-1.5">
+              <div className="space-y-1.5 min-w-0">
                 <Label htmlFor="clone-end-time">End</Label>
                 <Input
                   id="clone-end-time"
