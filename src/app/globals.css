@@ -171,3 +171,9 @@ input[type="time"] {
     font-size: 16px !important;
   }
 }
+
+html {
+  scrollbar-gutter: stable;
+  /* Optional: stable both-edges if you have centered content and want symmetric gutters */
+  /* scrollbar-gutter: stable both-edges; */
+}
