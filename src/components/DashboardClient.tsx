@@ -474,7 +474,7 @@ export function DashboardClient({
                   </div>
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-muted-foreground">Upcoming</span>
-                    <span className="font-semibold">
+                    <span className="font-semibold text-primary">
                       {dashboardCounts.upcoming[activeBuildingKey]}
                     </span>
                   </div>
@@ -608,15 +608,16 @@ export function DashboardClient({
                                 title={title}
                                 className="flex h-4 w-4 items-center justify-center"
                               >
-                                <span className="relative inline-flex h-3 w-3 items-center justify-center">
+                                <span
+                                  className={`inline-flex h-3 w-3 items-center justify-center rounded-full ${
+                                    isToday
+                                      ? 'shadow-[0_0_6px_2px_rgba(0,0,0,0.9)] dark:shadow-[0_0_6px_2px_rgba(255,255,255,0.9)]'
+                                      : ''
+                                  }`}
+                                >
                                   <span
                                     className={`inline-block h-3 w-3 rounded-full ${dotClass}`}
                                   />
-                                  {isToday && (
-                                    <span className="absolute text-[9px] leading-none text-purple-500">
-                                      ★
-                                    </span>
-                                  )}
                                 </span>
                               </div>
                             );

@@ -662,7 +662,9 @@ export function EventTable({
   return (
     <TooltipProvider delayDuration={200}>
       <div
-        className={`rounded-md border-b ${isMobileView ? 'overflow-hidden' : 'overflow-x-auto'}`}
+        className={`rounded-t-md rounded-b-none border-b ${
+          isMobileView ? 'overflow-hidden' : 'overflow-x-auto'
+        }`}
       >
         <Table
           className={`${
