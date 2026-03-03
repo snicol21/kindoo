@@ -741,10 +741,10 @@ export function EventTable({
                       }}
                     />
                   </TableCell>
-                  <TableCell className="min-w-0">
+                  <TableCell className="min-w-0 align-top">
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
-                        <div className="flex flex-wrap items-baseline gap-2">
+                        <div className="flex flex-wrap items-center gap-2">
                           <div className="text-foreground text-sm font-semibold">
                             {formatDate(event.eventDate)}
                           </div>
@@ -754,15 +754,15 @@ export function EventTable({
                             </div>
                           )}
                         </div>
-                        <div className="flex items-center gap-1.5 text-muted-foreground text-xs">
+                        <div className="mt-1 flex items-center gap-1.5 text-muted-foreground text-xs">
                           <Clock className="h-3.5 w-3.5 shrink-0" />
                           <span>{formatTimeRange(event.startTime, event.endTime)}</span>
                         </div>
                         <p
-                          className="flex items-start gap-1.5 text-muted-foreground text-xs line-clamp-2"
+                          className="mt-1 flex items-start gap-1.5 text-muted-foreground text-xs line-clamp-2"
                           title={event.description}
                         >
-                          <FileText className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                          <FileText className="h-3.5 w-3.5 shrink-0" />
                           <span className="min-w-0">{event.description}</span>
                         </p>
                         {!isMobileView && !isOptimistic && withinWindow && !isCompleted && (
@@ -863,7 +863,7 @@ export function EventTable({
                             <div className="flex min-w-0 items-center gap-1.5">
                               <a
                                 href={`mailto:${event.email}`}
-                                className="max-w-44 truncate font-semibold text-foreground hover:underline"
+                                className="max-w-44 truncate text-foreground hover:underline"
                                 title={event.email}
                               >
                                 {event.email}
@@ -950,7 +950,7 @@ export function EventTable({
                     )}
                   </TableCell>
                   {!isMobileView && (
-                    <TableCell className="max-w-[360px]">
+                    <TableCell className="max-w-[360px] align-top">
                       <div className="space-y-1.5">
                         <div
                           className="truncate text-foreground text-sm font-semibold"
@@ -966,7 +966,7 @@ export function EventTable({
                     </TableCell>
                   )}
                   {!isMobileView && (
-                    <TableCell className="max-w-[280px]">
+                    <TableCell className="max-w-[280px] align-top">
                       <div className="space-y-1.5">
                         <div className="flex items-center gap-1.5 text-muted-foreground text-xs">
                           <Mail className="h-3.5 w-3.5 shrink-0" />
@@ -974,7 +974,7 @@ export function EventTable({
                             <div className="flex min-w-0 items-center gap-1.5">
                               <a
                                 href={`mailto:${event.email}`}
-                                className="truncate cursor-pointer font-semibold text-foreground hover:underline"
+                                className="truncate cursor-pointer text-foreground hover:underline"
                                 title={event.email}
                               >
                                 {event.email}
@@ -1048,7 +1048,7 @@ export function EventTable({
                     </TableCell>
                   )}
                   {!isMobileView && (
-                    <TableCell className="text-muted-foreground whitespace-nowrap text-sm">
+                    <TableCell className="text-muted-foreground whitespace-nowrap text-sm align-top">
                       {isOptimistic ? (
                         '—'
                       ) : (
@@ -1068,7 +1068,7 @@ export function EventTable({
                     </TableCell>
                   )}
                   {!isMobileView && (
-                    <TableCell>
+                    <TableCell className="align-top">
                       <div className="flex items-center gap-1">
                         <Tooltip>
                           <TooltipTrigger asChild>

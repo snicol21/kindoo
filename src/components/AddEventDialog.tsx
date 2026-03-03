@@ -443,7 +443,7 @@ export function AddEventDialog({
                 id="phone"
                 name="phone"
                 type="tel"
-                placeholder="+1 (555) 000-0000"
+                placeholder="(555) 000-0000"
                 defaultValue={state.values?.phone}
                 className={state.errors?.phone ? 'border-destructive' : ''}
                 autoComplete="tel"
@@ -479,7 +479,7 @@ export function AddEventDialog({
             <Textarea
               id="description"
               name="description"
-              placeholder="Describe the event, date/time, requirements…"
+              placeholder="Short description (e.g., Wedding reception or Birthday party)"
               rows={4}
               defaultValue={state.values?.description}
               className={state.errors?.description ? 'border-destructive' : ''}
