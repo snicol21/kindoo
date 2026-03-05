@@ -18,6 +18,7 @@ import { DashboardEventsHeader } from '@/components/DashboardClient/DashboardEve
 import { DashboardStats } from '@/components/DashboardClient/DashboardStats';
 import { DashboardTabsHeader } from '@/components/DashboardClient/DashboardTabsHeader';
 import { EventsTabPanel } from '@/components/DashboardClient/EventsTabPanel';
+import { PageContainer } from '@/components/PageContainer';
 import {
   DEFAULT_LICENSE_LEAD_DAYS,
   LICENSE_LEAD_KEY,
@@ -197,7 +198,7 @@ export function DashboardClient({
   };
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-7xl space-y-6">
+    <PageContainer width="full" className="space-y-6">
       <Tabs
         value={activeTab}
         onValueChange={(value) => setActiveTab(normalizeTab(value))}
@@ -287,6 +288,6 @@ export function DashboardClient({
         onCloseAction={() => setBulkDeleteTarget(null)}
         onConfirmAction={confirmBulkDelete}
       />
-    </div>
+    </PageContainer>
   );
 }

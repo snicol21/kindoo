@@ -14,6 +14,7 @@ import { users } from '@/schema/schema';
 import { eq } from 'drizzle-orm';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
+import { PageContainer } from '@/components/PageContainer';
 
 export const metadata: Metadata = {
   title: 'Account Settings',
@@ -51,7 +52,7 @@ export default async function AccountPage({ searchParams }: AccountPageProps) {
         : null;
 
   return (
-    <div className="container mx-auto max-w-xl px-4 py-8">
+    <PageContainer width="narrow">
       <div className="sticky top-2 z-10 mb-6 w-fit rounded-md bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/80 sm:static sm:bg-transparent sm:backdrop-blur-none">
         <Button asChild variant="ghost" size="sm" className="gap-2">
           <Link href="/dashboard">
@@ -183,6 +184,6 @@ export default async function AccountPage({ searchParams }: AccountPageProps) {
           </Link>
         </Button>
       </div>
-    </div>
+    </PageContainer>
   );
 }

@@ -7,6 +7,7 @@ import { listUsers } from '@/actions/auth';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 import { AdminUsersClient } from '@/components/AdminUsersClient';
+import { PageContainer } from '@/components/PageContainer';
 
 export const metadata: Metadata = {
   title: 'User Admin',
@@ -26,7 +27,7 @@ export default async function AdminUsersPage() {
   const managedUsers = usersResult.success ? (usersResult.data ?? []) : [];
 
   return (
-    <div className="container mx-auto max-w-3xl px-4 py-8 space-y-6">
+    <PageContainer width="narrow" className="space-y-6">
       <div className="sticky top-2 z-10 w-fit rounded-md bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/80 sm:static sm:bg-transparent sm:backdrop-blur-none">
         <Button asChild variant="ghost" size="sm" className="gap-2">
           <Link href="/dashboard">
@@ -44,6 +45,6 @@ export default async function AdminUsersPage() {
           </Link>
         </Button>
       </div>
-    </div>
+    </PageContainer>
   );
 }
