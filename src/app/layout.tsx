@@ -42,7 +42,7 @@ function NavbarSkeleton() {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning className={inter.variable}>
-      <body className="font-inter antialiased bg-background text-foreground min-h-screen">
+      <body className="font-inter antialiased bg-background text-foreground min-h-screen flex flex-col">
         <NextTopLoader color="#2563eb" height={3} showSpinner={false} />
         <Suspense fallback={<NavbarSkeleton />}>
           <Providers>
@@ -50,7 +50,36 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <Suspense fallback={<NavbarSkeleton />}>
               <Navbar />
             </Suspense>
-            <main className="min-h-[calc(100vh-4rem)]">{children}</main>
+            <main className="flex-1 min-h-[calc(100vh-4rem)]">{children}</main>
+            <footer className="border-t bg-muted/20">
+              <div className="container mx-auto max-w-7xl px-4 py-4 text-xs leading-relaxed text-muted-foreground">
+                <p>
+                  Event Tracker is an independent local utility, not affiliated with or endorsed by{' '}
+                  <a
+                    href="https://churchofjesuschrist.org"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline underline-offset-2 decoration-muted-foreground/60 hover:text-foreground"
+                  >
+                    The Church of Jesus Christ of Latter-day Saints
+                  </a>{' '}
+                  or{' '}
+                  <a
+                    href="https://kindoo.tech"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline underline-offset-2 decoration-muted-foreground/60 hover:text-foreground"
+                  >
+                    Kindoo
+                  </a>
+                  .
+                </p>
+                <p className="mt-1">
+                  For support, contact Spencer Nicol (spencer.nicol@gmail.com).
+                </p>
+                <p className="mt-1">Kindoo is a trademark of its respective owner.</p>
+              </div>
+            </footer>
           </Providers>
         </Suspense>
       </body>
