@@ -324,6 +324,8 @@ export function EventTable({
   selectedIds,
   onSelectionChange,
 }: EventTableProps) {
+  // Adjust this value to control when the table collapses from Event+Member to Event-only.
+  const SINGLE_COLUMN_MAX_WIDTH = 639;
   const PAGE_SIZE = 10;
   const effectiveLeadDays = Number.isFinite(licenseLeadDays)
     ? Math.max(0, licenseLeadDays as number)
@@ -385,6 +387,7 @@ export function EventTable({
   const [internalSelectedIds, setInternalSelectedIds] = useState<Set<string>>(new Set());
   const [isCompactView, setIsCompactView] = useState(false);
   const [isMobileView, setIsMobileView] = useState(false);
+  const [isSingleColumnView, setIsSingleColumnView] = useState(false);
 
   const selectedIdSet = useMemo(
     () => new Set(selectedIds ?? Array.from(internalSelectedIds)),
@@ -418,32 +421,39 @@ export function EventTable({
   useEffect(() => {
     const compactQuery = window.matchMedia('(max-width: 1023px)');
     const mobileQuery = window.matchMedia('(max-width: 767px)');
+    const singleColumnQuery = window.matchMedia(`(max-width: ${SINGLE_COLUMN_MAX_WIDTH}px)`);
     const syncBreakpoints = () => {
       setIsCompactView(compactQuery.matches);
       setIsMobileView(mobileQuery.matches);
+      setIsSingleColumnView(singleColumnQuery.matches);
     };
 
     syncBreakpoints();
 
     if (
       typeof compactQuery.addEventListener === 'function' &&
-      typeof mobileQuery.addEventListener === 'function'
+      typeof mobileQuery.addEventListener === 'function' &&
+      typeof singleColumnQuery.addEventListener === 'function'
     ) {
       compactQuery.addEventListener('change', syncBreakpoints);
       mobileQuery.addEventListener('change', syncBreakpoints);
+      singleColumnQuery.addEventListener('change', syncBreakpoints);
       return () => {
         compactQuery.removeEventListener('change', syncBreakpoints);
         mobileQuery.removeEventListener('change', syncBreakpoints);
+        singleColumnQuery.removeEventListener('change', syncBreakpoints);
       };
     }
 
     compactQuery.addListener(syncBreakpoints);
     mobileQuery.addListener(syncBreakpoints);
+    singleColumnQuery.addListener(syncBreakpoints);
     return () => {
       compactQuery.removeListener(syncBreakpoints);
       mobileQuery.removeListener(syncBreakpoints);
+      singleColumnQuery.removeListener(syncBreakpoints);
     };
-  }, []);
+  }, [SINGLE_COLUMN_MAX_WIDTH]);
 
   const handleSort = (key: SortKey) => {
     if (sortKey === key) {
@@ -715,11 +725,11 @@ export function EventTable({
                 />
               </TableHead>
               <TableHead
-                className={isCompactView && !isMobileView ? 'w-1/2' : 'min-w-0 sm:min-w-50'}
+                className={isCompactView && !isSingleColumnView ? 'w-1/2' : 'min-w-0 sm:min-w-50'}
               >
                 <SortButton col="eventDate" label="Event" />
               </TableHead>
-              {!isMobileView && (
+              {!isSingleColumnView && (
                 <TableHead className={isCompactView ? 'w-1/2' : 'w-60'}>
                   <SortButton col="name" label="Member" />
                 </TableHead>
@@ -763,7 +773,7 @@ export function EventTable({
                     />
                   </TableCell>
                   <TableCell
-                    className={`min-w-0 align-top ${isCompactView && !isMobileView ? 'w-1/2' : ''}`}
+                    className={`min-w-0 align-top ${isCompactView && !isSingleColumnView ? 'w-1/2' : ''}`}
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
@@ -788,7 +798,7 @@ export function EventTable({
                           <FileText className="h-3.5 w-3.5 shrink-0" />
                           <span className="min-w-0">{event.description}</span>
                         </p>
-                        {!isMobileView && !isOptimistic && withinWindow && !isCompleted && (
+                        {!isSingleColumnView && !isOptimistic && withinWindow && !isCompleted && (
                           <Button
                             variant="outline"
                             size="sm"
@@ -802,7 +812,7 @@ export function EventTable({
                             Kindoo License
                           </Button>
                         )}
-                        {!isMobileView && !isOptimistic && isCompleted && (
+                        {!isSingleColumnView && !isOptimistic && isCompleted && (
                           <button
                             type="button"
                             className="mt-1.5 inline-flex w-fit cursor-pointer items-center gap-1.5 text-xs font-medium text-emerald-700 hover:text-emerald-800 disabled:cursor-not-allowed"
@@ -814,7 +824,7 @@ export function EventTable({
                           </button>
                         )}
                       </div>
-                      {isMobileView && (
+                      {isSingleColumnView && (
                         <div>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
@@ -867,7 +877,7 @@ export function EventTable({
                         </div>
                       )}
                     </div>
-                    {isMobileView && (
+                    {isSingleColumnView && (
                       <div className="mt-2 space-y-2">
                         <div className="flex flex-wrap items-baseline gap-1">
                           <div
@@ -972,7 +982,7 @@ export function EventTable({
                       </div>
                     )}
                   </TableCell>
-                  {isCompactView && !isMobileView && (
+                  {isCompactView && !isSingleColumnView && (
                     <TableCell className="w-1/2 align-top">
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0 space-y-1.5">
