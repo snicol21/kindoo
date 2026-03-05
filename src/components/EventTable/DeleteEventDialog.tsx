@@ -32,7 +32,7 @@ export function DeleteEventDialog({
           <DialogTitle>Delete event?</DialogTitle>
           <DialogDescription>
             {pendingDeleteEvent
-              ? `This will permanently delete "${pendingDeleteEvent.name}".`
+              ? `This will permanently delete "${pendingDeleteEvent.contactName}".`
               : 'This action cannot be undone.'}
           </DialogDescription>
         </DialogHeader>

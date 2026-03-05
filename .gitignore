@@ -21,9 +21,6 @@ local.db-wal
 # ─── Devbox ──────────────────────────────────────────────────────────────────
 .devbox/.schema-hash
 
-# ─── Drizzle migrations ──────────────────────────────────────────────────────
-drizzle/
-
 # ─── Lockfiles (Prettier skips these too) ────────────────────────────────────
 pnpm-lock.yaml
 yarn.lock

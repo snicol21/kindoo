@@ -45,13 +45,17 @@ export function EventMessagesDialog({
         </DialogHeader>
         {copyingEvent && (
           <div className="space-y-4">
-            {(copyingEvent.email?.trim() || copyingEvent.phone?.trim()) && (
+            {(copyingEvent.contactEmail?.trim() || copyingEvent.contactPhone?.trim()) && (
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                {copyingEvent.email?.trim() && (
+                {copyingEvent.contactEmail?.trim() && (
                   <div className="space-y-2">
                     <Label>Email</Label>
                     <div className="flex w-full items-center gap-2">
-                      <Input readOnly value={copyingEvent.email} className="min-w-0 flex-1" />
+                      <Input
+                        readOnly
+                        value={copyingEvent.contactEmail}
+                        className="min-w-0 flex-1"
+                      />
                       <Button
                         variant="secondary"
                         size="icon"
@@ -59,7 +63,7 @@ export function EventMessagesDialog({
                         aria-label="Copy email"
                         onClick={async () => {
                           try {
-                            await navigator.clipboard.writeText(copyingEvent.email ?? '');
+                            await navigator.clipboard.writeText(copyingEvent.contactEmail ?? '');
                             toast.success('Email copied.');
                           } catch {
                             toast.error('Failed to copy.');
@@ -71,13 +75,13 @@ export function EventMessagesDialog({
                     </div>
                   </div>
                 )}
-                {copyingEvent.phone?.trim() && (
+                {copyingEvent.contactPhone?.trim() && (
                   <div className="space-y-2">
                     <Label>Phone</Label>
                     <div className="flex w-full items-center gap-2">
                       <Input
                         readOnly
-                        value={formatPhoneAction(copyingEvent.phone)}
+                        value={formatPhoneAction(copyingEvent.contactPhone)}
                         className="min-w-0 flex-1"
                       />
                       <Button
@@ -88,7 +92,7 @@ export function EventMessagesDialog({
                         onClick={async () => {
                           try {
                             await navigator.clipboard.writeText(
-                              formatPhoneAction(copyingEvent.phone)
+                              formatPhoneAction(copyingEvent.contactPhone)
                             );
                             toast.success('Phone copied.');
                           } catch {

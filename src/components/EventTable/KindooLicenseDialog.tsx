@@ -90,7 +90,7 @@ export function KindooLicenseDialog({
               <div className="flex w-full items-center gap-2">
                 <Input
                   readOnly
-                  value={licenseEvent.email || ''}
+                  value={licenseEvent.contactEmail || ''}
                   placeholder="No email"
                   className="min-w-0 flex-1"
                 />
@@ -99,10 +99,10 @@ export function KindooLicenseDialog({
                   size="icon"
                   className="shrink-0 sm:mr-3"
                   aria-label="Copy email"
-                  disabled={!licenseEvent.email}
+                  disabled={!licenseEvent.contactEmail}
                   onClick={async () => {
                     try {
-                      await navigator.clipboard.writeText(licenseEvent.email ?? '');
+                      await navigator.clipboard.writeText(licenseEvent.contactEmail ?? '');
                       toast.success('Email copied.');
                     } catch {
                       toast.error('Failed to copy.');
@@ -213,7 +213,7 @@ export function KindooLicenseDialog({
                 <Input
                   readOnly
                   className="min-w-0 flex-1"
-                  value={`[${licenseEvent.ward ?? ''}] - [Private Event] - [${licenseEvent.name}]`}
+                  value={`[${licenseEvent.contactWard ?? ''}] - [Private Event] - [${licenseEvent.contactName}]`}
                 />
                 <Button
                   variant="secondary"
@@ -223,7 +223,7 @@ export function KindooLicenseDialog({
                   onClick={async () => {
                     try {
                       await navigator.clipboard.writeText(
-                        `[${licenseEvent.ward ?? ''}] - [Private Event] - [${licenseEvent.name}]`
+                        `[${licenseEvent.contactWard ?? ''}] - [Private Event] - [${licenseEvent.contactName}]`
                       );
                       toast.success('User description copied.');
                     } catch {

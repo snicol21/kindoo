@@ -2,8 +2,8 @@
 
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
-import { messageTemplateDefaults, messageTemplates } from '@/schema/schema';
-import { eq, sql } from 'drizzle-orm';
+import { messageTemplates } from '@/schema/schema';
+import { sql } from 'drizzle-orm';
 import { loadMessageTemplatesForUser } from '@/lib/message-templates-store';
 import {
   MESSAGE_TEMPLATE_KEYS,

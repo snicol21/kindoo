@@ -3,6 +3,7 @@
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
 import {
+  contacts,
   events,
   users,
   BUILDINGS,
@@ -12,7 +13,7 @@ import {
   type UserRole,
   type Ward,
 } from '@/schema/schema';
-import { and, eq, inArray } from 'drizzle-orm';
+import { and, eq, inArray, or } from 'drizzle-orm';
 import { revalidateTag } from 'next/cache';
 import { isAdminEmail } from '@/lib/admin';
 import { isFutureDate } from '@/utils/dateUtils';
@@ -39,9 +40,23 @@ export interface UpdateEventInput extends AddEventInput {
   id: string;
 }
 
-export interface EventWithCreator extends Event {
+export interface EventWithCreator {
+  id: string;
+  building: Building;
+  eventDate: string;
+  startTime: string;
+  endTime: string;
+  contactId: string;
+  description: string;
+  kindooLicenseCreated: boolean;
+  userId: string;
+  createdAt: Date;
   creatorName: string | null;
   creatorEmail: string | null;
+  contactName: string;
+  contactWard: Ward;
+  contactEmail: string | null;
+  contactPhone: string | null;
 }
 
 export interface ImportEventsResult {
@@ -134,6 +149,9 @@ function validateEventInput(input: AddEventInput): string | null {
   if (input.email?.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.email)) {
     return 'Email must be valid if provided.';
   }
+  if (!input.email?.trim() && !input.phone?.trim()) {
+    return 'At least one contact method is required (email or phone).';
+  }
   if (!input.description?.trim()) return 'Description is required.';
   if (input.description.trim().length > DESCRIPTION_MAX_LENGTH) {
     return `Description must be ${DESCRIPTION_MAX_LENGTH} characters or less.`;
@@ -142,6 +160,84 @@ function validateEventInput(input: AddEventInput): string | null {
     return 'Invalid phone number format.';
   }
   return null;
+}
+
+type DbLike = typeof db | Parameters<Parameters<typeof db.transaction>[0]>[0];
+
+async function getOrCreateContactId(
+  input: {
+    ward: Ward;
+    name: string;
+    email?: string | null;
+    phone?: string | null;
+  },
+  dbLike: DbLike = db
+) {
+  const emailValue = input.email?.trim() ? normalizeEmail(input.email) : null;
+  const phoneValue = input.phone?.trim() ? normalizePhoneForStorage(input.phone) : null;
+
+  if (!emailValue && !phoneValue) {
+    throw new Error('At least one contact method is required (email or phone).');
+  }
+
+  const identifierPredicate =
+    emailValue && phoneValue
+      ? or(eq(contacts.email, emailValue), eq(contacts.phone, phoneValue))
+      : emailValue
+        ? eq(contacts.email, emailValue)
+        : eq(contacts.phone, phoneValue!);
+
+  const existing = await dbLike
+    .select({ id: contacts.id })
+    .from(contacts)
+    .where(and(eq(contacts.ward, input.ward), identifierPredicate))
+    .limit(1);
+
+  if (existing[0]?.id) {
+    return existing[0].id;
+  }
+
+  let createdId: string | null = null;
+  try {
+    const [created] = await dbLike
+      .insert(contacts)
+      .values({
+        name: input.name.trim(),
+        ward: input.ward,
+        email: emailValue,
+        phone: phoneValue,
+      })
+      .returning({ id: contacts.id });
+
+    createdId = created?.id ?? null;
+  } catch {
+    const [recovered] = await dbLike
+      .select({ id: contacts.id })
+      .from(contacts)
+      .where(and(eq(contacts.ward, input.ward), identifierPredicate))
+      .limit(1);
+
+    createdId = recovered?.id ?? null;
+  }
+
+  return createdId;
+}
+
+async function cleanupOrphanContacts(contactIds: string[]) {
+  const uniqueContactIds = Array.from(new Set(contactIds.map((id) => id.trim()).filter(Boolean)));
+  if (uniqueContactIds.length === 0) return;
+
+  const stillReferenced = await db
+    .select({ contactId: events.contactId })
+    .from(events)
+    .where(inArray(events.contactId, uniqueContactIds));
+
+  const referencedSet = new Set(stillReferenced.map((row) => row.contactId));
+  const orphanIds = uniqueContactIds.filter((id) => !referencedSet.has(id));
+
+  if (orphanIds.length > 0) {
+    await db.delete(contacts).where(inArray(contacts.id, orphanIds));
+  }
 }
 
 // ─── Server Actions ───────────────────────────────────────────────────────────
@@ -160,26 +256,45 @@ export async function addEvent(input: AddEventInput): Promise<ActionResult<Event
       return { success: false, error: validationError };
     }
 
-    const [newEvent] = await db
-      .insert(events)
-      .values({
-        building: normalizedInput.building,
-        ward: normalizedInput.ward,
-        name: normalizedInput.name,
-        eventDate: normalizedInput.eventDate,
-        startTime: normalizedInput.startTime,
-        endTime: normalizedInput.endTime,
-        phone: normalizedInput.phone || null,
-        email: normalizedInput.email || '',
-        description: normalizedInput.description,
-        kindooLicenseCreated: false,
-        userId: session.user.id,
-      })
-      .returning();
+    const newEvent = await db.transaction(async (tx) => {
+      const contactId = await getOrCreateContactId(
+        {
+          ward: normalizedInput.ward,
+          name: normalizedInput.name,
+          email: normalizedInput.email,
+          phone: normalizedInput.phone,
+        },
+        tx
+      );
+
+      if (!contactId) {
+        throw new Error('Contact could not be created.');
+      }
+
+      const [createdEvent] = await tx
+        .insert(events)
+        .values({
+          building: normalizedInput.building,
+          eventDate: normalizedInput.eventDate,
+          startTime: normalizedInput.startTime,
+          endTime: normalizedInput.endTime,
+          contactId,
+          description: normalizedInput.description,
+          kindooLicenseCreated: false,
+          userId: session.user.id,
+        })
+        .returning();
+
+      if (!createdEvent) {
+        throw new Error('Failed to create event.');
+      }
+
+      return createdEvent;
+    });
 
     // Invalidate cache tags for this user's events
-    revalidateTag(`events-${session.user.id}`, 'everything');
-    revalidateTag(`events-${session.user.id}-${normalizedInput.building}`, 'everything');
+    revalidateTag(`events-${session.user.id}`, 'max');
+    revalidateTag(`events-${session.user.id}-${normalizedInput.building}`, 'max');
 
     return { success: true, data: newEvent };
   } catch (error) {
@@ -207,22 +322,24 @@ export async function getEventsByBuilding(
       .select({
         id: events.id,
         building: events.building,
-        ward: events.ward,
-        name: events.name,
         eventDate: events.eventDate,
         startTime: events.startTime,
         endTime: events.endTime,
-        phone: events.phone,
-        email: events.email,
+        contactId: events.contactId,
         description: events.description,
         kindooLicenseCreated: events.kindooLicenseCreated,
         userId: events.userId,
         createdAt: events.createdAt,
         creatorName: users.name,
         creatorEmail: users.email,
+        contactName: contacts.name,
+        contactWard: contacts.ward,
+        contactEmail: contacts.email,
+        contactPhone: contacts.phone,
       })
       .from(events)
       .innerJoin(users, eq(events.userId, users.id))
+      .innerJoin(contacts, eq(events.contactId, contacts.id))
       .where(
         role === 'user'
           ? and(eq(events.building, building), eq(events.userId, session.user.id))
@@ -247,18 +364,24 @@ export async function deleteEvent(eventId: string): Promise<ActionResult<void>> 
 
     const role = resolveRole(session);
 
-    const result =
-      role === 'user'
-        ? await db
-            .delete(events)
-            .where(and(eq(events.id, eventId), eq(events.userId, session.user.id)))
-        : await db.delete(events).where(eq(events.id, eventId));
+    const deletableRows = await db
+      .select({ id: events.id, contactId: events.contactId })
+      .from(events)
+      .where(
+        role === 'user'
+          ? and(eq(events.id, eventId), eq(events.userId, session.user.id))
+          : eq(events.id, eventId)
+      )
+      .limit(1);
 
-    if ((result?.rowsAffected ?? 0) === 0) {
+    if (deletableRows.length === 0) {
       return { success: false, error: 'Event not found or not authorized.' };
     }
 
-    revalidateTag(`events-${session.user.id}`, 'everything');
+    await db.delete(events).where(eq(events.id, deletableRows[0].id));
+    await cleanupOrphanContacts([deletableRows[0].contactId]);
+
+    revalidateTag(`events-${session.user.id}`, 'max');
 
     return { success: true };
   } catch (error) {
@@ -282,16 +405,30 @@ export async function deleteEvents(eventIds: string[]): Promise<ActionResult<{ d
       return { success: false, error: 'No events selected.' };
     }
 
-    const result =
-      role === 'user'
-        ? await db
-            .delete(events)
-            .where(and(inArray(events.id, ids), eq(events.userId, session.user.id)))
-        : await db.delete(events).where(inArray(events.id, ids));
+    const deletableRows = await db
+      .select({ id: events.id, contactId: events.contactId })
+      .from(events)
+      .where(
+        role === 'user'
+          ? and(inArray(events.id, ids), eq(events.userId, session.user.id))
+          : inArray(events.id, ids)
+      );
 
-    revalidateTag(`events-${session.user.id}`, 'everything');
+    if (deletableRows.length === 0) {
+      return { success: false, error: 'No events found or not authorized.' };
+    }
 
-    return { success: true, data: { deleted: result.rowsAffected ?? ids.length } };
+    await db.delete(events).where(
+      inArray(
+        events.id,
+        deletableRows.map((row) => row.id)
+      )
+    );
+    await cleanupOrphanContacts(deletableRows.map((row) => row.contactId));
+
+    revalidateTag(`events-${session.user.id}`, 'max');
+
+    return { success: true, data: { deleted: deletableRows.length } };
   } catch (error) {
     console.error('[deleteEvents] Error:', error);
     return { success: false, error: 'Failed to delete events.' };
@@ -312,38 +449,56 @@ export async function updateEvent(input: UpdateEventInput): Promise<ActionResult
       return { success: false, error: 'Invalid event id.' };
     }
 
+    const [existingEvent] = await db
+      .select({ userId: events.userId, contactId: events.contactId })
+      .from(events)
+      .where(
+        role === 'user'
+          ? and(eq(events.id, input.id), eq(events.userId, session.user.id))
+          : eq(events.id, input.id)
+      )
+      .limit(1);
+
+    if (!existingEvent) {
+      return { success: false, error: 'Event not found.' };
+    }
+
     const normalizedInput = normalizeEventInput(input);
     const validationError = validateEventInput(normalizedInput);
     if (validationError) {
       return { success: false, error: validationError };
     }
 
+    const contactId = await getOrCreateContactId({
+      ward: normalizedInput.ward,
+      name: normalizedInput.name,
+      email: normalizedInput.email,
+      phone: normalizedInput.phone,
+    });
+
     const [updatedEvent] = await db
       .update(events)
       .set({
         building: normalizedInput.building,
-        ward: normalizedInput.ward,
-        name: normalizedInput.name,
         eventDate: normalizedInput.eventDate,
         startTime: normalizedInput.startTime,
         endTime: normalizedInput.endTime,
-        phone: normalizedInput.phone || null,
-        email: normalizedInput.email || '',
+        contactId,
         description: normalizedInput.description,
       })
-      .where(
-        role === 'user'
-          ? and(eq(events.id, input.id), eq(events.userId, session.user.id))
-          : eq(events.id, input.id)
-      )
+      .where(eq(events.id, input.id))
       .returning();
 
     if (!updatedEvent) {
       return { success: false, error: 'Event not found.' };
     }
 
-    revalidateTag(`events-${session.user.id}`, 'everything');
-    revalidateTag(`events-${session.user.id}-${normalizedInput.building}`, 'everything');
+    if (contactId !== existingEvent.contactId) {
+      await cleanupOrphanContacts([existingEvent.contactId]);
+    }
+
+    revalidateTag(`events-${session.user.id}`, 'max');
+    revalidateTag(`events-${session.user.id}-${normalizedInput.building}`, 'max');
 
     return { success: true, data: updatedEvent };
   } catch (error) {
@@ -383,23 +538,31 @@ export async function importEvents(input: {
       };
     }
 
-    const insertValues = validRows.map((event) => ({
-      building: event.building,
-      ward: event.ward,
-      name: event.name,
-      eventDate: event.eventDate,
-      startTime: event.startTime,
-      endTime: event.endTime,
-      phone: event.phone || null,
-      email: event.email || '',
-      description: event.description,
-      kindooLicenseCreated: false,
-      userId: session.user.id,
-    }));
+    const insertValues = [] as Array<typeof events.$inferInsert>;
+
+    for (const event of validRows) {
+      const contactId = await getOrCreateContactId({
+        ward: event.ward,
+        name: event.name,
+        email: event.email,
+        phone: event.phone,
+      });
+
+      insertValues.push({
+        building: event.building,
+        eventDate: event.eventDate,
+        startTime: event.startTime,
+        endTime: event.endTime,
+        contactId,
+        description: event.description,
+        kindooLicenseCreated: false,
+        userId: session.user.id,
+      });
+    }
 
     await db.insert(events).values(insertValues);
 
-    revalidateTag(`events-${session.user.id}`, 'everything');
+    revalidateTag(`events-${session.user.id}`, 'max');
 
     return {
       success: true,
@@ -447,8 +610,8 @@ export async function setKindooLicenseCreated(input: {
       return { success: false, error: 'Event not found.' };
     }
 
-    revalidateTag(`events-${session.user.id}`, 'everything');
-    revalidateTag(`events-${session.user.id}-${updatedEvent.building}`, 'everything');
+    revalidateTag(`events-${session.user.id}`, 'max');
+    revalidateTag(`events-${session.user.id}-${updatedEvent.building}`, 'max');
 
     return { success: true, data: updatedEvent };
   } catch (error) {

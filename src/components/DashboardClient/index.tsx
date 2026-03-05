@@ -40,10 +40,10 @@ import type { DashboardClientProps, DashboardTab } from '@/components/DashboardC
 
 const buildEventSearchHaystack = (event: EventWithCreator) =>
   [
-    event.name,
-    event.ward,
-    event.email,
-    event.phone,
+    event.contactName,
+    event.contactWard,
+    event.contactEmail,
+    event.contactPhone,
     event.description,
     event.eventDate,
     event.startTime,

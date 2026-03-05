@@ -24,13 +24,21 @@ import {
   SelectValue,
 } from '@/components/_ui/select';
 import { Loader2 } from 'lucide-react';
+import { ContactMatchPopover, handleContactMatchKeyDown } from '@/components/ContactMatchPopover';
+import { MatchedContactBadge } from '@/components/MatchedContactBadge';
 import { useAddEvent } from '@/hooks/useEvents';
+import { useContactSearch } from '@/hooks/useContacts';
+import { updateContact, type ContactSearchResult } from '@/actions/contacts';
 import type { Building, Ward } from '@/schema/schema';
 import { BUILDINGS, WARDS } from '@/schema/schema';
 import { formatPhone } from '@/utils/phoneUtils';
 import { getTomorrowYmd } from '@/utils/dateUtils';
 import { parseTimeToMinutes } from '@/utils/timeUtils';
 import { DESCRIPTION_MAX_LENGTH } from '@/utils/eventConstants';
+import { getContactChangeState } from '@/lib/contact-linking';
+import { useContactChangeState } from '@/hooks/useContactChangeState';
+
+const phoneDigits = (value?: string | null) => (value ?? '').replace(/\D/g, '');
 
 interface AddEventDialogProps {
   open: boolean;
@@ -87,8 +95,30 @@ export function AddEventDialog({
   defaultBuilding = 'Stake Center',
 }: AddEventDialogProps) {
   const formRef = useRef<HTMLFormElement>(null);
+  const nameRef = useRef<HTMLInputElement>(null);
+  const phoneRef = useRef<HTMLInputElement>(null);
+  const emailRef = useRef<HTMLInputElement>(null);
+  const wardTriggerRef = useRef<HTMLButtonElement>(null);
+  const eventDateRef = useRef<HTMLInputElement>(null);
+  const nameMatchRef = useRef<HTMLDivElement>(null);
+  const phoneMatchRef = useRef<HTMLDivElement>(null);
+  const emailMatchRef = useRef<HTMLDivElement>(null);
   const [selectedBuilding, setSelectedBuilding] = useState<Building>(defaultBuilding);
+  const [selectedWard, setSelectedWard] = useState<Ward | ''>('');
+  const [typedName, setTypedName] = useState('');
+  const [typedEmail, setTypedEmail] = useState('');
+  const [typedPhone, setTypedPhone] = useState('');
+  const [selectedContactId, setSelectedContactId] = useState<string | null>(null);
+  const [selectedContact, setSelectedContact] = useState<ContactSearchResult | null>(null);
+  const [matchCandidate, setMatchCandidate] = useState<ContactSearchResult | null>(null);
+  const [dismissedMatchId, setDismissedMatchId] = useState<string | null>(null);
+  const [contactFocusField, setContactFocusField] = useState<'name' | 'phone' | 'email' | null>(
+    null
+  );
   const [descriptionValue, setDescriptionValue] = useState('');
+  const contactLookupQuery = typedEmail.trim() || typedPhone.trim() || typedName.trim();
+  const { data: matchingContacts = [], isFetching: searchingContacts } =
+    useContactSearch(contactLookupQuery);
   const { mutate: addEventMutation, isPending } = useAddEvent(() => {
     onOpenChange(false);
   });
@@ -105,6 +135,136 @@ export function AddEventDialog({
   const handlePhoneInput = (event: ChangeEvent<HTMLInputElement>) => {
     event.target.value = formatPhone(event.target.value);
   };
+
+  const nameMatches = useMemo(() => {
+    const normalizedName = typedName.trim().toLowerCase();
+    if (normalizedName.length < 2) return [] as ContactSearchResult[];
+    const wardFiltered = selectedWard
+      ? matchingContacts.filter((contact) => contact.ward === selectedWard)
+      : matchingContacts;
+    return wardFiltered.filter((contact) => contact.name.trim().toLowerCase() === normalizedName);
+  }, [matchingContacts, selectedWard, typedName]);
+
+  const nameMatchCandidates = nameMatches.filter(
+    (contact) => contact.id !== selectedContactId && contact.id !== dismissedMatchId
+  );
+  const nameMatchCandidate = nameMatchCandidates[0] ?? null;
+  const nameMatchCount = nameMatchCandidates.length;
+
+  const applyContact = (contact: ContactSearchResult) => {
+    setSelectedContactId(contact.id);
+    setSelectedContact(contact);
+    setTypedName(contact.name);
+    setTypedEmail(contact.email ?? '');
+    setTypedPhone(formatPhone(contact.phone ?? ''));
+    if (nameRef.current) nameRef.current.value = contact.name;
+    setSelectedWard(contact.ward);
+    if (phoneRef.current) phoneRef.current.value = formatPhone(contact.phone ?? '');
+    if (emailRef.current) emailRef.current.value = contact.email ?? '';
+  };
+
+  const focusNextAfterMatch = (contact: ContactSearchResult) => {
+    const focusOrder =
+      contactFocusField === 'phone'
+        ? ['email', 'ward', 'date']
+        : contactFocusField === 'email'
+          ? ['ward', 'date']
+          : ['phone', 'email', 'ward', 'date'];
+
+    const nextField = focusOrder.find((field) => {
+      if (field === 'phone') return !contact.phone;
+      if (field === 'email') return !contact.email;
+      if (field === 'ward') return !contact.ward;
+      return true;
+    });
+
+    if (nextField === 'phone') {
+      phoneRef.current?.focus();
+    } else if (nextField === 'email') {
+      emailRef.current?.focus();
+    } else if (nextField === 'ward') {
+      wardTriggerRef.current?.focus();
+    } else {
+      eventDateRef.current?.focus();
+    }
+  };
+
+  const clearSelectedContact = () => {
+    setSelectedContactId(null);
+    setSelectedContact(null);
+  };
+
+  useEffect(() => {
+    if (!open) return;
+
+    const normalizedEmail = typedEmail.trim().toLowerCase();
+    const normalizedPhone = phoneDigits(typedPhone);
+    const normalizedName = typedName.trim().toLowerCase();
+
+    const wardFiltered = selectedWard
+      ? matchingContacts.filter((contact) => contact.ward === selectedWard)
+      : matchingContacts;
+
+    let match = null as (typeof matchingContacts)[number] | null;
+
+    if (normalizedEmail) {
+      match =
+        wardFiltered.find(
+          (contact) => (contact.email ?? '').trim().toLowerCase() === normalizedEmail
+        ) ?? null;
+    }
+
+    if (!match && normalizedPhone) {
+      match =
+        wardFiltered.find((contact) => phoneDigits(contact.phone) === normalizedPhone) ?? null;
+    }
+
+    if (!match && normalizedName && selectedWard) {
+      match =
+        wardFiltered.find((contact) => contact.name.trim().toLowerCase() === normalizedName) ??
+        null;
+    }
+
+    if (!match) {
+      setMatchCandidate(null);
+      setDismissedMatchId(null);
+      return;
+    }
+
+    if (match.id === selectedContactId || dismissedMatchId === match.id) {
+      setMatchCandidate(null);
+      return;
+    }
+
+    setMatchCandidate(match);
+  }, [
+    dismissedMatchId,
+    matchingContacts,
+    open,
+    selectedContactId,
+    selectedWard,
+    typedEmail,
+    typedName,
+    typedPhone,
+  ]);
+
+  useEffect(() => {
+    if (!open || !matchCandidate || selectedContactId || dismissedMatchId === matchCandidate.id) {
+      return;
+    }
+
+    const normalizedEmail = typedEmail.trim().toLowerCase();
+    const normalizedPhone = phoneDigits(typedPhone);
+    const emailMatches =
+      normalizedEmail && (matchCandidate.email ?? '').trim().toLowerCase() === normalizedEmail;
+    const phoneMatches = normalizedPhone && phoneDigits(matchCandidate.phone) === normalizedPhone;
+
+    if (emailMatches || phoneMatches) {
+      applyContact(matchCandidate);
+      setMatchCandidate(null);
+      setDismissedMatchId(null);
+    }
+  }, [dismissedMatchId, matchCandidate, open, selectedContactId, typedEmail, typedPhone]);
 
   // Client-side validation state using useActionState
   const [state, formAction] = useActionState<FormState, FormData>(
@@ -167,6 +327,9 @@ export function AddEventDialog({
       if (email?.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
         errors.email = 'Email must be valid if provided.';
       }
+      if (!email?.trim() && !formattedPhone?.trim()) {
+        errors.general = 'At least one contact method is required (email or phone).';
+      }
       if (!description?.trim()) {
         errors.description = 'Description is required.';
       } else if (description.trim().length > DESCRIPTION_MAX_LENGTH) {
@@ -195,6 +358,46 @@ export function AddEventDialog({
 
       // Submit via React Query mutation (handles optimistic + toast)
       try {
+        const normalizedFormEmail = email?.trim().toLowerCase() ?? '';
+        const normalizedFormPhone = phoneDigits(formattedPhone ?? '');
+        const normalizedFormName = name!.trim();
+        const submitChangeState = getContactChangeState(selectedContact, {
+          name: normalizedFormName,
+          ward: ward ?? '',
+          email: normalizedFormEmail,
+          phone: normalizedFormPhone,
+        });
+        const willCreateNewContact = submitChangeState.willCreateNewContact;
+        const hasContactEdits = submitChangeState.hasEdits;
+
+        if (selectedContact && hasContactEdits && !willCreateNewContact) {
+          const updateResult = await updateContact({
+            id: selectedContact.id,
+            name: name!.trim(),
+            ward: ward!,
+            email: email?.trim() || null,
+            phone: formattedPhone || null,
+          });
+          if (!updateResult.success) {
+            return {
+              errors: {
+                general: updateResult.error ?? 'Failed to update contact.',
+              },
+              values: {
+                building: building ?? undefined,
+                ward: ward ?? undefined,
+                name: name ?? undefined,
+                eventDate: eventDate ?? undefined,
+                startTime: startTime ?? undefined,
+                endTime: endTime ?? undefined,
+                phone: formattedPhone ?? undefined,
+                email: email ?? undefined,
+                description: description ?? undefined,
+              },
+            };
+          }
+        }
+
         await new Promise<void>((resolve, reject) => {
           addEventMutation(
             {
@@ -216,6 +419,11 @@ export function AddEventDialog({
         });
 
         formRef.current?.reset();
+        setSelectedWard('');
+        setTypedName('');
+        setTypedEmail('');
+        setTypedPhone('');
+        clearSelectedContact();
         return {};
       } catch (error) {
         return {
@@ -244,7 +452,15 @@ export function AddEventDialog({
   useEffect(() => {
     if (!open) {
       formRef.current?.reset();
+      setSelectedWard('');
+      setTypedName('');
+      setTypedEmail('');
+      setTypedPhone('');
+      clearSelectedContact();
+      setMatchCandidate(null);
+      setDismissedMatchId(null);
       setDescriptionValue('');
+      setContactFocusField(null);
     }
   }, [open]);
 
@@ -256,8 +472,23 @@ export function AddEventDialog({
   useEffect(() => {
     if (open) {
       setSelectedBuilding(defaultBuilding);
+      setSelectedWard((state.values?.ward as Ward | undefined) ?? '');
     }
-  }, [open, defaultBuilding]);
+  }, [defaultBuilding, open, state.values?.ward]);
+
+  const contactChangeState = useContactChangeState(selectedContact, {
+    name: typedName,
+    ward: selectedWard,
+    email: typedEmail,
+    phone: typedPhone,
+  });
+  const showLinkedState = !!selectedContactId && contactChangeState.showLinkedState;
+  const linkedBannerTone = contactChangeState.hasEdits
+    ? 'border-amber-200 bg-amber-50/70 text-amber-900 dark:border-amber-900/70 dark:bg-amber-950/50 dark:text-amber-100'
+    : 'border-emerald-200 bg-emerald-50/70 text-emerald-900 dark:border-emerald-900/70 dark:bg-emerald-950/50 dark:text-emerald-100';
+  const linkedBannerGuidanceTone = contactChangeState.hasEdits
+    ? 'text-amber-800/80 dark:text-amber-100/80'
+    : 'text-emerald-800/80 dark:text-emerald-100/80';
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -269,7 +500,7 @@ export function AddEventDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <form ref={formRef} action={formAction} className="space-y-4">
+        <form ref={formRef} action={formAction} className="space-y-4" autoComplete="off">
           {/* General error */}
           {state.errors?.general && (
             <div className="rounded-md bg-destructive/10 border border-destructive/20 p-3 text-sm text-destructive">
@@ -306,14 +537,266 @@ export function AddEventDialog({
             )}
           </div>
 
+          <div className="flex items-center gap-2 pt-5">
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Contact
+            </h3>
+            <div className="h-px flex-1 bg-border/60" />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="name">
+              Name <span className="text-destructive">*</span>
+            </Label>
+            <div className="relative">
+              <Input
+                ref={nameRef}
+                id="name"
+                name="name"
+                placeholder="First and last name"
+                defaultValue={state.values?.name}
+                className={`${state.errors?.name ? 'border-destructive' : ''} ${
+                  showLinkedState ? 'pr-24' : ''
+                }`}
+                autoComplete="new-password"
+                onFocus={() => setContactFocusField('name')}
+                onBlur={(event) => {
+                  if (nameMatchRef.current?.contains(event.relatedTarget as Node)) return;
+                  setContactFocusField(null);
+                }}
+                onKeyDown={handleContactMatchKeyDown({
+                  open: contactFocusField === 'name' && (!!matchCandidate || !!nameMatchCandidate),
+                  match: matchCandidate ?? nameMatchCandidate,
+                  onTabFocus: () => {
+                    window.setTimeout(() => {
+                      const firstOption = nameMatchRef.current?.querySelector<HTMLButtonElement>(
+                        'button[data-contact-option="true"]'
+                      );
+                      firstOption?.focus();
+                    }, 0);
+                  },
+                  onUseMatch: (contact) => {
+                    applyContact(contact);
+                    setMatchCandidate(null);
+                    setDismissedMatchId(null);
+                    focusNextAfterMatch(contact);
+                  },
+                })}
+                onChange={(event) => {
+                  if (!selectedContactId) {
+                    setSelectedContact(null);
+                  }
+                  setTypedName(event.target.value);
+                }}
+              />
+              {showLinkedState && <MatchedContactBadge update={contactChangeState.changed.name} />}
+              <ContactMatchPopover
+                focusRef={nameMatchRef}
+                open={contactFocusField === 'name' && (!!matchCandidate || !!nameMatchCandidate)}
+                searching={searchingContacts}
+                matchCandidate={matchCandidate}
+                suggestedMatch={contactFocusField === 'name' ? nameMatchCandidate : null}
+                suggestedMatches={contactFocusField === 'name' ? nameMatchCandidates : []}
+                suggestedCount={contactFocusField === 'name' ? nameMatchCount : 0}
+                formatPhone={formatPhone}
+                onUseMatch={(contact) => {
+                  applyContact(contact);
+                  setMatchCandidate(null);
+                  setDismissedMatchId(null);
+                  focusNextAfterMatch(contact);
+                }}
+                onDismiss={(contactId) => {
+                  clearSelectedContact();
+                  setDismissedMatchId(contactId);
+                  setMatchCandidate(null);
+                }}
+                onBlur={() => setContactFocusField(null)}
+                onTabNext={() => phoneRef.current?.focus()}
+                onTabPrev={() => nameRef.current?.focus()}
+              />
+            </div>
+            {state.errors?.name && <p className="text-xs text-destructive">{state.errors.name}</p>}
+          </div>
+
+          {/* Phone + Email row */}
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="phone">Phone</Label>
+              <div className="relative">
+                <Input
+                  ref={phoneRef}
+                  id="phone"
+                  name="phone"
+                  type="tel"
+                  placeholder="(555) 000-0000"
+                  defaultValue={state.values?.phone}
+                  className={`${state.errors?.phone ? 'border-destructive' : ''} ${
+                    showLinkedState ? 'pr-24' : ''
+                  }`}
+                  autoComplete="new-password"
+                  onFocus={() => setContactFocusField('phone')}
+                  onBlur={(event) => {
+                    if (phoneMatchRef.current?.contains(event.relatedTarget as Node)) return;
+                    setContactFocusField(null);
+                  }}
+                  onKeyDown={handleContactMatchKeyDown({
+                    open: contactFocusField === 'phone' && !!matchCandidate,
+                    match: matchCandidate,
+                    onTabFocus: () => {
+                      window.setTimeout(() => {
+                        const firstOption = phoneMatchRef.current?.querySelector<HTMLButtonElement>(
+                          'button[data-contact-option="true"]'
+                        );
+                        firstOption?.focus();
+                      }, 0);
+                    },
+                    onUseMatch: (contact) => {
+                      applyContact(contact);
+                      setMatchCandidate(null);
+                      setDismissedMatchId(null);
+                      focusNextAfterMatch(contact);
+                    },
+                  })}
+                  onChange={(event) => {
+                    handlePhoneInput(event);
+                    if (!selectedContactId) {
+                      setSelectedContact(null);
+                    }
+                    setTypedPhone(event.target.value);
+                  }}
+                />
+                {showLinkedState && (
+                  <MatchedContactBadge update={contactChangeState.changed.phone} />
+                )}
+                <ContactMatchPopover
+                  focusRef={phoneMatchRef}
+                  open={contactFocusField === 'phone' && !!matchCandidate}
+                  searching={searchingContacts}
+                  matchCandidate={matchCandidate}
+                  suggestedMatch={null}
+                  suggestedCount={0}
+                  formatPhone={formatPhone}
+                  onUseMatch={(contact) => {
+                    applyContact(contact);
+                    setMatchCandidate(null);
+                    setDismissedMatchId(null);
+                    focusNextAfterMatch(contact);
+                  }}
+                  onDismiss={(contactId) => {
+                    clearSelectedContact();
+                    setDismissedMatchId(contactId);
+                    setMatchCandidate(null);
+                  }}
+                  onBlur={() => setContactFocusField(null)}
+                  onTabNext={() => emailRef.current?.focus()}
+                  onTabPrev={() => phoneRef.current?.focus()}
+                />
+              </div>
+              {state.errors?.phone && (
+                <p className="text-xs text-destructive">{state.errors.phone}</p>
+              )}
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="email">Email</Label>
+              <div className="relative">
+                <Input
+                  ref={emailRef}
+                  id="email"
+                  name="email"
+                  type="email"
+                  placeholder="name@example.com (optional)"
+                  defaultValue={state.values?.email}
+                  className={`${state.errors?.email ? 'border-destructive' : ''} ${
+                    showLinkedState ? 'pr-24' : ''
+                  }`}
+                  autoComplete="new-password"
+                  onFocus={() => setContactFocusField('email')}
+                  onBlur={(event) => {
+                    if (emailMatchRef.current?.contains(event.relatedTarget as Node)) return;
+                    setContactFocusField(null);
+                  }}
+                  onKeyDown={handleContactMatchKeyDown({
+                    open: contactFocusField === 'email' && !!matchCandidate,
+                    match: matchCandidate,
+                    onTabFocus: () => {
+                      window.setTimeout(() => {
+                        const firstOption = emailMatchRef.current?.querySelector<HTMLButtonElement>(
+                          'button[data-contact-option="true"]'
+                        );
+                        firstOption?.focus();
+                      }, 0);
+                    },
+                    onUseMatch: (contact) => {
+                      applyContact(contact);
+                      setMatchCandidate(null);
+                      setDismissedMatchId(null);
+                      focusNextAfterMatch(contact);
+                    },
+                  })}
+                  onChange={(event) => {
+                    if (!selectedContactId) {
+                      setSelectedContact(null);
+                    }
+                    setTypedEmail(event.target.value);
+                  }}
+                />
+                {showLinkedState && (
+                  <MatchedContactBadge update={contactChangeState.changed.email} />
+                )}
+                <ContactMatchPopover
+                  focusRef={emailMatchRef}
+                  open={contactFocusField === 'email' && !!matchCandidate}
+                  searching={searchingContacts}
+                  matchCandidate={matchCandidate}
+                  suggestedMatch={null}
+                  suggestedCount={0}
+                  formatPhone={formatPhone}
+                  onUseMatch={(contact) => {
+                    applyContact(contact);
+                    setMatchCandidate(null);
+                    setDismissedMatchId(null);
+                    focusNextAfterMatch(contact);
+                  }}
+                  onDismiss={(contactId) => {
+                    clearSelectedContact();
+                    setDismissedMatchId(contactId);
+                    setMatchCandidate(null);
+                  }}
+                  onBlur={() => setContactFocusField(null)}
+                  onTabNext={() => wardTriggerRef.current?.focus()}
+                  onTabPrev={() => emailRef.current?.focus()}
+                />
+              </div>
+              {state.errors?.email && (
+                <p className="text-xs text-destructive">{state.errors.email}</p>
+              )}
+            </div>
+          </div>
+
           {/* Ward */}
           <div className="space-y-1.5">
             <Label htmlFor="ward">
               Ward <span className="text-destructive">*</span>
             </Label>
-            <Select name="ward" defaultValue={state.values?.ward ?? ''}>
-              <SelectTrigger id="ward" className={state.errors?.ward ? 'border-destructive' : ''}>
+            <Select
+              name="ward"
+              value={selectedWard}
+              onValueChange={(value) => setSelectedWard(value as Ward)}
+            >
+              <SelectTrigger
+                id="ward"
+                ref={wardTriggerRef}
+                className={`relative ${state.errors?.ward ? 'border-destructive' : ''}`}
+              >
                 <SelectValue placeholder="Select a ward…" />
+                {showLinkedState && (
+                  <MatchedContactBadge
+                    variant="select"
+                    as="div"
+                    update={contactChangeState.changed.ward}
+                  />
+                )}
               </SelectTrigger>
               <SelectContent>
                 {prioritizedWards.priority.map((ward) => (
@@ -334,20 +817,27 @@ export function AddEventDialog({
             {state.errors?.ward && <p className="text-xs text-destructive">{state.errors.ward}</p>}
           </div>
 
-          {/* Name */}
-          <div className="space-y-1.5">
-            <Label htmlFor="name">
-              Member Name <span className="text-destructive">*</span>
-            </Label>
-            <Input
-              id="name"
-              name="name"
-              placeholder="First and last name"
-              defaultValue={state.values?.name}
-              className={state.errors?.name ? 'border-destructive' : ''}
-              autoComplete="name"
-            />
-            {state.errors?.name && <p className="text-xs text-destructive">{state.errors.name}</p>}
+          {showLinkedState && selectedContact && (
+            <div className={`rounded-md border p-3 text-xs ${linkedBannerTone}`}>
+              <div className="flex flex-wrap items-center gap-2">
+                <span>
+                  Linked to contact <span className="font-semibold">{selectedContact.name}</span>.
+                  {contactChangeState.changeSummary ? ` ${contactChangeState.changeSummary}` : ''}
+                </span>
+                {contactChangeState.identifierGuidance && (
+                  <span className={linkedBannerGuidanceTone}>
+                    {contactChangeState.identifierGuidance}
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
+
+          <div className="flex items-center gap-2 pt-5">
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Event
+            </h3>
+            <div className="h-px flex-1 bg-border/60" />
           </div>
 
           {/* Date + Time row */}
@@ -357,11 +847,13 @@ export function AddEventDialog({
                 Date <span className="text-destructive">*</span>
               </Label>
               <Input
+                ref={eventDateRef}
                 id="eventDate"
                 name="eventDate"
                 type="date"
                 defaultValue={state.values?.eventDate ?? minEventDate}
                 min={minEventDate}
+                autoComplete="off"
                 className={state.errors?.eventDate ? 'border-destructive' : ''}
               />
               {state.errors?.eventDate && (
@@ -378,6 +870,7 @@ export function AddEventDialog({
                 type="time"
                 min="05:00"
                 max="23:00"
+                autoComplete="off"
                 defaultValue={state.values?.startTime}
                 className={state.errors?.startTime ? 'border-destructive' : ''}
               />
@@ -395,47 +888,12 @@ export function AddEventDialog({
                 type="time"
                 min="05:00"
                 max="23:00"
+                autoComplete="off"
                 defaultValue={state.values?.endTime}
                 className={state.errors?.endTime ? 'border-destructive' : ''}
               />
               {state.errors?.endTime && (
                 <p className="text-xs text-destructive">{state.errors.endTime}</p>
-              )}
-            </div>
-          </div>
-
-          {/* Phone + Email row */}
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <div className="space-y-1.5">
-              <Label htmlFor="phone">Phone</Label>
-              <Input
-                id="phone"
-                name="phone"
-                type="tel"
-                placeholder="(555) 000-0000"
-                defaultValue={state.values?.phone}
-                className={state.errors?.phone ? 'border-destructive' : ''}
-                autoComplete="tel"
-                onChange={handlePhoneInput}
-              />
-              {state.errors?.phone && (
-                <p className="text-xs text-destructive">{state.errors.phone}</p>
-              )}
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                name="email"
-                type="email"
-                placeholder="name@example.com (optional)"
-                defaultValue={state.values?.email}
-                className={state.errors?.email ? 'border-destructive' : ''}
-                autoComplete="email"
-              />
-              {state.errors?.email && (
-                <p className="text-xs text-destructive">{state.errors.email}</p>
               )}
             </div>
           </div>
@@ -452,6 +910,7 @@ export function AddEventDialog({
               maxLength={DESCRIPTION_MAX_LENGTH}
               value={descriptionValue}
               onChange={(event) => setDescriptionValue(event.target.value)}
+              autoComplete="off"
               className={state.errors?.description ? 'border-destructive' : ''}
             />
             <p className="text-xs text-muted-foreground">
@@ -462,16 +921,18 @@ export function AddEventDialog({
             )}
           </div>
 
-          <DialogFooter className="gap-2 pt-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-              disabled={isPending}
-            >
-              Cancel
-            </Button>
-            <SubmitButton />
+          <DialogFooter className="flex flex-col gap-2 pt-2 sm:flex-row sm:items-center sm:justify-end">
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => onOpenChange(false)}
+                disabled={isPending}
+              >
+                Cancel
+              </Button>
+              <SubmitButton />
+            </div>
           </DialogFooter>
         </form>
       </DialogContent>

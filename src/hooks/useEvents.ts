@@ -20,6 +20,7 @@ import type {
 import { toast } from 'sonner';
 import { normalizePhoneForStorage } from '@/utils/phoneUtils';
 import { normalizeEmail } from '@/utils/stringUtils';
+import { contactKeys } from '@/hooks/useContacts';
 
 // ─── Query Keys ───────────────────────────────────────────────────────────────
 
@@ -73,19 +74,20 @@ export function useAddEvent(onSuccess?: () => void) {
       const optimisticEvent: EventWithCreator = {
         id: `optimistic-${Date.now()}`,
         building: newEventInput.building,
-        ward: newEventInput.ward,
-        name: newEventInput.name,
         eventDate: newEventInput.eventDate,
         startTime: newEventInput.startTime,
         endTime: newEventInput.endTime,
-        phone: normalizePhoneForStorage(newEventInput.phone) ?? null,
-        email: normalizeEmail(newEventInput.email) ?? '',
+        contactId: `optimistic-contact-${Date.now()}`,
         description: newEventInput.description,
         kindooLicenseCreated: false,
         userId: 'pending',
         createdAt: new Date(),
         creatorName: null,
         creatorEmail: null,
+        contactName: newEventInput.name,
+        contactWard: newEventInput.ward,
+        contactEmail: normalizeEmail(newEventInput.email) ?? null,
+        contactPhone: normalizePhoneForStorage(newEventInput.phone) ?? null,
       };
 
       queryClient.setQueryData<EventWithCreator[]>(queryKey, (old = []) => [
@@ -109,6 +111,7 @@ export function useAddEvent(onSuccess?: () => void) {
       queryClient.invalidateQueries({
         queryKey: eventKeys.byBuilding(variables.building),
       });
+      queryClient.invalidateQueries({ queryKey: contactKeys.all });
     },
 
     onSuccess: () => {
@@ -224,27 +227,28 @@ export function useUpdateEvent() {
           userId: 'pending',
           createdAt: new Date(),
           building: input.building,
-          ward: input.ward,
-          name: input.name,
           eventDate: input.eventDate,
           startTime: input.startTime,
           endTime: input.endTime,
-          phone: normalizePhoneForStorage(input.phone) ?? null,
-          email: normalizeEmail(input.email) ?? '',
+          contactId: `optimistic-contact-${Date.now()}`,
           description: input.description,
           kindooLicenseCreated: false,
           creatorName: null,
           creatorEmail: null,
+          contactName: input.name,
+          contactWard: input.ward,
+          contactEmail: normalizeEmail(input.email) ?? null,
+          contactPhone: normalizePhoneForStorage(input.phone) ?? null,
         }),
         building: input.building,
-        ward: input.ward,
-        name: input.name,
         eventDate: input.eventDate,
         startTime: input.startTime,
         endTime: input.endTime,
-        phone: normalizePhoneForStorage(input.phone) ?? null,
-        email: normalizeEmail(input.email) ?? '',
         description: input.description,
+        contactName: input.name,
+        contactWard: input.ward,
+        contactEmail: normalizeEmail(input.email) ?? null,
+        contactPhone: normalizePhoneForStorage(input.phone) ?? null,
       });
 
       queryClient.setQueryData<EventWithCreator[]>(stakeKey, (old = []) => {

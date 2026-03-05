@@ -48,12 +48,12 @@ function getFirstName(fullName: string) {
 }
 
 function buildTemplateContext(event: EventWithCreator) {
-  const firstName = getFirstName(event.name);
+  const firstName = getFirstName(event.contactName);
   const dateShort = formatDateNoYear(event.eventDate);
   const dateLong = formatDate(event.eventDate);
   const timeRange = formatTimeRange(event.startTime, event.endTime);
-  const phone = formatPhone(event.phone) || '—';
-  const email = event.email?.trim() ? event.email : '—';
+  const phone = formatPhone(event.contactPhone) || '—';
+  const email = event.contactEmail?.trim() ? event.contactEmail : '—';
   const licenseTimes = getLicenseTimes(event);
   const licenseWindow = licenseTimes
     ? licenseTimes.startDate === licenseTimes.endDate
@@ -63,9 +63,9 @@ function buildTemplateContext(event: EventWithCreator) {
 
   return {
     '{firstName}': firstName,
-    '{fullName}': event.name,
+    '{fullName}': event.contactName,
     '{building}': event.building,
-    '{ward}': event.ward ?? '—',
+    '{ward}': event.contactWard ?? '—',
     '{eventDate}': dateShort,
     '{eventDateLong}': dateLong,
     '{startTime}': formatTime(event.startTime),

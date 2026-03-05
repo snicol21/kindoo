@@ -1,7 +1,7 @@
 import { auth } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { db } from '@/lib/db';
-import { events, users, type UserRole } from '@/schema/schema';
+import { contacts, events, users, type UserRole } from '@/schema/schema';
 import { and, eq } from 'drizzle-orm';
 import { DashboardClient } from '@/components/DashboardClient';
 import type { Metadata } from 'next';
@@ -79,22 +79,24 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
       .select({
         id: events.id,
         building: events.building,
-        ward: events.ward,
-        name: events.name,
         eventDate: events.eventDate,
         startTime: events.startTime,
         endTime: events.endTime,
-        phone: events.phone,
-        email: events.email,
+        contactId: events.contactId,
         description: events.description,
         kindooLicenseCreated: events.kindooLicenseCreated,
         userId: events.userId,
         createdAt: events.createdAt,
         creatorName: users.name,
         creatorEmail: users.email,
+        contactName: contacts.name,
+        contactWard: contacts.ward,
+        contactEmail: contacts.email,
+        contactPhone: contacts.phone,
       })
       .from(events)
       .innerJoin(users, eq(events.userId, users.id))
+      .innerJoin(contacts, eq(events.contactId, contacts.id))
       .where(
         role === 'user'
           ? and(eq(events.building, 'Stake Center' as Building), eq(events.userId, session.user.id))
@@ -105,22 +107,24 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
       .select({
         id: events.id,
         building: events.building,
-        ward: events.ward,
-        name: events.name,
         eventDate: events.eventDate,
         startTime: events.startTime,
         endTime: events.endTime,
-        phone: events.phone,
-        email: events.email,
+        contactId: events.contactId,
         description: events.description,
         kindooLicenseCreated: events.kindooLicenseCreated,
         userId: events.userId,
         createdAt: events.createdAt,
         creatorName: users.name,
         creatorEmail: users.email,
+        contactName: contacts.name,
+        contactWard: contacts.ward,
+        contactEmail: contacts.email,
+        contactPhone: contacts.phone,
       })
       .from(events)
       .innerJoin(users, eq(events.userId, users.id))
+      .innerJoin(contacts, eq(events.contactId, contacts.id))
       .where(
         role === 'user'
           ? and(

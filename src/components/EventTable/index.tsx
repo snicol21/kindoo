@@ -52,6 +52,73 @@ import { getLicenseTimes, renderMessageTemplate } from '@/utils/eventTemplateUti
 import { DESCRIPTION_MAX_LENGTH } from '@/utils/eventConstants';
 import { formatPhone } from '@/utils/phoneUtils';
 import { formatTimeRange, validateTimeWindow } from '@/utils/timeUtils';
+import { useContactSearch } from '@/hooks/useContacts';
+import { updateContact, type ContactSearchResult } from '@/actions/contacts';
+import { useContactChangeState } from '@/hooks/useContactChangeState';
+
+const phoneDigits = (value?: string | null) => (value ?? '').replace(/\D/g, '');
+
+const findExactContact = (
+  contacts: Array<{
+    id: string;
+    name: string;
+    ward: Ward;
+    email: string | null;
+    phone: string | null;
+  }>,
+  input: { name: string; ward: Ward | ''; email: string; phone: string }
+) => {
+  const normalizedEmail = input.email.trim().toLowerCase();
+  const normalizedPhone = phoneDigits(input.phone);
+  const normalizedName = input.name.trim().toLowerCase();
+
+  const wardFiltered = input.ward
+    ? contacts.filter((contact) => contact.ward === input.ward)
+    : contacts;
+
+  if (normalizedEmail) {
+    const emailMatch = wardFiltered.find(
+      (contact) => (contact.email ?? '').trim().toLowerCase() === normalizedEmail
+    );
+    if (emailMatch) return emailMatch;
+  }
+
+  if (normalizedPhone) {
+    const phoneMatch = wardFiltered.find(
+      (contact) => phoneDigits(contact.phone) === normalizedPhone
+    );
+    if (phoneMatch) return phoneMatch;
+  }
+
+  if (normalizedName && input.ward) {
+    const nameMatch = wardFiltered.find(
+      (contact) => contact.name.trim().toLowerCase() === normalizedName
+    );
+    if (nameMatch) return nameMatch;
+  }
+
+  return null;
+};
+
+const findNameMatches = (
+  contacts: Array<{
+    id: string;
+    name: string;
+    ward: Ward;
+    email: string | null;
+    phone: string | null;
+  }>,
+  input: { name: string; ward: Ward | '' }
+) => {
+  const normalizedName = input.name.trim().toLowerCase();
+  if (!normalizedName) return [] as typeof contacts;
+
+  const wardFiltered = input.ward
+    ? contacts.filter((contact) => contact.ward === input.ward)
+    : contacts;
+
+  return wardFiltered.filter((contact) => contact.name.trim().toLowerCase() === normalizedName);
+};
 
 export function EventTable({
   events,
@@ -69,7 +136,7 @@ export function EventTable({
   selectedIds,
   onSelectionChange,
 }: EventTableProps) {
-  // Adjust this value to control when the table collapses from Event+Member to Event-only.
+  // Adjust this value to control when the table collapses from Event+Contact to Event-only.
   const SINGLE_COLUMN_MAX_WIDTH = 639;
   const PAGE_SIZE = 10;
   const effectiveLeadDays = Number.isFinite(licenseLeadDays)
@@ -117,6 +184,15 @@ export function EventTable({
   const [editPhone, setEditPhone] = useState('');
   const [editEmail, setEditEmail] = useState('');
   const [editDescription, setEditDescription] = useState('');
+  const [editMatchedContactId, setEditMatchedContactId] = useState<string | null>(null);
+  const [editMatchedContact, setEditMatchedContact] = useState<ContactSearchResult | null>(null);
+  const [editMatchCandidate, setEditMatchCandidate] = useState<
+    (typeof editMatchingContacts)[number] | null
+  >(null);
+  const [editDismissedMatchId, setEditDismissedMatchId] = useState<string | null>(null);
+  const [editContactFocusField, setEditContactFocusField] = useState<
+    'name' | 'phone' | 'email' | null
+  >(null);
   const [isSavingEdit, setIsSavingEdit] = useState(false);
   const [cloneBuilding, setCloneBuilding] = useState<Building>('Stake Center');
   const [cloneName, setCloneName] = useState('');
@@ -127,11 +203,55 @@ export function EventTable({
   const [clonePhone, setClonePhone] = useState('');
   const [cloneEmail, setCloneEmail] = useState('');
   const [cloneDescription, setCloneDescription] = useState('');
+  const [cloneMatchedContactId, setCloneMatchedContactId] = useState<string | null>(null);
+  const [cloneMatchedContact, setCloneMatchedContact] = useState<ContactSearchResult | null>(null);
+  const [cloneMatchCandidate, setCloneMatchCandidate] = useState<
+    (typeof cloneMatchingContacts)[number] | null
+  >(null);
+  const [cloneDismissedMatchId, setCloneDismissedMatchId] = useState<string | null>(null);
+  const [cloneContactFocusField, setCloneContactFocusField] = useState<
+    'name' | 'phone' | 'email' | null
+  >(null);
   const [isSavingClone, setIsSavingClone] = useState(false);
   const [internalSelectedIds, setInternalSelectedIds] = useState<Set<string>>(new Set());
   const [isCompactView, setIsCompactView] = useState(false);
   const [isMobileView, setIsMobileView] = useState(false);
   const [isSingleColumnView, setIsSingleColumnView] = useState(false);
+
+  const editLookupQuery = editEmail.trim() || editPhone.trim() || editName.trim();
+  const cloneLookupQuery = cloneEmail.trim() || clonePhone.trim() || cloneName.trim();
+
+  const { data: editMatchingContacts = [], isFetching: isFetchingEditMatches } =
+    useContactSearch(editLookupQuery);
+  const { data: cloneMatchingContacts = [], isFetching: isFetchingCloneMatches } =
+    useContactSearch(cloneLookupQuery);
+
+  const editNameMatches = useMemo(
+    () => findNameMatches(editMatchingContacts, { name: editName, ward: editWard }),
+    [editMatchingContacts, editName, editWard]
+  );
+  const cloneNameMatches = useMemo(
+    () => findNameMatches(cloneMatchingContacts, { name: cloneName, ward: cloneWard }),
+    [cloneMatchingContacts, cloneName, cloneWard]
+  );
+
+  const editNameMatchCandidates = useMemo(
+    () =>
+      editNameMatches.filter(
+        (contact) => contact.id !== editMatchedContactId && contact.id !== editDismissedMatchId
+      ),
+    [editDismissedMatchId, editMatchedContactId, editNameMatches]
+  );
+  const cloneNameMatchCandidates = useMemo(
+    () =>
+      cloneNameMatches.filter(
+        (contact) => contact.id !== cloneMatchedContactId && contact.id !== cloneDismissedMatchId
+      ),
+    [cloneDismissedMatchId, cloneMatchedContactId, cloneNameMatches]
+  );
+
+  const editNameMatchCandidate = editNameMatchCandidates[0] ?? null;
+  const cloneNameMatchCandidate = cloneNameMatchCandidates[0] ?? null;
 
   const selectedIdSet = useMemo(
     () => new Set(selectedIds ?? Array.from(internalSelectedIds)),
@@ -219,11 +339,11 @@ export function EventTable({
       valA = getDaysUntilValue(a.eventDate);
       valB = getDaysUntilValue(b.eventDate);
     } else if (sortKey === 'name') {
-      valA = a.name.toLowerCase();
-      valB = b.name.toLowerCase();
+      valA = a.contactName.toLowerCase();
+      valB = b.contactName.toLowerCase();
     } else if (sortKey === 'email') {
-      valA = a.email.toLowerCase();
-      valB = b.email.toLowerCase();
+      valA = (a.contactEmail ?? '').toLowerCase();
+      valB = (b.contactEmail ?? '').toLowerCase();
     }
 
     if (valA < valB) return sortDir === 'asc' ? -1 : 1;
@@ -281,37 +401,6 @@ export function EventTable({
     </Button>
   );
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center py-12 text-muted-foreground">
-        <Loader2 className="h-6 w-6 animate-spin mr-2" />
-        Loading events…
-      </div>
-    );
-  }
-
-  if (isError) {
-    return (
-      <div className="flex flex-col items-center justify-center py-12 text-muted-foreground gap-2">
-        <AlertTriangle className="h-8 w-8 text-destructive" />
-        <p className="text-sm">Failed to load events. Please refresh.</p>
-      </div>
-    );
-  }
-
-  if (sorted.length === 0) {
-    const title = emptyStateTitle ?? 'No events yet';
-    const message =
-      emptyStateMessage ?? `Add your first event for ${building} using the button above.`;
-    return (
-      <div className="flex flex-col items-center justify-center py-16 text-muted-foreground gap-3">
-        <Inbox className="h-10 w-10 opacity-40" />
-        <p className="font-medium">{title}</p>
-        <p className="text-sm text-center max-w-sm">{message}</p>
-      </div>
-    );
-  }
-
   const confirmDelete = async () => {
     if (!onDelete || !pendingDeleteEvent) return;
     setDeletingId(pendingDeleteEvent.id);
@@ -324,17 +413,69 @@ export function EventTable({
   };
 
   const openEditDialog = (event: EventWithCreator) => {
+    const initialMatchedContact: ContactSearchResult | null = event.contactWard
+      ? {
+          id: event.contactId,
+          name: event.contactName,
+          ward: event.contactWard,
+          email: event.contactEmail ?? null,
+          phone: event.contactPhone ?? null,
+        }
+      : null;
     setEditingEvent(event);
+    setEditMatchedContactId(initialMatchedContact?.id ?? null);
+    setEditMatchedContact(initialMatchedContact);
+    setEditMatchCandidate(null);
+    setEditDismissedMatchId(null);
+    setEditContactFocusField(null);
     setEditBuilding(event.building);
-    setEditName(event.name);
-    setEditWard(event.ward ?? '');
+    setEditName(event.contactName);
+    setEditWard(event.contactWard ?? '');
     setEditEventDate(event.eventDate);
     setEditStartTime(event.startTime);
     setEditEndTime(event.endTime);
-    setEditPhone(formatPhone(event.phone ?? ''));
-    setEditEmail(event.email ?? '');
+    setEditPhone(formatPhone(event.contactPhone ?? ''));
+    setEditEmail(event.contactEmail ?? '');
     setEditDescription(event.description);
   };
+
+  const applyEditMatch = (contact: (typeof editMatchingContacts)[number]) => {
+    setEditMatchedContactId(contact.id);
+    setEditMatchedContact(contact);
+    setEditName(contact.name);
+    setEditWard(contact.ward);
+    setEditEmail(contact.email ?? '');
+    setEditPhone(formatPhone(contact.phone ?? ''));
+  };
+
+  useEffect(() => {
+    if (!editingEvent) return;
+    const match = findExactContact(editMatchingContacts, {
+      name: editName,
+      ward: editWard,
+      email: editEmail,
+      phone: editPhone,
+    });
+    if (!match) {
+      setEditMatchCandidate(null);
+      setEditDismissedMatchId(null);
+      return;
+    }
+    if (match.id === editMatchedContactId || editDismissedMatchId === match.id) {
+      setEditMatchCandidate(null);
+      return;
+    }
+    setEditMatchCandidate(match);
+  }, [
+    editDismissedMatchId,
+    editEmail,
+    editMatchingContacts,
+    editMatchedContactId,
+    editName,
+    editPhone,
+    editWard,
+    editingEvent,
+  ]);
 
   const submitEdit = async () => {
     if (!onEdit || !editingEvent) return;
@@ -353,6 +494,22 @@ export function EventTable({
         toast.error(`Description must be ${DESCRIPTION_MAX_LENGTH} characters or less.`);
         return;
       }
+
+      if (editChangeState.hasEdits && !editChangeState.willCreateNewContact) {
+        const contactResult = await updateContact({
+          id: editingEvent.contactId,
+          name: editName.trim(),
+          ward: editWard as Ward,
+          email: editEmail.trim() || null,
+          phone: editPhone || null,
+        });
+
+        if (!contactResult.success) {
+          toast.error(contactResult.error ?? 'Failed to update linked contact.');
+          return;
+        }
+      }
+
       await onEdit({
         id: editingEvent.id,
         building: editBuilding,
@@ -372,17 +529,83 @@ export function EventTable({
   };
 
   const openCloneDialog = (event: EventWithCreator) => {
+    const initialMatchedContact: ContactSearchResult | null = event.contactWard
+      ? {
+          id: event.contactId,
+          name: event.contactName,
+          ward: event.contactWard,
+          email: event.contactEmail ?? null,
+          phone: event.contactPhone ?? null,
+        }
+      : null;
     setCloningEvent(event);
+    setCloneMatchedContactId(initialMatchedContact?.id ?? null);
+    setCloneMatchedContact(initialMatchedContact);
+    setCloneMatchCandidate(null);
+    setCloneDismissedMatchId(null);
+    setCloneContactFocusField(null);
     setCloneBuilding(event.building);
-    setCloneName(event.name);
-    setCloneWard(event.ward ?? '');
+    setCloneName(event.contactName);
+    setCloneWard(event.contactWard ?? '');
     setCloneEventDate(event.eventDate);
     setCloneStartTime(event.startTime);
     setCloneEndTime(event.endTime);
-    setClonePhone(formatPhone(event.phone ?? ''));
-    setCloneEmail(event.email ?? '');
+    setClonePhone(formatPhone(event.contactPhone ?? ''));
+    setCloneEmail(event.contactEmail ?? '');
     setCloneDescription(event.description);
   };
+
+  const applyCloneMatch = (contact: (typeof cloneMatchingContacts)[number]) => {
+    setCloneMatchedContactId(contact.id);
+    setCloneMatchedContact(contact);
+    setCloneName(contact.name);
+    setCloneWard(contact.ward);
+    setCloneEmail(contact.email ?? '');
+    setClonePhone(formatPhone(contact.phone ?? ''));
+  };
+
+  const editChangeState = useContactChangeState(editMatchedContact, {
+    name: editName,
+    ward: editWard,
+    email: editEmail,
+    phone: editPhone,
+  });
+
+  const cloneChangeState = useContactChangeState(cloneMatchedContact, {
+    name: cloneName,
+    ward: cloneWard,
+    email: cloneEmail,
+    phone: clonePhone,
+  });
+
+  useEffect(() => {
+    if (!cloningEvent) return;
+    const match = findExactContact(cloneMatchingContacts, {
+      name: cloneName,
+      ward: cloneWard,
+      email: cloneEmail,
+      phone: clonePhone,
+    });
+    if (!match) {
+      setCloneMatchCandidate(null);
+      setCloneDismissedMatchId(null);
+      return;
+    }
+    if (match.id === cloneMatchedContactId || cloneDismissedMatchId === match.id) {
+      setCloneMatchCandidate(null);
+      return;
+    }
+    setCloneMatchCandidate(match);
+  }, [
+    cloneDismissedMatchId,
+    cloneEmail,
+    cloneMatchingContacts,
+    cloneMatchedContactId,
+    cloneName,
+    clonePhone,
+    cloneWard,
+    cloningEvent,
+  ]);
 
   const submitClone = async () => {
     if (!onClone || !cloningEvent) return;
@@ -418,6 +641,26 @@ export function EventTable({
 
     setIsSavingClone(true);
     try {
+      if (
+        cloneMatchedContactId &&
+        cloneMatchedContact &&
+        cloneChangeState.hasEdits &&
+        !cloneChangeState.willCreateNewContact
+      ) {
+        const contactResult = await updateContact({
+          id: cloneMatchedContactId,
+          name: cloneName.trim(),
+          ward: cloneWard as Ward,
+          email: cloneEmail.trim() || null,
+          phone: clonePhone || null,
+        });
+
+        if (!contactResult.success) {
+          toast.error(contactResult.error ?? 'Failed to update linked contact.');
+          return;
+        }
+      }
+
       await onClone({
         building: cloneBuilding,
         ward: cloneWard as Ward,
@@ -436,6 +679,37 @@ export function EventTable({
       setIsSavingClone(false);
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12 text-muted-foreground">
+        <Loader2 className="h-6 w-6 animate-spin mr-2" />
+        Loading events…
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12 text-muted-foreground gap-2">
+        <AlertTriangle className="h-8 w-8 text-destructive" />
+        <p className="text-sm">Failed to load events. Please refresh.</p>
+      </div>
+    );
+  }
+
+  if (sorted.length === 0) {
+    const title = emptyStateTitle ?? 'No events yet';
+    const message =
+      emptyStateMessage ?? `Add your first event for ${building} using the button above.`;
+    return (
+      <div className="flex flex-col items-center justify-center py-16 text-muted-foreground gap-3">
+        <Inbox className="h-10 w-10 opacity-40" />
+        <p className="font-medium">{title}</p>
+        <p className="text-sm text-center max-w-sm">{message}</p>
+      </div>
+    );
+  }
 
   return (
     <TooltipProvider delayDuration={200}>
@@ -484,12 +758,12 @@ export function EventTable({
               </TableHead>
               {!isSingleColumnView && (
                 <TableHead className={isCompactView ? 'w-1/2' : 'w-60'}>
-                  <SortButton col="name" label="Member" />
+                  <SortButton col="name" label="Contact" />
                 </TableHead>
               )}
               {!isCompactView && (
                 <>
-                  <TableHead className="w-60">Member Contact</TableHead>
+                  <TableHead className="w-60">Contact Info</TableHead>
                   <TableHead className="w-35">Created</TableHead>
                   <TableHead className="w-30">Actions</TableHead>
                 </>
@@ -511,7 +785,7 @@ export function EventTable({
                   <TableCell className="w-9">
                     <input
                       type="checkbox"
-                      aria-label={`Select ${event.name}`}
+                      aria-label={`Select ${event.contactName}`}
                       disabled={isOptimistic}
                       checked={selectedIdSet.has(event.id)}
                       onChange={(e) => {
@@ -585,7 +859,7 @@ export function EventTable({
                                 variant="ghost"
                                 size="icon"
                                 className="h-8 w-8 border border-border bg-secondary/60 text-foreground hover:bg-secondary"
-                                aria-label={`Actions for ${event.name}`}
+                                aria-label={`Actions for ${event.contactName}`}
                               >
                                 <MoreVertical className="h-4 w-4" />
                               </Button>
@@ -635,33 +909,33 @@ export function EventTable({
                         <div className="flex flex-wrap items-baseline gap-1">
                           <div
                             className="truncate text-foreground text-sm font-semibold"
-                            title={event.name}
+                            title={event.contactName}
                           >
-                            {event.name}
+                            {event.contactName}
                           </div>
                           <span className="text-muted-foreground text-xs">
-                            ({event.ward ?? '—'})
+                            ({event.contactWard ?? '—'})
                           </span>
                         </div>
                         <div className="flex items-center gap-1.5 text-muted-foreground text-xs">
                           <Mail className="h-3.5 w-3.5 shrink-0" />
-                          {event.email ? (
+                          {event.contactEmail ? (
                             <div className="flex min-w-0 items-center gap-1.5">
                               <a
-                                href={`mailto:${event.email}`}
+                                href={`mailto:${event.contactEmail}`}
                                 className="max-w-44 truncate text-muted-foreground hover:underline"
-                                title={event.email}
+                                title={event.contactEmail}
                               >
-                                {event.email}
+                                {event.contactEmail}
                               </a>
                               <Button
                                 variant="ghost"
                                 size="icon"
                                 className="h-5 w-5 p-0"
-                                aria-label={`Copy email for ${event.name}`}
+                                aria-label={`Copy email for ${event.contactName}`}
                                 onClick={async () => {
                                   try {
-                                    await navigator.clipboard.writeText(event.email ?? '');
+                                    await navigator.clipboard.writeText(event.contactEmail ?? '');
                                     toast.success('Email copied.');
                                   } catch {
                                     toast.error('Failed to copy.');
@@ -677,23 +951,23 @@ export function EventTable({
                         </div>
                         <div className="flex items-center gap-1.5 text-muted-foreground text-xs">
                           <Phone className="h-3.5 w-3.5 shrink-0" />
-                          {event.phone ? (
+                          {event.contactPhone ? (
                             <div className="flex min-w-0 items-center gap-1.5">
                               <a
-                                href={`tel:${event.phone.replace(/\D/g, '')}`}
+                                href={`tel:${event.contactPhone.replace(/\D/g, '')}`}
                                 className="max-w-44 truncate hover:text-foreground hover:underline"
-                                title={formatPhone(event.phone)}
+                                title={formatPhone(event.contactPhone)}
                               >
-                                {formatPhone(event.phone)}
+                                {formatPhone(event.contactPhone)}
                               </a>
                               <Button
                                 variant="ghost"
                                 size="icon"
                                 className="h-5 w-5 p-0"
-                                aria-label={`Copy phone for ${event.name}`}
+                                aria-label={`Copy phone for ${event.contactName}`}
                                 onClick={async () => {
                                   try {
-                                    await navigator.clipboard.writeText(event.phone ?? '');
+                                    await navigator.clipboard.writeText(event.contactPhone ?? '');
                                     toast.success('Phone copied.');
                                   } catch {
                                     toast.error('Failed to copy.');
@@ -741,33 +1015,33 @@ export function EventTable({
                         <div className="min-w-0 space-y-1.5">
                           <div
                             className="truncate text-foreground text-sm font-semibold"
-                            title={event.name}
+                            title={event.contactName}
                           >
-                            {event.name}
+                            {event.contactName}
                           </div>
                           <div className="flex items-center gap-1.5 text-muted-foreground text-xs">
                             <Church className="h-3.5 w-3.5 shrink-0" />
-                            <span>{event.ward ?? '—'}</span>
+                            <span>{event.contactWard ?? '—'}</span>
                           </div>
                           <div className="flex items-center gap-1.5 text-muted-foreground text-xs">
                             <Mail className="h-3.5 w-3.5 shrink-0" />
-                            {event.email ? (
+                            {event.contactEmail ? (
                               <div className="flex min-w-0 items-center gap-1.5">
                                 <a
-                                  href={`mailto:${event.email}`}
+                                  href={`mailto:${event.contactEmail}`}
                                   className="max-w-44 truncate text-muted-foreground hover:underline"
-                                  title={event.email}
+                                  title={event.contactEmail}
                                 >
-                                  {event.email}
+                                  {event.contactEmail}
                                 </a>
                                 <Button
                                   variant="ghost"
                                   size="icon"
                                   className="h-5 w-5 p-0"
-                                  aria-label={`Copy email for ${event.name}`}
+                                  aria-label={`Copy email for ${event.contactName}`}
                                   onClick={async () => {
                                     try {
-                                      await navigator.clipboard.writeText(event.email ?? '');
+                                      await navigator.clipboard.writeText(event.contactEmail ?? '');
                                       toast.success('Email copied.');
                                     } catch {
                                       toast.error('Failed to copy.');
@@ -783,23 +1057,23 @@ export function EventTable({
                           </div>
                           <div className="flex items-center gap-1.5 text-muted-foreground text-xs">
                             <Phone className="h-3.5 w-3.5 shrink-0" />
-                            {event.phone ? (
+                            {event.contactPhone ? (
                               <div className="flex min-w-0 items-center gap-1.5">
                                 <a
-                                  href={`tel:${event.phone.replace(/\D/g, '')}`}
+                                  href={`tel:${event.contactPhone.replace(/\D/g, '')}`}
                                   className="max-w-44 truncate hover:text-foreground hover:underline"
-                                  title={formatPhone(event.phone)}
+                                  title={formatPhone(event.contactPhone)}
                                 >
-                                  {formatPhone(event.phone)}
+                                  {formatPhone(event.contactPhone)}
                                 </a>
                                 <Button
                                   variant="ghost"
                                   size="icon"
                                   className="h-5 w-5 p-0"
-                                  aria-label={`Copy phone for ${event.name}`}
+                                  aria-label={`Copy phone for ${event.contactName}`}
                                   onClick={async () => {
                                     try {
-                                      await navigator.clipboard.writeText(event.phone ?? '');
+                                      await navigator.clipboard.writeText(event.contactPhone ?? '');
                                       toast.success('Phone copied.');
                                     } catch {
                                       toast.error('Failed to copy.');
@@ -820,7 +1094,7 @@ export function EventTable({
                               variant="ghost"
                               size="icon"
                               className="h-8 w-8 border border-border bg-secondary/60 text-foreground hover:bg-secondary"
-                              aria-label={`Actions for ${event.name}`}
+                              aria-label={`Actions for ${event.contactName}`}
                             >
                               <MoreVertical className="h-4 w-4" />
                             </Button>
@@ -870,13 +1144,13 @@ export function EventTable({
                       <div className="space-y-1.5">
                         <div
                           className="truncate text-foreground text-sm font-semibold"
-                          title={event.name}
+                          title={event.contactName}
                         >
-                          {event.name}
+                          {event.contactName}
                         </div>
                         <div className="flex items-center gap-1.5 text-muted-foreground text-xs">
                           <Church className="h-3.5 w-3.5 shrink-0" />
-                          <span>{event.ward ?? '—'}</span>
+                          <span>{event.contactWard ?? '—'}</span>
                         </div>
                       </div>
                     </TableCell>
@@ -886,14 +1160,14 @@ export function EventTable({
                       <div className="space-y-1.5">
                         <div className="flex items-center gap-1.5 text-muted-foreground text-xs">
                           <Mail className="h-3.5 w-3.5 shrink-0" />
-                          {event.email ? (
+                          {event.contactEmail ? (
                             <div className="flex min-w-0 items-center gap-1.5">
                               <a
-                                href={`mailto:${event.email}`}
+                                href={`mailto:${event.contactEmail}`}
                                 className="truncate cursor-pointer text-muted-foreground hover:underline"
-                                title={event.email}
+                                title={event.contactEmail}
                               >
-                                {event.email}
+                                {event.contactEmail}
                               </a>
                               <Tooltip>
                                 <TooltipTrigger asChild>
@@ -901,10 +1175,12 @@ export function EventTable({
                                     variant="ghost"
                                     size="icon"
                                     className="h-6 w-6"
-                                    aria-label={`Copy email for ${event.name}`}
+                                    aria-label={`Copy email for ${event.contactName}`}
                                     onClick={async () => {
                                       try {
-                                        await navigator.clipboard.writeText(event.email ?? '');
+                                        await navigator.clipboard.writeText(
+                                          event.contactEmail ?? ''
+                                        );
                                         toast.success('Email copied.');
                                       } catch {
                                         toast.error('Failed to copy.');
@@ -923,14 +1199,14 @@ export function EventTable({
                         </div>
                         <div className="flex items-center gap-1.5 text-muted-foreground text-xs">
                           <Phone className="h-3.5 w-3.5 shrink-0" />
-                          {event.phone ? (
+                          {event.contactPhone ? (
                             <div className="flex min-w-0 items-center gap-1.5">
                               <a
-                                href={`tel:${event.phone.replace(/\D/g, '')}`}
+                                href={`tel:${event.contactPhone.replace(/\D/g, '')}`}
                                 className="truncate cursor-pointer hover:text-foreground hover:underline"
-                                title={formatPhone(event.phone)}
+                                title={formatPhone(event.contactPhone)}
                               >
-                                {formatPhone(event.phone)}
+                                {formatPhone(event.contactPhone)}
                               </a>
                               <Tooltip>
                                 <TooltipTrigger asChild>
@@ -938,11 +1214,11 @@ export function EventTable({
                                     variant="ghost"
                                     size="icon"
                                     className="h-6 w-6"
-                                    aria-label={`Copy phone for ${event.name}`}
+                                    aria-label={`Copy phone for ${event.contactName}`}
                                     onClick={async () => {
                                       try {
                                         await navigator.clipboard.writeText(
-                                          formatPhone(event.phone)
+                                          formatPhone(event.contactPhone)
                                         );
                                         toast.success('Phone copied.');
                                       } catch {
@@ -991,7 +1267,7 @@ export function EventTable({
                             <Button
                               variant="ghost"
                               size="icon"
-                              aria-label={`Copy ${event.name}`}
+                              aria-label={`Copy ${event.contactName}`}
                               disabled={isOptimistic}
                               onClick={() => setCopyingEvent(event)}
                             >
@@ -1005,7 +1281,7 @@ export function EventTable({
                             <Button
                               variant="ghost"
                               size="icon"
-                              aria-label={`Clone ${event.name}`}
+                              aria-label={`Clone ${event.contactName}`}
                               disabled={isOptimistic || !onClone}
                               onClick={() => openCloneDialog(event)}
                             >
@@ -1019,7 +1295,7 @@ export function EventTable({
                             <Button
                               variant="ghost"
                               size="icon"
-                              aria-label={`Edit ${event.name}`}
+                              aria-label={`Edit ${event.contactName}`}
                               disabled={isOptimistic || !onEdit}
                               onClick={() => openEditDialog(event)}
                             >
@@ -1033,7 +1309,7 @@ export function EventTable({
                             <Button
                               variant="ghost"
                               size="icon"
-                              aria-label={`Delete ${event.name}`}
+                              aria-label={`Delete ${event.contactName}`}
                               disabled={isOptimistic || deletingId === event.id || !onDelete}
                               onClick={() => setPendingDeleteEvent(event)}
                             >
@@ -1104,18 +1380,53 @@ export function EventTable({
         editDescription={editDescription}
         isSavingEdit={isSavingEdit}
         canSave={!!editingEvent && !!onEdit}
-        onCloseAction={() => setEditingEvent(null)}
+        onCloseAction={() => {
+          setEditingEvent(null);
+          setEditMatchedContactId(null);
+          setEditMatchedContact(null);
+          setEditMatchCandidate(null);
+          setEditDismissedMatchId(null);
+          setEditContactFocusField(null);
+        }}
         onSubmitAction={submitEdit}
         setEditBuildingAction={setEditBuilding}
         setEditWardAction={setEditWard}
-        setEditNameAction={setEditName}
+        setEditNameAction={(value) => {
+          setEditName(value);
+        }}
         setEditEventDateAction={setEditEventDate}
         setEditStartTimeAction={setEditStartTime}
         setEditEndTimeAction={setEditEndTime}
-        setEditPhoneAction={setEditPhone}
-        setEditEmailAction={setEditEmail}
+        setEditPhoneAction={(value) => {
+          setEditPhone(value);
+        }}
+        setEditEmailAction={(value) => {
+          setEditEmail(value);
+        }}
         setEditDescriptionAction={setEditDescription}
         formatPhoneAction={formatPhone}
+        matchCandidate={editMatchCandidate}
+        nameMatchCandidates={editNameMatchCandidates}
+        nameMatchCandidate={editNameMatchCandidate}
+        nameMatchCount={editNameMatchCandidates.length}
+        matchedContactId={editMatchedContactId}
+        linkedContact={editMatchedContact}
+        searchingContacts={editLookupQuery.trim().length >= 2 && isFetchingEditMatches}
+        contactFocusField={editContactFocusField}
+        onContactFocus={(field) => setEditContactFocusField(field)}
+        onContactBlur={() => setEditContactFocusField(null)}
+        onUseMatch={(contact) => {
+          applyEditMatch(contact);
+          setEditMatchCandidate(null);
+          setEditDismissedMatchId(null);
+        }}
+        onDismissMatch={(contactId) => {
+          setEditMatchedContactId(null);
+          setEditMatchedContact(null);
+          setEditMatchCandidate(null);
+          setEditDismissedMatchId(contactId);
+        }}
+        contactChangeState={editChangeState}
       />
 
       <CloneEventDialog
@@ -1131,18 +1442,55 @@ export function EventTable({
         cloneDescription={cloneDescription}
         isSavingClone={isSavingClone}
         canSave={!!cloningEvent && !!onClone}
-        onCloseAction={() => setCloningEvent(null)}
+        onCloseAction={() => {
+          setCloningEvent(null);
+          setCloneMatchedContactId(null);
+          setCloneMatchedContact(null);
+          setCloneMatchCandidate(null);
+          setCloneDismissedMatchId(null);
+          setCloneContactFocusField(null);
+        }}
         onSubmitAction={submitClone}
         setCloneBuildingAction={setCloneBuilding}
         setCloneWardAction={setCloneWard}
-        setCloneNameAction={setCloneName}
+        setCloneNameAction={(value) => {
+          setCloneName(value);
+        }}
         setCloneEventDateAction={setCloneEventDate}
         setCloneStartTimeAction={setCloneStartTime}
         setCloneEndTimeAction={setCloneEndTime}
-        setClonePhoneAction={setClonePhone}
-        setCloneEmailAction={setCloneEmail}
+        setClonePhoneAction={(value) => {
+          setClonePhone(value);
+        }}
+        setCloneEmailAction={(value) => {
+          setCloneMatchCandidate(null);
+          setCloneDismissedMatchId(null);
+          setCloneEmail(value);
+        }}
         setCloneDescriptionAction={setCloneDescription}
         formatPhoneAction={formatPhone}
+        matchCandidate={cloneMatchCandidate}
+        nameMatchCandidates={cloneNameMatchCandidates}
+        nameMatchCandidate={cloneNameMatchCandidate}
+        nameMatchCount={cloneNameMatchCandidates.length}
+        matchedContactId={cloneMatchedContactId}
+        linkedContact={cloneMatchedContact}
+        searchingContacts={cloneLookupQuery.trim().length >= 2 && isFetchingCloneMatches}
+        contactFocusField={cloneContactFocusField}
+        onContactFocus={(field) => setCloneContactFocusField(field)}
+        onContactBlur={() => setCloneContactFocusField(null)}
+        onUseMatch={(contact) => {
+          applyCloneMatch(contact);
+          setCloneMatchCandidate(null);
+          setCloneDismissedMatchId(null);
+        }}
+        onDismissMatch={(contactId) => {
+          setCloneMatchedContactId(null);
+          setCloneMatchedContact(null);
+          setCloneMatchCandidate(null);
+          setCloneDismissedMatchId(contactId);
+        }}
+        contactChangeState={cloneChangeState}
       />
 
       <EventMessagesDialog

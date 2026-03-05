@@ -129,7 +129,7 @@ export function buildWardBreakdown(
   >();
 
   for (const event of events) {
-    const key = event.ward ?? 'Unknown';
+    const key = event.contactWard ?? 'Unknown';
     const current = byWard.get(key) ?? {
       pending: 0,
       active: 0,

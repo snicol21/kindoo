@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm';
-import { text, integer, sqliteTable, uniqueIndex } from 'drizzle-orm/sqlite-core';
+import { text, integer, sqliteTable, uniqueIndex, index, check } from 'drizzle-orm/sqlite-core';
 
 export const BUILDINGS = ['Stake Center', 'Maples Building'] as const;
 export type Building = (typeof BUILDINGS)[number];
@@ -43,6 +43,37 @@ export const users = sqliteTable('user', {
     .default(sql`(unixepoch())`),
 });
 
+// ─── Contacts Table ──────────────────────────────────────────────────────────
+
+export const contacts = sqliteTable(
+  'contact',
+  {
+    id: text('id')
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    name: text('name').notNull(),
+    ward: text('ward', { enum: WARDS }).notNull().$type<Ward>(),
+    email: text('email'),
+    phone: text('phone'),
+    notes: text('notes'),
+    createdAt: integer('created_at', { mode: 'timestamp' })
+      .notNull()
+      .default(sql`(unixepoch())`),
+  },
+  (table) => ({
+    contactIdentifierCheck: check(
+      'contact_identifier_check',
+      sql`(email is null or trim(email) <> '') and (phone is null or trim(phone) <> '') and (email is not null or phone is not null)`
+    ),
+    nameIdx: index('contact_name_idx').on(table.name),
+    wardIdx: index('contact_ward_idx').on(table.ward),
+    emailIdx: index('contact_email_idx').on(table.email),
+    phoneIdx: index('contact_phone_idx').on(table.phone),
+    emailUnique: uniqueIndex('contact_email_unique').on(table.ward, table.email),
+    phoneUnique: uniqueIndex('contact_phone_unique').on(table.ward, table.phone),
+  })
+);
+
 // ─── Events Table ─────────────────────────────────────────────────────────────
 
 export const events = sqliteTable('event', {
@@ -54,17 +85,12 @@ export const events = sqliteTable('event', {
   })
     .notNull()
     .$type<Building>(),
-  ward: text('ward', {
-    enum: WARDS,
-  })
-    .notNull()
-    .$type<Ward>(),
-  name: text('name').notNull(),
   eventDate: text('event_date').notNull(),
   startTime: text('start_time').notNull(),
   endTime: text('end_time').notNull(),
-  phone: text('phone'),
-  email: text('email').notNull(),
+  contactId: text('contactId')
+    .notNull()
+    .references(() => contacts.id, { onDelete: 'restrict' }),
   description: text('description').notNull(),
   kindooLicenseCreated: integer('kindoo_license_created', { mode: 'boolean' })
     .notNull()
@@ -120,6 +146,9 @@ export type NewUser = typeof users.$inferInsert;
 
 export type Event = typeof events.$inferSelect;
 export type NewEvent = typeof events.$inferInsert;
+
+export type Contact = typeof contacts.$inferSelect;
+export type NewContact = typeof contacts.$inferInsert;
 
 export type MessageTemplate = typeof messageTemplates.$inferSelect;
 export type NewMessageTemplate = typeof messageTemplates.$inferInsert;
