@@ -68,6 +68,7 @@ type EditEventDialogProps = {
   onContactBlur: () => void;
   onUseMatch: (contact: ContactMatch) => void;
   onDismissMatch: (contactId: string) => void;
+  onClearLinkedContact: () => void;
   contactChangeState: ContactChangeState;
 };
 
@@ -108,6 +109,7 @@ export function EditEventDialog({
   onContactBlur,
   onUseMatch,
   onDismissMatch,
+  onClearLinkedContact,
   contactChangeState,
 }: EditEventDialogProps) {
   const isNameFocus = contactFocusField === 'name';
@@ -209,7 +211,8 @@ export function EditEventDialog({
                   onContactBlur();
                 }}
                 onKeyDown={handleContactMatchKeyDown({
-                  open: isNameFocus && (!!matchCandidate || !!nameMatchCandidate),
+                  open:
+                    isNameFocus && (searchingContacts || !!matchCandidate || !!nameMatchCandidate),
                   match: matchCandidate ?? nameMatchCandidate,
                   onTabFocus: () => {
                     window.setTimeout(() => {
@@ -226,7 +229,9 @@ export function EditEventDialog({
               {showLinkedState && <MatchedContactBadge update={contactChangeState.changed.name} />}
               <ContactMatchPopover
                 focusRef={nameMatchRef}
-                open={isNameFocus && (!!matchCandidate || !!nameMatchCandidate)}
+                open={
+                  isNameFocus && (searchingContacts || !!matchCandidate || !!nameMatchCandidate)
+                }
                 searching={searchingContacts}
                 matchCandidate={matchCandidate}
                 suggestedMatch={isNameFocus ? nameMatchCandidate : null}
@@ -257,7 +262,7 @@ export function EditEventDialog({
                   onContactBlur();
                 }}
                 onKeyDown={handleContactMatchKeyDown({
-                  open: isPhoneFocus && !!matchCandidate,
+                  open: isPhoneFocus && (searchingContacts || !!matchCandidate),
                   match: matchCandidate,
                   onTabFocus: () => {
                     window.setTimeout(() => {
@@ -274,7 +279,7 @@ export function EditEventDialog({
               {showLinkedState && <MatchedContactBadge update={contactChangeState.changed.phone} />}
               <ContactMatchPopover
                 focusRef={phoneMatchRef}
-                open={isPhoneFocus && !!matchCandidate}
+                open={isPhoneFocus && (searchingContacts || !!matchCandidate)}
                 searching={searchingContacts}
                 matchCandidate={matchCandidate}
                 suggestedMatch={null}
@@ -304,7 +309,7 @@ export function EditEventDialog({
                   onContactBlur();
                 }}
                 onKeyDown={handleContactMatchKeyDown({
-                  open: isEmailFocus && !!matchCandidate,
+                  open: isEmailFocus && (searchingContacts || !!matchCandidate),
                   match: matchCandidate,
                   onTabFocus: () => {
                     window.setTimeout(() => {
@@ -321,7 +326,7 @@ export function EditEventDialog({
               {showLinkedState && <MatchedContactBadge update={contactChangeState.changed.email} />}
               <ContactMatchPopover
                 focusRef={emailMatchRef}
-                open={isEmailFocus && !!matchCandidate}
+                open={isEmailFocus && (searchingContacts || !!matchCandidate)}
                 searching={searchingContacts}
                 matchCandidate={matchCandidate}
                 suggestedMatch={null}
@@ -361,12 +366,24 @@ export function EditEventDialog({
           </div>
           {showLinkedState && (
             <div className={`rounded-md border p-3 text-xs ${linkedBannerTone}`}>
-              <div className="flex flex-wrap items-center gap-2">
+              <div className="flex flex-wrap items-center justify-between gap-2">
                 <span>
                   Linked to contact{' '}
                   <span className="font-semibold">{linkedContact?.name ?? editName}</span>.
                   {contactChangeState.changeSummary ? ` ${contactChangeState.changeSummary}` : ''}
                 </span>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 px-2 text-[11px]"
+                  onClick={() => {
+                    onClearLinkedContact();
+                    nameInputRef.current?.focus();
+                  }}
+                >
+                  Unlink
+                </Button>
                 {contactChangeState.identifierGuidance && (
                   <span className={linkedBannerGuidanceTone}>
                     {contactChangeState.identifierGuidance}

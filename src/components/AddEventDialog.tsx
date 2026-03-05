@@ -37,6 +37,7 @@ import { parseTimeToMinutes } from '@/utils/timeUtils';
 import { DESCRIPTION_MAX_LENGTH } from '@/utils/eventConstants';
 import { getContactChangeState } from '@/lib/contact-linking';
 import { useContactChangeState } from '@/hooks/useContactChangeState';
+import { findExactContact, getContactSuggestions } from '@/lib/contact-matching';
 
 const phoneDigits = (value?: string | null) => (value ?? '').replace(/\D/g, '');
 
@@ -136,16 +137,18 @@ export function AddEventDialog({
     event.target.value = formatPhone(event.target.value);
   };
 
-  const nameMatches = useMemo(() => {
-    const normalizedName = typedName.trim().toLowerCase();
-    if (normalizedName.length < 2) return [] as ContactSearchResult[];
-    const wardFiltered = selectedWard
-      ? matchingContacts.filter((contact) => contact.ward === selectedWard)
-      : matchingContacts;
-    return wardFiltered.filter((contact) => contact.name.trim().toLowerCase() === normalizedName);
-  }, [matchingContacts, selectedWard, typedName]);
+  const contactSuggestions = useMemo(
+    () =>
+      getContactSuggestions(matchingContacts, {
+        name: typedName,
+        ward: selectedWard,
+        email: typedEmail,
+        phone: typedPhone,
+      }),
+    [matchingContacts, selectedWard, typedEmail, typedName, typedPhone]
+  );
 
-  const nameMatchCandidates = nameMatches.filter(
+  const nameMatchCandidates = contactSuggestions.filter(
     (contact) => contact.id !== selectedContactId && contact.id !== dismissedMatchId
   );
   const nameMatchCandidate = nameMatchCandidates[0] ?? null;
@@ -194,36 +197,25 @@ export function AddEventDialog({
     setSelectedContact(null);
   };
 
+  const clearContactFormValues = () => {
+    setTypedName('');
+    setTypedEmail('');
+    setTypedPhone('');
+    setSelectedWard('');
+    if (nameRef.current) nameRef.current.value = '';
+    if (phoneRef.current) phoneRef.current.value = '';
+    if (emailRef.current) emailRef.current.value = '';
+  };
+
   useEffect(() => {
     if (!open) return;
 
-    const normalizedEmail = typedEmail.trim().toLowerCase();
-    const normalizedPhone = phoneDigits(typedPhone);
-    const normalizedName = typedName.trim().toLowerCase();
-
-    const wardFiltered = selectedWard
-      ? matchingContacts.filter((contact) => contact.ward === selectedWard)
-      : matchingContacts;
-
-    let match = null as (typeof matchingContacts)[number] | null;
-
-    if (normalizedEmail) {
-      match =
-        wardFiltered.find(
-          (contact) => (contact.email ?? '').trim().toLowerCase() === normalizedEmail
-        ) ?? null;
-    }
-
-    if (!match && normalizedPhone) {
-      match =
-        wardFiltered.find((contact) => phoneDigits(contact.phone) === normalizedPhone) ?? null;
-    }
-
-    if (!match && normalizedName && selectedWard) {
-      match =
-        wardFiltered.find((contact) => contact.name.trim().toLowerCase() === normalizedName) ??
-        null;
-    }
+    const match = findExactContact(matchingContacts, {
+      name: typedName,
+      ward: selectedWard,
+      email: typedEmail,
+      phone: typedPhone,
+    });
 
     if (!match) {
       setMatchCandidate(null);
@@ -592,7 +584,10 @@ export function AddEventDialog({
               {showLinkedState && <MatchedContactBadge update={contactChangeState.changed.name} />}
               <ContactMatchPopover
                 focusRef={nameMatchRef}
-                open={contactFocusField === 'name' && (!!matchCandidate || !!nameMatchCandidate)}
+                open={
+                  contactFocusField === 'name' &&
+                  (searchingContacts || !!matchCandidate || !!nameMatchCandidate)
+                }
                 searching={searchingContacts}
                 matchCandidate={matchCandidate}
                 suggestedMatch={contactFocusField === 'name' ? nameMatchCandidate : null}
@@ -640,7 +635,7 @@ export function AddEventDialog({
                     setContactFocusField(null);
                   }}
                   onKeyDown={handleContactMatchKeyDown({
-                    open: contactFocusField === 'phone' && !!matchCandidate,
+                    open: contactFocusField === 'phone' && (searchingContacts || !!matchCandidate),
                     match: matchCandidate,
                     onTabFocus: () => {
                       window.setTimeout(() => {
@@ -670,7 +665,7 @@ export function AddEventDialog({
                 )}
                 <ContactMatchPopover
                   focusRef={phoneMatchRef}
-                  open={contactFocusField === 'phone' && !!matchCandidate}
+                  open={contactFocusField === 'phone' && (searchingContacts || !!matchCandidate)}
                   searching={searchingContacts}
                   matchCandidate={matchCandidate}
                   suggestedMatch={null}
@@ -717,7 +712,7 @@ export function AddEventDialog({
                     setContactFocusField(null);
                   }}
                   onKeyDown={handleContactMatchKeyDown({
-                    open: contactFocusField === 'email' && !!matchCandidate,
+                    open: contactFocusField === 'email' && (searchingContacts || !!matchCandidate),
                     match: matchCandidate,
                     onTabFocus: () => {
                       window.setTimeout(() => {
@@ -746,7 +741,7 @@ export function AddEventDialog({
                 )}
                 <ContactMatchPopover
                   focusRef={emailMatchRef}
-                  open={contactFocusField === 'email' && !!matchCandidate}
+                  open={contactFocusField === 'email' && (searchingContacts || !!matchCandidate)}
                   searching={searchingContacts}
                   matchCandidate={matchCandidate}
                   suggestedMatch={null}
@@ -819,11 +814,26 @@ export function AddEventDialog({
 
           {showLinkedState && selectedContact && (
             <div className={`rounded-md border p-3 text-xs ${linkedBannerTone}`}>
-              <div className="flex flex-wrap items-center gap-2">
+              <div className="flex flex-wrap items-center justify-between gap-2">
                 <span>
                   Linked to contact <span className="font-semibold">{selectedContact.name}</span>.
                   {contactChangeState.changeSummary ? ` ${contactChangeState.changeSummary}` : ''}
                 </span>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 px-2 text-[11px]"
+                  onClick={() => {
+                    setDismissedMatchId(selectedContact.id);
+                    setMatchCandidate(null);
+                    clearSelectedContact();
+                    clearContactFormValues();
+                    nameRef.current?.focus();
+                  }}
+                >
+                  Unlink
+                </Button>
                 {contactChangeState.identifierGuidance && (
                   <span className={linkedBannerGuidanceTone}>
                     {contactChangeState.identifierGuidance}

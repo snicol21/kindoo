@@ -55,70 +55,7 @@ import { formatTimeRange, validateTimeWindow } from '@/utils/timeUtils';
 import { useContactSearch } from '@/hooks/useContacts';
 import { updateContact, type ContactSearchResult } from '@/actions/contacts';
 import { useContactChangeState } from '@/hooks/useContactChangeState';
-
-const phoneDigits = (value?: string | null) => (value ?? '').replace(/\D/g, '');
-
-const findExactContact = (
-  contacts: Array<{
-    id: string;
-    name: string;
-    ward: Ward;
-    email: string | null;
-    phone: string | null;
-  }>,
-  input: { name: string; ward: Ward | ''; email: string; phone: string }
-) => {
-  const normalizedEmail = input.email.trim().toLowerCase();
-  const normalizedPhone = phoneDigits(input.phone);
-  const normalizedName = input.name.trim().toLowerCase();
-
-  const wardFiltered = input.ward
-    ? contacts.filter((contact) => contact.ward === input.ward)
-    : contacts;
-
-  if (normalizedEmail) {
-    const emailMatch = wardFiltered.find(
-      (contact) => (contact.email ?? '').trim().toLowerCase() === normalizedEmail
-    );
-    if (emailMatch) return emailMatch;
-  }
-
-  if (normalizedPhone) {
-    const phoneMatch = wardFiltered.find(
-      (contact) => phoneDigits(contact.phone) === normalizedPhone
-    );
-    if (phoneMatch) return phoneMatch;
-  }
-
-  if (normalizedName && input.ward) {
-    const nameMatch = wardFiltered.find(
-      (contact) => contact.name.trim().toLowerCase() === normalizedName
-    );
-    if (nameMatch) return nameMatch;
-  }
-
-  return null;
-};
-
-const findNameMatches = (
-  contacts: Array<{
-    id: string;
-    name: string;
-    ward: Ward;
-    email: string | null;
-    phone: string | null;
-  }>,
-  input: { name: string; ward: Ward | '' }
-) => {
-  const normalizedName = input.name.trim().toLowerCase();
-  if (!normalizedName) return [] as typeof contacts;
-
-  const wardFiltered = input.ward
-    ? contacts.filter((contact) => contact.ward === input.ward)
-    : contacts;
-
-  return wardFiltered.filter((contact) => contact.name.trim().toLowerCase() === normalizedName);
-};
+import { findExactContact, getContactSuggestions } from '@/lib/contact-matching';
 
 export function EventTable({
   events,
@@ -227,12 +164,24 @@ export function EventTable({
     useContactSearch(cloneLookupQuery);
 
   const editNameMatches = useMemo(
-    () => findNameMatches(editMatchingContacts, { name: editName, ward: editWard }),
-    [editMatchingContacts, editName, editWard]
+    () =>
+      getContactSuggestions(editMatchingContacts, {
+        name: editName,
+        ward: editWard,
+        email: editEmail,
+        phone: editPhone,
+      }),
+    [editEmail, editMatchingContacts, editName, editPhone, editWard]
   );
   const cloneNameMatches = useMemo(
-    () => findNameMatches(cloneMatchingContacts, { name: cloneName, ward: cloneWard }),
-    [cloneMatchingContacts, cloneName, cloneWard]
+    () =>
+      getContactSuggestions(cloneMatchingContacts, {
+        name: cloneName,
+        ward: cloneWard,
+        email: cloneEmail,
+        phone: clonePhone,
+      }),
+    [cloneEmail, cloneMatchingContacts, cloneName, clonePhone, cloneWard]
   );
 
   const editNameMatchCandidates = useMemo(
@@ -1426,6 +1375,18 @@ export function EventTable({
           setEditMatchCandidate(null);
           setEditDismissedMatchId(contactId);
         }}
+        onClearLinkedContact={() => {
+          if (editMatchedContactId) {
+            setEditDismissedMatchId(editMatchedContactId);
+          }
+          setEditMatchedContactId(null);
+          setEditMatchedContact(null);
+          setEditMatchCandidate(null);
+          setEditName('');
+          setEditPhone('');
+          setEditEmail('');
+          setEditWard('');
+        }}
         contactChangeState={editChangeState}
       />
 
@@ -1489,6 +1450,18 @@ export function EventTable({
           setCloneMatchedContact(null);
           setCloneMatchCandidate(null);
           setCloneDismissedMatchId(contactId);
+        }}
+        onClearLinkedContact={() => {
+          if (cloneMatchedContactId) {
+            setCloneDismissedMatchId(cloneMatchedContactId);
+          }
+          setCloneMatchedContactId(null);
+          setCloneMatchedContact(null);
+          setCloneMatchCandidate(null);
+          setCloneName('');
+          setClonePhone('');
+          setCloneEmail('');
+          setCloneWard('');
         }}
         contactChangeState={cloneChangeState}
       />

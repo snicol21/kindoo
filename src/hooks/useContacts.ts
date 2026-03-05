@@ -19,6 +19,7 @@ export function useContactSearch(query: string, limit = 8) {
       return (result.data ?? []) as ContactSearchResult[];
     },
     enabled: normalizedQuery.length >= 2,
+    placeholderData: (previousData) => previousData,
     staleTime: 1000 * 60,
   });
 }

@@ -51,8 +51,9 @@ type ContactMatchPopoverProps = {
   onTabPrev?: () => void;
 };
 
-const OPEN_DELAY_MS = 120;
+const OPEN_DELAY_MS = 0;
 const EXIT_DELAY_MS = 150;
+const SEARCH_INDICATOR_DELAY_MS = 160;
 
 export function ContactMatchPopover({
   open,
@@ -71,6 +72,7 @@ export function ContactMatchPopover({
 }: ContactMatchPopoverProps) {
   const [shouldRender, setShouldRender] = useState(open);
   const [isOpen, setIsOpen] = useState(open);
+  const [showSearchingState, setShowSearchingState] = useState(false);
 
   useEffect(() => {
     let timer: number | undefined;
@@ -89,6 +91,20 @@ export function ContactMatchPopover({
     };
   }, [open]);
 
+  useEffect(() => {
+    let timer: number | undefined;
+
+    if (searching) {
+      timer = window.setTimeout(() => setShowSearchingState(true), SEARCH_INDICATOR_DELAY_MS);
+    } else {
+      setShowSearchingState(false);
+    }
+
+    return () => {
+      if (timer) window.clearTimeout(timer);
+    };
+  }, [searching]);
+
   const suggestionList = suggestedMatches.length
     ? suggestedMatches
     : suggestedMatch
@@ -99,11 +115,14 @@ export function ContactMatchPopover({
   const effectiveMatch = visibleSuggestions[0] ?? null;
   const countLabel = suggestedCount > 0 ? suggestedCount : resolvedMatches.length;
   const isSingleMatch = visibleSuggestions.length === 1;
-  const matchLabel = matchCandidate
-    ? 'Matching contact'
-    : resolvedMatches.length
-      ? 'Possible match'
-      : 'Matching contact';
+  const matchLabel =
+    !effectiveMatch && showSearchingState
+      ? 'Searching contacts'
+      : matchCandidate
+        ? 'Matching contact'
+        : resolvedMatches.length
+          ? 'Possible match'
+          : 'Matching contact';
 
   const ariaLabel = effectiveMatch
     ? !isSingleMatch
@@ -113,7 +132,7 @@ export function ContactMatchPopover({
         : 'Matched contact, press Enter to use'
     : 'Searching contacts';
 
-  if (!shouldRender || !effectiveMatch) return null;
+  if (!shouldRender || (!effectiveMatch && !showSearchingState)) return null;
 
   return (
     <div
@@ -192,61 +211,76 @@ export function ContactMatchPopover({
         </span>
         <div className="min-w-0 flex-1">
           <div className={`flex items-center gap-1.5 font-medium ${isSingleMatch ? 'pr-7' : ''}`}>
-            <span className={searching ? 'animate-pulse' : ''}>{matchLabel}</span>
+            <span className={showSearchingState ? 'animate-pulse' : ''}>{matchLabel}</span>
             {countLabel > 1 && <span>({countLabel})</span>}
-            {searching && (
+            {showSearchingState && (
               <span className="h-2 w-2 animate-spin rounded-full border border-blue-600 border-t-transparent dark:border-blue-300 dark:border-t-transparent" />
             )}
           </div>
           <div className="mt-1 space-y-0.5 pr-0.5">
-            {visibleSuggestions.map((contact, index) => {
-              const phoneLabel = contact.phone
-                ? formatPhone
-                  ? formatPhone(contact.phone)
-                  : contact.phone
-                : 'No phone';
-              return (
-                <button
-                  key={contact.id}
-                  type="button"
-                  data-contact-option="true"
-                  className={`w-full min-w-0 rounded-sm px-1.5 py-1 text-left transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-blue-500/70 focus-visible:ring-offset-1 focus-visible:ring-offset-transparent hover:bg-blue-100/70 dark:hover:bg-blue-900/55 ${
-                    index > 0 ? 'border-t border-blue-200/60 pt-1.5 dark:border-blue-800/60' : ''
-                  }`}
-                  tabIndex={0}
-                  onKeyDown={(event) => {
-                    if (event.key !== 'Tab') return;
+            {visibleSuggestions.length > 0 ? (
+              visibleSuggestions.map((contact, index) => {
+                const phoneLabel = contact.phone
+                  ? formatPhone
+                    ? formatPhone(contact.phone)
+                    : contact.phone
+                  : 'No phone';
+                return (
+                  <button
+                    key={contact.id}
+                    type="button"
+                    data-contact-option="true"
+                    className={`w-full min-w-0 rounded-sm px-1.5 py-1 text-left transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-blue-500/70 focus-visible:ring-offset-1 focus-visible:ring-offset-transparent hover:bg-blue-100/70 dark:hover:bg-blue-900/55 ${
+                      index > 0 ? 'border-t border-blue-200/60 pt-1.5 dark:border-blue-800/60' : ''
+                    }`}
+                    tabIndex={0}
+                    onKeyDown={(event) => {
+                      if (event.key !== 'Tab') return;
 
-                    if (event.shiftKey && index === 0 && onTabPrev) {
-                      event.preventDefault();
-                      onTabPrev();
-                      return;
-                    }
+                      if (event.shiftKey && index === 0 && onTabPrev) {
+                        event.preventDefault();
+                        onTabPrev();
+                        return;
+                      }
 
-                    if (!event.shiftKey && index === visibleSuggestions.length - 1 && onTabNext) {
-                      event.preventDefault();
-                      onTabNext();
-                    }
-                  }}
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    onUseMatch(contact);
-                  }}
-                >
-                  <div className="font-medium text-blue-950 dark:text-blue-100">{contact.name}</div>
-                  <div className="flex min-w-0 items-center gap-1 text-[10px] text-blue-900/85 dark:text-blue-100/85">
-                    <span>{contact.ward}</span>
-                    <span className="shrink-0">•</span>
-                    <span className="shrink-0 whitespace-nowrap">{phoneLabel}</span>
-                  </div>
-                  {contact.email && (
-                    <div className="break-all text-[10px] text-blue-900/70 dark:text-blue-100/70">
-                      {contact.email}
+                      if (!event.shiftKey && index === visibleSuggestions.length - 1 && onTabNext) {
+                        event.preventDefault();
+                        onTabNext();
+                      }
+                    }}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      onUseMatch(contact);
+                    }}
+                  >
+                    <div
+                      className="truncate font-medium text-blue-950 dark:text-blue-100"
+                      title={contact.name}
+                    >
+                      {contact.name}
                     </div>
-                  )}
-                </button>
-              );
-            })}
+                    <div
+                      className="truncate text-[10px] text-blue-900/85 dark:text-blue-100/85"
+                      title={`${contact.ward} • ${phoneLabel}`}
+                    >
+                      {contact.ward} • {phoneLabel}
+                    </div>
+                    {contact.email && (
+                      <div
+                        className="truncate text-[10px] text-blue-900/70 dark:text-blue-100/70"
+                        title={contact.email}
+                      >
+                        {contact.email}
+                      </div>
+                    )}
+                  </button>
+                );
+              })
+            ) : (
+              <div className="rounded-sm bg-blue-100/60 px-1.5 py-1 text-[10px] text-blue-900/80 dark:bg-blue-900/45 dark:text-blue-100/80">
+                Searching contacts...
+              </div>
+            )}
             {resolvedMatches.length > visibleSuggestions.length && (
               <div className="px-1 text-[10px] text-blue-900/70 dark:text-blue-100/70">
                 Showing {visibleSuggestions.length} of {resolvedMatches.length}
