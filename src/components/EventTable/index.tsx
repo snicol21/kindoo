@@ -58,6 +58,8 @@ export function EventTable({
   isLoading,
   isError,
   building,
+  emptyStateTitle,
+  emptyStateMessage,
   messageTemplates,
   onDelete,
   onEdit,
@@ -298,13 +300,14 @@ export function EventTable({
   }
 
   if (sorted.length === 0) {
+    const title = emptyStateTitle ?? 'No events yet';
+    const message =
+      emptyStateMessage ?? `Add your first event for ${building} using the button above.`;
     return (
       <div className="flex flex-col items-center justify-center py-16 text-muted-foreground gap-3">
         <Inbox className="h-10 w-10 opacity-40" />
-        <p className="font-medium">No events yet</p>
-        <p className="text-sm text-center max-w-sm">
-          Add your first event for {building} using the button above.
-        </p>
+        <p className="font-medium">{title}</p>
+        <p className="text-sm text-center max-w-sm">{message}</p>
       </div>
     );
   }

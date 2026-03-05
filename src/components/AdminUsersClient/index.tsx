@@ -17,16 +17,23 @@ import { DeleteUserDialog } from '@/components/AdminUsersClient/DeleteUserDialog
 import { PasswordDialog } from '@/components/AdminUsersClient/PasswordDialog';
 import { RoleDialog } from '@/components/AdminUsersClient/RoleDialog';
 import { UsersTable } from '@/components/AdminUsersClient/UsersTable';
-import type { AdminUsersClientProps, ManagedUser, RoleFilter } from './types';
+import type { AdminUsersClientProps, ManagedUser } from './types';
 
-export function AdminUsersClient({ users, currentUserId }: AdminUsersClientProps) {
+const buildUserSearchHaystack = (user: ManagedUser) =>
+  [user.name, user.email, user.role].filter(Boolean).join(' ').toLowerCase();
+
+export function AdminUsersClient({
+  users,
+  currentUserId,
+  searchQuery = '',
+}: AdminUsersClientProps) {
   const router = useRouter();
-  const [roleFilter, setRoleFilter] = useState<RoleFilter>('all');
 
-  const filteredUsers = useMemo(
-    () => (roleFilter === 'all' ? users : users.filter((user) => user.role === roleFilter)),
-    [roleFilter, users]
-  );
+  const filteredUsers = useMemo(() => {
+    const normalizedSearch = searchQuery.trim().toLowerCase();
+    if (!normalizedSearch) return users;
+    return users.filter((user) => buildUserSearchHaystack(user).includes(normalizedSearch));
+  }, [searchQuery, users]);
 
   const [createOpen, setCreateOpen] = useState(false);
   const [createPending, setCreatePending] = useState(false);
@@ -165,11 +172,7 @@ export function AdminUsersClient({ users, currentUserId }: AdminUsersClientProps
   return (
     <div className="space-y-6">
       <Card>
-        <AdminUsersHeader
-          roleFilter={roleFilter}
-          onRoleFilterChangeAction={setRoleFilter}
-          onCreateUserAction={() => setCreateOpen(true)}
-        />
+        <AdminUsersHeader onCreateUserAction={() => setCreateOpen(true)} />
         <CardContent>
           <UsersTable
             users={filteredUsers}

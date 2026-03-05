@@ -6,6 +6,8 @@ export interface EventTableProps {
   isLoading: boolean;
   isError: boolean;
   building: string;
+  emptyStateTitle?: string;
+  emptyStateMessage?: string;
   messageTemplates?: MessageTemplateMap;
   onDelete?: (eventId: string) => Promise<void>;
   onEdit?: (input: UpdateEventInput) => Promise<void>;

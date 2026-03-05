@@ -13,6 +13,7 @@ type EventsTabPanelProps = {
   isError: boolean;
   building: Building;
   messageTemplates: MessageTemplateMap;
+  searchQuery?: string;
   selectedIds: string[];
   onSelectionChangeAction: (nextIds: string[]) => void;
   onDeleteAction: (eventId: string) => Promise<void>;
@@ -33,6 +34,7 @@ export function EventsTabPanel({
   isError,
   building,
   messageTemplates,
+  searchQuery,
   selectedIds,
   onSelectionChangeAction,
   onDeleteAction,
@@ -43,6 +45,9 @@ export function EventsTabPanel({
   bulkDeletePending,
   onOpenBulkDeleteAction,
 }: EventsTabPanelProps) {
+  const normalizedSearch = searchQuery?.trim() ?? '';
+  const isSearching = normalizedSearch.length > 0;
+
   return (
     <div className="space-y-3">
       {selectedIds.length > 0 && (
@@ -64,6 +69,10 @@ export function EventsTabPanel({
             isLoading={isLoading}
             isError={isError}
             building={building}
+            emptyStateTitle={isSearching ? 'No matching events' : undefined}
+            emptyStateMessage={
+              isSearching ? 'Try a different search or clear the filter.' : undefined
+            }
             messageTemplates={messageTemplates}
             onDelete={onDeleteAction}
             selectedIds={selectedIds}

@@ -10,6 +10,5 @@ export type ManagedUser = {
 export interface AdminUsersClientProps {
   users: ManagedUser[];
   currentUserId: string;
+  searchQuery?: string;
 }
-
-export type RoleFilter = 'all' | UserRole;

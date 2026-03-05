@@ -13,6 +13,7 @@ import {
   useUpdateEvent,
 } from '@/hooks/useEvents';
 import type { Building } from '@/schema/schema';
+import type { EventWithCreator } from '@/actions/events';
 import { BulkDeleteDialog } from '@/components/DashboardClient/BulkDeleteDialog';
 import { DashboardEventsHeader } from '@/components/DashboardClient/DashboardEventsHeader';
 import { DashboardStats } from '@/components/DashboardClient/DashboardStats';
@@ -37,6 +38,23 @@ import {
 } from '@/components/DashboardClient/utils';
 import type { DashboardClientProps, DashboardTab } from '@/components/DashboardClient/types';
 
+const buildEventSearchHaystack = (event: EventWithCreator) =>
+  [
+    event.name,
+    event.ward,
+    event.email,
+    event.phone,
+    event.description,
+    event.eventDate,
+    event.startTime,
+    event.endTime,
+    event.creatorName,
+    event.creatorEmail,
+  ]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase();
+
 export function DashboardClient({
   initialStakeCenterEvents,
   initialMaplesEvents,
@@ -51,6 +69,7 @@ export function DashboardClient({
   const [activeTab, setActiveTab] = useState<DashboardTab>(
     initialTab ?? buildingToTab(initialDefaultBuilding)
   );
+  const [searchQuery, setSearchQuery] = useState('');
   const [selectedStakeIds, setSelectedStakeIds] = useState<string[]>([]);
   const [selectedMaplesIds, setSelectedMaplesIds] = useState<string[]>([]);
   const [bulkDeleteTarget, setBulkDeleteTarget] = useState<Building | null>(null);
@@ -87,6 +106,22 @@ export function DashboardClient({
     () => maplesEvents.filter((event) => !isPastEvent(event.eventDate, event.endTime)),
     [maplesEvents]
   );
+
+  const normalizedSearch = searchQuery.trim().toLowerCase();
+
+  const filteredStakeUpcoming = useMemo(() => {
+    if (!normalizedSearch) return stakeUpcoming;
+    return stakeUpcoming.filter((event) =>
+      buildEventSearchHaystack(event).includes(normalizedSearch)
+    );
+  }, [normalizedSearch, stakeUpcoming]);
+
+  const filteredMaplesUpcoming = useMemo(() => {
+    if (!normalizedSearch) return maplesUpcoming;
+    return maplesUpcoming.filter((event) =>
+      buildEventSearchHaystack(event).includes(normalizedSearch)
+    );
+  }, [normalizedSearch, maplesUpcoming]);
 
   const dashboardCounts = useMemo(
     () =>
@@ -207,6 +242,8 @@ export function DashboardClient({
         <DashboardTabsHeader
           stakeCount={stakeUpcoming.length}
           maplesCount={maplesUpcoming.length}
+          searchValue={searchQuery}
+          onSearchChangeAction={setSearchQuery}
         />
 
         <DashboardEventsHeader
@@ -228,11 +265,12 @@ export function DashboardClient({
 
         <TabsContent value="stake-center">
           <EventsTabPanel
-            events={stakeUpcoming}
+            events={filteredStakeUpcoming}
             isLoading={scLoading}
             isError={scError}
             building="Stake Center"
             messageTemplates={messageTemplates}
+            searchQuery={searchQuery}
             onDeleteAction={(eventId) =>
               deleteStakeCenterEvent.mutateAsync(eventId).then(() => undefined)
             }
@@ -251,11 +289,12 @@ export function DashboardClient({
 
         <TabsContent value="maples-building">
           <EventsTabPanel
-            events={maplesUpcoming}
+            events={filteredMaplesUpcoming}
             isLoading={mbLoading}
             isError={mbError}
             building="Maples Building"
             messageTemplates={messageTemplates}
+            searchQuery={searchQuery}
             onDeleteAction={(eventId) =>
               deleteMaplesEvent.mutateAsync(eventId).then(() => undefined)
             }
