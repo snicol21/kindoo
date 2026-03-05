@@ -14,7 +14,6 @@ import { users } from '@/schema/schema';
 import { eq } from 'drizzle-orm';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
-import { ClearSuccessParams } from '@/components/ClearSuccessParams';
 
 export const metadata: Metadata = {
   title: 'Account Settings',
@@ -53,7 +52,6 @@ export default async function AccountPage({ searchParams }: AccountPageProps) {
 
   return (
     <div className="container mx-auto max-w-xl px-4 py-8">
-      <ClearSuccessParams keys={['updated', 'nameUpdated']} />
       <div className="sticky top-2 z-10 mb-6 w-fit rounded-md bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/80 sm:static sm:bg-transparent sm:backdrop-blur-none">
         <Button asChild variant="ghost" size="sm" className="gap-2">
           <Link href="/dashboard">
@@ -99,9 +97,11 @@ export default async function AccountPage({ searchParams }: AccountPageProps) {
                   defaultValue={session.user.name ?? ''}
                 />
               </div>
-              <Button type="submit" className="w-full">
-                Save profile name
-              </Button>
+              <div className="flex justify-end">
+                <Button type="submit" variant="secondary">
+                  Update profile name
+                </Button>
+              </div>
             </form>
           </CardContent>
         </Card>
@@ -142,9 +142,11 @@ export default async function AccountPage({ searchParams }: AccountPageProps) {
                 <Label htmlFor="confirmPassword">Confirm new password</Label>
                 <PasswordInput id="confirmPassword" name="confirmPassword" />
               </div>
-              <Button type="submit" className="w-full">
-                Update password
-              </Button>
+              <div className="flex justify-end">
+                <Button type="submit" variant="secondary">
+                  Update password
+                </Button>
+              </div>
             </form>
           </CardContent>
         </Card>
