@@ -1,9 +1,10 @@
 import NextAuth from 'next-auth';
 import Credentials from 'next-auth/providers/credentials';
 import { db } from '@/lib/db';
-import { users } from '@/schema/schema';
+import { users, type UserRole } from '@/schema/schema';
 import { eq } from 'drizzle-orm';
 import { hashPassword, verifyPassword } from '@/lib/password';
+import { isAdminEmail } from '@/lib/admin';
 
 const DEFAULT_LICENSE_LEAD_DAYS = 2;
 const MAX_LICENSE_LEAD_DAYS = 14;
@@ -43,7 +44,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           if (password === bootstrapPassword) {
             const passwordHash = await hashPassword(password);
             user = (
-              await db.insert(users).values({ email, name: 'Admin', passwordHash }).returning()
+              await db
+                .insert(users)
+                .values({ email, name: 'Admin', passwordHash, role: 'admin' })
+                .returning()
             )[0];
           }
         }
@@ -102,6 +106,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           if (currentUser) {
             session.user.name = currentUser.name ?? null;
             session.user.email = currentUser.email;
+            session.user.role = (currentUser.role ?? 'user') as UserRole;
+
+            if (isAdminEmail(currentUser.email) && currentUser.role !== 'admin') {
+              await db.update(users).set({ role: 'admin' }).where(eq(users.id, currentUser.id));
+              session.user.role = 'admin';
+            }
 
             const normalizedLeadDays = normalizeLicenseLeadDays(currentUser.licenseLeadDays);
             if (normalizedLeadDays !== currentUser.licenseLeadDays) {
@@ -127,6 +137,7 @@ declare module 'next-auth' {
       name?: string | null;
       email?: string | null;
       image?: string | null;
+      role?: UserRole;
     };
   }
 }

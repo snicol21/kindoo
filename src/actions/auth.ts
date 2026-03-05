@@ -2,7 +2,7 @@
 
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
-import { users } from '@/schema/schema';
+import { users, USER_ROLES, type UserRole } from '@/schema/schema';
 import { BUILDINGS, type Building } from '@/schema/schema';
 import { eq } from 'drizzle-orm';
 import { getAdminEmails, isAdminEmail } from '@/lib/admin';
@@ -25,18 +25,29 @@ function isValidEmail(email: string) {
 async function requireAdmin() {
   const session = await auth();
   const email = session?.user?.email ?? null;
+  const userId = session?.user?.id ?? null;
 
-  if (!email || !isAdminEmail(email)) {
+  if (!email || !userId) {
     return { ok: false, error: 'Not authorized.' };
   }
 
-  return { ok: true, email } as const;
+  if (isAdminEmail(email)) {
+    return { ok: true, email, userId } as const;
+  }
+
+  const [dbUser] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+  if (!dbUser || dbUser.role !== 'admin') {
+    return { ok: false, error: 'Not authorized.' };
+  }
+
+  return { ok: true, email, userId } as const;
 }
 
 export async function createUser(input: {
   email: string;
   name?: string;
   password: string;
+  role?: UserRole;
 }): Promise<ActionResult> {
   const admin = await requireAdmin();
   if (!admin.ok) return { success: false, error: admin.error };
@@ -56,14 +67,19 @@ export async function createUser(input: {
   const existing = await db.select().from(users).where(eq(users.email, email)).limit(1);
   if (existing[0]) return { success: false, error: 'User already exists.' };
 
+  const roleInput: UserRole = USER_ROLES.includes(input.role ?? 'user')
+    ? (input.role ?? 'user')
+    : 'user';
+  const role: UserRole = isAdminEmail(email) ? 'admin' : roleInput;
+
   const passwordHash = await hashPassword(password);
-  await db.insert(users).values({ email, name, passwordHash });
+  await db.insert(users).values({ email, name, passwordHash, role });
 
   return { success: true };
 }
 
 export async function listUsers(): Promise<
-  ActionResult<{ id: string; email: string; name: string | null }[]>
+  ActionResult<{ id: string; email: string; name: string | null; role: UserRole }[]>
 > {
   const admin = await requireAdmin();
   if (!admin.ok) return { success: false, error: admin.error };
@@ -76,9 +92,36 @@ export async function listUsers(): Promise<
         id: user.id,
         email: user.email,
         name: user.name ?? null,
+        role: (user.role ?? 'user') as UserRole,
       }))
-      .sort((a, b) => a.email.localeCompare(b.email)),
+      .sort((a, b) => {
+        if (a.id === admin.userId && b.id !== admin.userId) return -1;
+        if (b.id === admin.userId && a.id !== admin.userId) return 1;
+        return a.email.localeCompare(b.email);
+      }),
   };
+}
+
+export async function adminSetUserRole(input: {
+  userId: string;
+  role: UserRole;
+}): Promise<ActionResult> {
+  const admin = await requireAdmin();
+  if (!admin.ok) return { success: false, error: admin.error };
+
+  const userId = input.userId.trim();
+  if (!userId) return { success: false, error: 'Invalid user id.' };
+
+  const role: UserRole = USER_ROLES.includes(input.role) ? input.role : 'user';
+
+  const existing = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+  const user = existing[0];
+  if (!user) return { success: false, error: 'User not found.' };
+
+  const resolvedRole = isAdminEmail(user.email) ? 'admin' : role;
+  await db.update(users).set({ role: resolvedRole }).where(eq(users.id, userId));
+
+  return { success: true };
 }
 
 export async function adminSetUserPassword(input: {

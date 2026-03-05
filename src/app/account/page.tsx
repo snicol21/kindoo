@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import type { Metadata } from 'next';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { PasswordInput } from '@/components/ui/password-input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { LicenseLeadTimeSetting } from '@/components/LicenseLeadTimeSetting';
@@ -13,6 +14,7 @@ import { users } from '@/schema/schema';
 import { eq } from 'drizzle-orm';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
+import { ClearSuccessParams } from '@/components/ClearSuccessParams';
 
 export const metadata: Metadata = {
   title: 'Account Settings',
@@ -51,6 +53,7 @@ export default async function AccountPage({ searchParams }: AccountPageProps) {
 
   return (
     <div className="container mx-auto max-w-xl px-4 py-8">
+      <ClearSuccessParams keys={['updated', 'nameUpdated']} />
       <div className="sticky top-2 z-10 mb-6 w-fit rounded-md bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/80 sm:static sm:bg-transparent sm:backdrop-blur-none">
         <Button asChild variant="ghost" size="sm" className="gap-2">
           <Link href="/dashboard">
@@ -129,15 +132,15 @@ export default async function AccountPage({ searchParams }: AccountPageProps) {
             >
               <div className="space-y-3">
                 <Label htmlFor="currentPassword">Current password</Label>
-                <Input id="currentPassword" name="currentPassword" type="password" />
+                <PasswordInput id="currentPassword" name="currentPassword" />
               </div>
               <div className="space-y-3">
                 <Label htmlFor="newPassword">New password</Label>
-                <Input id="newPassword" name="newPassword" type="password" />
+                <PasswordInput id="newPassword" name="newPassword" />
               </div>
               <div className="space-y-3">
                 <Label htmlFor="confirmPassword">Confirm new password</Label>
-                <Input id="confirmPassword" name="confirmPassword" type="password" />
+                <PasswordInput id="confirmPassword" name="confirmPassword" />
               </div>
               <Button type="submit" className="w-full">
                 Update password

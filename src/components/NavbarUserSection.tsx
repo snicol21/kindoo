@@ -29,6 +29,12 @@ export async function NavbarUserSection() {
         .slice(0, 2)
     : (session?.user?.email?.[0]?.toUpperCase() ?? '?');
 
+  const displayRole = session?.user
+    ? session.user.role === 'admin' || isAdminEmail(session.user.email ?? null)
+      ? 'admin'
+      : (session.user.role ?? 'user')
+    : null;
+
   return (
     <div className="flex items-center gap-3">
       {session?.user ? (
@@ -58,7 +64,16 @@ export async function NavbarUserSection() {
             <DropdownMenuContent align="end" className="w-56">
               <DropdownMenuLabel>
                 <div className="flex flex-col space-y-1">
-                  <p className="text-sm font-medium leading-none">{session.user.name ?? 'User'}</p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-medium leading-none">
+                      {session.user.name ?? 'User'}
+                    </p>
+                    {displayRole && (
+                      <span className="rounded-full border border-border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                        {displayRole}
+                      </span>
+                    )}
+                  </div>
                   <p className="text-xs leading-none text-muted-foreground">{session.user.email}</p>
                 </div>
               </DropdownMenuLabel>
@@ -81,7 +96,7 @@ export async function NavbarUserSection() {
                   Account Settings
                 </Link>
               </DropdownMenuItem>
-              {isAdminEmail(session.user.email ?? null) && (
+              {(session.user.role === 'admin' || isAdminEmail(session.user.email ?? null)) && (
                 <DropdownMenuItem asChild>
                   <Link href="/admin/users" className="gap-2 cursor-pointer">
                     <Shield className="h-4 w-4" />

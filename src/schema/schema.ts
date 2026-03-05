@@ -16,6 +16,9 @@ export const WARDS = [
 ] as const;
 export type Ward = (typeof WARDS)[number];
 
+export const USER_ROLES = ['admin', 'manager', 'user'] as const;
+export type UserRole = (typeof USER_ROLES)[number];
+
 // ─── Auth.js Required Tables ──────────────────────────────────────────────────
 
 export const users = sqliteTable('user', {
@@ -25,6 +28,7 @@ export const users = sqliteTable('user', {
   name: text('name'),
   email: text('email').unique().notNull(),
   passwordHash: text('password_hash'),
+  role: text('role', { enum: USER_ROLES }).notNull().$type<UserRole>().default('user'),
   emailVerified: integer('emailVerified', { mode: 'timestamp_ms' }),
   image: text('image'),
   licenseLeadDays: integer('license_lead_days').notNull().default(2),

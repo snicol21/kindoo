@@ -1,14 +1,15 @@
 import { auth } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { db } from '@/lib/db';
-import { events, users } from '@/schema/schema';
-import { eq } from 'drizzle-orm';
+import { events, users, type UserRole } from '@/schema/schema';
+import { and, eq } from 'drizzle-orm';
 import { DashboardClient } from '@/components/DashboardClient';
 import type { Metadata } from 'next';
 import type { Building } from '@/schema/schema';
 import { connection } from 'next/server';
 import { getMessageTemplates } from '@/actions/message-templates';
 import { EMPTY_MESSAGE_TEMPLATES } from '@/lib/message-templates';
+import { isAdminEmail } from '@/lib/admin';
 
 type DashboardTab = 'stake-center' | 'maples-building';
 
@@ -35,6 +36,10 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   if (!session?.user?.id) {
     redirect('/auth/signin');
   }
+
+  const role: UserRole = isAdminEmail(session.user.email ?? null)
+    ? 'admin'
+    : ((session.user.role ?? 'user') as UserRole);
 
   const userPreference = await db
     .select({
@@ -90,7 +95,11 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
       })
       .from(events)
       .innerJoin(users, eq(events.userId, users.id))
-      .where(eq(events.building, 'Stake Center' as Building))
+      .where(
+        role === 'user'
+          ? and(eq(events.building, 'Stake Center' as Building), eq(events.userId, session.user.id))
+          : eq(events.building, 'Stake Center' as Building)
+      )
       .orderBy(events.createdAt),
     db
       .select({
@@ -112,7 +121,14 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
       })
       .from(events)
       .innerJoin(users, eq(events.userId, users.id))
-      .where(eq(events.building, 'Maples Building' as Building))
+      .where(
+        role === 'user'
+          ? and(
+              eq(events.building, 'Maples Building' as Building),
+              eq(events.userId, session.user.id)
+            )
+          : eq(events.building, 'Maples Building' as Building)
+      )
       .orderBy(events.createdAt),
   ]);
 

@@ -10,10 +10,12 @@ import {
   WARDS,
   type Building,
   type Event,
+  type UserRole,
   type Ward,
 } from '@/schema/schema';
-import { eq, inArray } from 'drizzle-orm';
+import { and, eq, inArray } from 'drizzle-orm';
 import { revalidateTag } from 'next/cache';
+import { isAdminEmail } from '@/lib/admin';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -48,6 +50,11 @@ export interface ActionResult<T = unknown> {
   success: boolean;
   data?: T;
   error?: string;
+}
+
+function resolveRole(session: { user?: { role?: UserRole; email?: string | null } }): UserRole {
+  if (isAdminEmail(session.user?.email ?? null)) return 'admin';
+  return (session.user?.role ?? 'user') as UserRole;
 }
 
 // ─── Validation Helper ────────────────────────────────────────────────────────
@@ -237,6 +244,8 @@ export async function getEventsByBuilding(
       return { success: false, error: 'Not authenticated.', data: [] };
     }
 
+    const role = resolveRole(session);
+
     const userEvents = await db
       .select({
         id: events.id,
@@ -257,7 +266,11 @@ export async function getEventsByBuilding(
       })
       .from(events)
       .innerJoin(users, eq(events.userId, users.id))
-      .where(eq(events.building, building))
+      .where(
+        role === 'user'
+          ? and(eq(events.building, building), eq(events.userId, session.user.id))
+          : eq(events.building, building)
+      )
       .orderBy(events.createdAt);
 
     return { success: true, data: userEvents as EventWithCreator[] };
@@ -275,7 +288,18 @@ export async function deleteEvent(eventId: string): Promise<ActionResult<void>> 
       return { success: false, error: 'Not authenticated.' };
     }
 
-    await db.delete(events).where(eq(events.id, eventId));
+    const role = resolveRole(session);
+
+    const result =
+      role === 'user'
+        ? await db
+            .delete(events)
+            .where(and(eq(events.id, eventId), eq(events.userId, session.user.id)))
+        : await db.delete(events).where(eq(events.id, eventId));
+
+    if ((result?.rowsAffected ?? 0) === 0) {
+      return { success: false, error: 'Event not found or not authorized.' };
+    }
 
     revalidateTag(`events-${session.user.id}`, 'everything');
 
@@ -294,12 +318,19 @@ export async function deleteEvents(eventIds: string[]): Promise<ActionResult<{ d
       return { success: false, error: 'Not authenticated.' };
     }
 
+    const role = resolveRole(session);
+
     const ids = eventIds.map((id) => id.trim()).filter(Boolean);
     if (ids.length === 0) {
       return { success: false, error: 'No events selected.' };
     }
 
-    const result = await db.delete(events).where(inArray(events.id, ids));
+    const result =
+      role === 'user'
+        ? await db
+            .delete(events)
+            .where(and(inArray(events.id, ids), eq(events.userId, session.user.id)))
+        : await db.delete(events).where(inArray(events.id, ids));
 
     revalidateTag(`events-${session.user.id}`, 'everything');
 
@@ -317,6 +348,8 @@ export async function updateEvent(input: UpdateEventInput): Promise<ActionResult
     if (!session?.user?.id) {
       return { success: false, error: 'Not authenticated.' };
     }
+
+    const role = resolveRole(session);
 
     if (!input.id?.trim()) {
       return { success: false, error: 'Invalid event id.' };
@@ -341,7 +374,11 @@ export async function updateEvent(input: UpdateEventInput): Promise<ActionResult
         email: normalizedInput.email || '',
         description: normalizedInput.description,
       })
-      .where(eq(events.id, input.id))
+      .where(
+        role === 'user'
+          ? and(eq(events.id, input.id), eq(events.userId, session.user.id))
+          : eq(events.id, input.id)
+      )
       .returning();
 
     if (!updatedEvent) {
@@ -432,6 +469,8 @@ export async function setKindooLicenseCreated(input: {
       return { success: false, error: 'Not authenticated.' };
     }
 
+    const role = resolveRole(session);
+
     const eventId = input.eventId?.trim();
     if (!eventId) {
       return { success: false, error: 'Invalid event id.' };
@@ -440,7 +479,11 @@ export async function setKindooLicenseCreated(input: {
     const [updatedEvent] = await db
       .update(events)
       .set({ kindooLicenseCreated: input.kindooLicenseCreated })
-      .where(eq(events.id, eventId))
+      .where(
+        role === 'user'
+          ? and(eq(events.id, eventId), eq(events.userId, session.user.id))
+          : eq(events.id, eventId)
+      )
       .returning();
 
     if (!updatedEvent) {

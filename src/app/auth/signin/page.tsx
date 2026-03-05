@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { PasswordInput } from '@/components/ui/password-input';
 import { CalendarDays } from 'lucide-react';
 import type { Metadata } from 'next';
 import { connection } from 'next/server';
@@ -82,7 +83,7 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
               className="space-y-3"
             >
               <Input name="email" type="email" placeholder="you@example.com" />
-              <Input name="password" type="password" placeholder="••••••••" />
+              <PasswordInput name="password" placeholder="••••••••" />
               <Button type="submit" className="w-full">
                 Sign in
               </Button>

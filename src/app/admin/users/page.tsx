@@ -1,8 +1,10 @@
 import { auth } from '@/lib/auth';
-import { isAdminEmail, getAdminEmails } from '@/lib/admin';
+import { isAdminEmail } from '@/lib/admin';
 import { redirect } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { PasswordInput } from '@/components/ui/password-input';
+import { PasswordInputWithCount } from '@/components/PasswordInputWithCount';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import {
@@ -13,9 +15,18 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import type { Metadata } from 'next';
-import { adminDeleteUser, adminSetUserPassword, createUser, listUsers } from '@/actions/auth';
+import {
+  adminDeleteUser,
+  adminSetUserPassword,
+  adminSetUserRole,
+  createUser,
+  listUsers,
+} from '@/actions/auth';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
+import { USER_ROLES, type UserRole } from '@/schema/schema';
+import { AdminUserRoleForm } from '@/components/AdminUserRoleForm';
+import { ClearSuccessParams } from '@/components/ClearSuccessParams';
 
 export const metadata: Metadata = {
   title: 'User Admin',
@@ -38,13 +49,16 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
   const session = await auth();
   const email = session?.user?.email ?? null;
   const params = await searchParams;
+  const currentUserId = session?.user?.id ?? null;
 
-  if (!email || !isAdminEmail(email)) {
+  const isAdmin = session?.user?.role === 'admin' || isAdminEmail(email);
+  if (!email || !isAdmin) {
     redirect('/auth/signin');
   }
 
   const usersResult = await listUsers();
   const managedUsers = usersResult.success ? (usersResult.data ?? []) : [];
+  const adminUsers = managedUsers.filter((user) => user.role === 'admin');
 
   const message = params.error
     ? decodeURIComponent(params.error)
@@ -58,6 +72,7 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
 
   return (
     <div className="container mx-auto max-w-3xl px-4 py-8 space-y-6">
+      <ClearSuccessParams keys={['created', 'updated', 'deleted']} />
       <div className="sticky top-2 z-10 w-fit rounded-md bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/80 sm:static sm:bg-transparent sm:backdrop-blur-none">
         <Button asChild variant="ghost" size="sm" className="gap-2">
           <Link href="/dashboard">
@@ -78,7 +93,7 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
 
           <div className="space-y-2">
             <p className="text-sm text-muted-foreground">
-              Admins: {getAdminEmails().join(', ') || 'None'}
+              Admins: {adminUsers.map((user) => user.email).join(', ') || 'None'}
             </p>
           </div>
 
@@ -97,6 +112,7 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
                     email: String(formData.get('email') ?? ''),
                     name: String(formData.get('name') ?? ''),
                     password: String(formData.get('password') ?? ''),
+                    role: String(formData.get('role') ?? 'user') as UserRole,
                   });
                   if (!result.success) {
                     const msg = encodeURIComponent(result.error ?? 'Failed to create user.');
@@ -130,7 +146,22 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
                 </div>
                 <div>
                   <Label htmlFor="create-password">Temporary password</Label>
-                  <Input id="create-password" name="password" type="password" />
+                  <PasswordInputWithCount id="create-password" name="password" minLength={12} />
+                </div>
+                <div>
+                  <Label htmlFor="create-role">Role</Label>
+                  <Select name="role" defaultValue="user">
+                    <SelectTrigger id="create-role">
+                      <SelectValue placeholder="Select role" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {USER_ROLES.map((role) => (
+                        <SelectItem key={role} value={role}>
+                          {role}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <Button type="submit" className="w-full">
                   Create user
@@ -185,11 +216,11 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
                 </div>
                 <div>
                   <Label htmlFor="set-password">New password</Label>
-                  <Input id="set-password" name="password" type="password" />
+                  <PasswordInput id="set-password" name="password" />
                 </div>
                 <div>
                   <Label htmlFor="set-confirm-password">Confirm password</Label>
-                  <Input id="set-confirm-password" name="confirmPassword" type="password" />
+                  <PasswordInput id="set-confirm-password" name="confirmPassword" />
                 </div>
                 <Button type="submit" className="w-full">
                   Update password
@@ -208,32 +239,65 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
         <CardContent>
           <div className="space-y-2">
             {managedUsers.map((user) => (
-              <form
+              <div
                 key={user.id}
-                action={async (formData: FormData) => {
-                  'use server';
-                  const result = await adminDeleteUser({
-                    userId: String(formData.get('userId') ?? ''),
-                  });
-                  if (!result.success) {
-                    const msg = encodeURIComponent(result.error ?? 'Failed to delete user.');
-                    redirect(`/admin/users?error=${msg}`);
-                  }
-                  redirect('/admin/users?deleted=1');
-                }}
-                className="flex items-center justify-between gap-3 rounded-md border border-border p-3"
+                className="flex flex-col gap-2 rounded-md border border-border p-3 sm:flex-row sm:items-center sm:justify-between"
               >
                 <div className="min-w-0">
                   <p className="truncate text-sm font-medium">{user.email}</p>
-                  {user.name && (
-                    <p className="truncate text-xs text-muted-foreground">{user.name}</p>
+                  <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                    {user.name && <span className="truncate">{user.name}</span>}
+                    <span className="rounded-full border border-border px-2 py-0.5">
+                      {user.role}
+                    </span>
+                  </div>
+                </div>
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                  {currentUserId !== user.id && (
+                    <>
+                      <AdminUserRoleForm
+                        userId={user.id}
+                        initialRole={user.role}
+                        roles={USER_ROLES}
+                        action={async (formData: FormData) => {
+                          'use server';
+                          const result = await adminSetUserRole({
+                            userId: String(formData.get('userId') ?? ''),
+                            role: String(formData.get('role') ?? 'user') as UserRole,
+                          });
+                          if (!result.success) {
+                            const msg = encodeURIComponent(
+                              result.error ?? 'Failed to update role.'
+                            );
+                            redirect(`/admin/users?error=${msg}`);
+                          }
+                          redirect('/admin/users?updated=1');
+                        }}
+                      />
+                      <form
+                        action={async (formData: FormData) => {
+                          'use server';
+                          const result = await adminDeleteUser({
+                            userId: String(formData.get('userId') ?? ''),
+                          });
+                          if (!result.success) {
+                            const msg = encodeURIComponent(
+                              result.error ?? 'Failed to delete user.'
+                            );
+                            redirect(`/admin/users?error=${msg}`);
+                          }
+                          redirect('/admin/users?deleted=1');
+                        }}
+                      >
+                        <input type="hidden" name="userId" value={user.id} />
+                        <Button type="submit" variant="destructive" size="sm">
+                          Delete
+                        </Button>
+                      </form>
+                    </>
                   )}
                 </div>
-                <input type="hidden" name="userId" value={user.id} />
-                <Button type="submit" variant="destructive" size="sm">
-                  Delete
-                </Button>
-              </form>
+              </div>
             ))}
             {managedUsers.length === 0 && (
               <p className="text-sm text-muted-foreground">No users found.</p>
