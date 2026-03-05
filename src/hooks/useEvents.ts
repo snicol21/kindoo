@@ -18,30 +18,8 @@ import type {
   UpdateEventInput,
 } from '@/actions/events';
 import { toast } from 'sonner';
-
-function normalizeEmail(email?: string) {
-  return email?.trim().toLowerCase() || undefined;
-}
-
-function normalizePhone(phone?: string) {
-  if (!phone) return undefined;
-  const digits = phone.replace(/\D/g, '');
-  if (!digits) return undefined;
-
-  let normalized = digits;
-  if (normalized.length === 11 && normalized.startsWith('1')) {
-    normalized = normalized.slice(1);
-  }
-  if (normalized.length > 10) {
-    normalized = normalized.slice(0, 10);
-  }
-
-  if (normalized.length <= 3) return normalized;
-  if (normalized.length <= 6) {
-    return `(${normalized.slice(0, 3)}) ${normalized.slice(3)}`;
-  }
-  return `(${normalized.slice(0, 3)}) ${normalized.slice(3, 6)}-${normalized.slice(6)}`;
-}
+import { normalizePhoneForStorage } from '@/utils/phoneUtils';
+import { normalizeEmail } from '@/utils/stringUtils';
 
 // ─── Query Keys ───────────────────────────────────────────────────────────────
 
@@ -75,7 +53,7 @@ export function useAddEvent(onSuccess?: () => void) {
       const result = await addEvent({
         ...input,
         email: normalizeEmail(input.email),
-        phone: normalizePhone(input.phone),
+        phone: normalizePhoneForStorage(input.phone),
       });
       if (!result.success) throw new Error(result.error);
       return result.data!;
@@ -100,7 +78,7 @@ export function useAddEvent(onSuccess?: () => void) {
         eventDate: newEventInput.eventDate,
         startTime: newEventInput.startTime,
         endTime: newEventInput.endTime,
-        phone: normalizePhone(newEventInput.phone) ?? null,
+        phone: normalizePhoneForStorage(newEventInput.phone) ?? null,
         email: normalizeEmail(newEventInput.email) ?? '',
         description: newEventInput.description,
         kindooLicenseCreated: false,
@@ -225,7 +203,7 @@ export function useUpdateEvent() {
       const result = await updateEvent({
         ...input,
         email: normalizeEmail(input.email),
-        phone: normalizePhone(input.phone),
+        phone: normalizePhoneForStorage(input.phone),
       });
       if (!result.success) throw new Error(result.error);
       return result.data!;
@@ -251,7 +229,7 @@ export function useUpdateEvent() {
           eventDate: input.eventDate,
           startTime: input.startTime,
           endTime: input.endTime,
-          phone: normalizePhone(input.phone) ?? null,
+          phone: normalizePhoneForStorage(input.phone) ?? null,
           email: normalizeEmail(input.email) ?? '',
           description: input.description,
           kindooLicenseCreated: false,
@@ -264,7 +242,7 @@ export function useUpdateEvent() {
         eventDate: input.eventDate,
         startTime: input.startTime,
         endTime: input.endTime,
-        phone: normalizePhone(input.phone) ?? null,
+        phone: normalizePhoneForStorage(input.phone) ?? null,
         email: normalizeEmail(input.email) ?? '',
         description: input.description,
       });
@@ -375,7 +353,7 @@ export function useImportEvents() {
         events: events.map((event) => ({
           ...event,
           email: normalizeEmail(event.email),
-          phone: normalizePhone(event.phone),
+          phone: normalizePhoneForStorage(event.phone),
         })),
       });
       if (!result.success) throw new Error(result.error);

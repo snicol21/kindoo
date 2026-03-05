@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Table,
   TableBody,
@@ -10,24 +10,6 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   DropdownMenu,
@@ -53,262 +35,23 @@ import {
   Church,
   Clock,
   FileText,
-  ExternalLink,
   CheckCircle2,
   MoreVertical,
 } from 'lucide-react';
-import { BUILDINGS, WARDS, type Building, type Ward } from '@/schema/schema';
-import type { AddEventInput, EventWithCreator, UpdateEventInput } from '@/actions/events';
+import type { EventWithCreator } from '@/actions/events';
 import { toast } from 'sonner';
-import {
-  DEFAULT_POLICY_LINK,
-  type MessageTemplateKey,
-  type MessageTemplateMap,
-} from '@/lib/message-templates';
-
-interface EventTableProps {
-  events: EventWithCreator[];
-  isLoading: boolean;
-  isError: boolean;
-  building: string;
-  messageTemplates?: MessageTemplateMap;
-  onDelete?: (eventId: string) => Promise<void>;
-  onEdit?: (input: UpdateEventInput) => Promise<void>;
-  onClone?: (input: AddEventInput) => Promise<void>;
-  onSetKindooLicenseCreated?: (input: {
-    eventId: string;
-    kindooLicenseCreated: boolean;
-  }) => Promise<void>;
-  licenseLeadDays?: number;
-  selectedIds?: string[];
-  onSelectionChange?: (eventIds: string[]) => void;
-}
-
-type SortKey = 'name' | 'email' | 'eventDate' | 'daysUntil';
-type SortDir = 'asc' | 'desc';
-
-function parseYmd(dateStr: string) {
-  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateStr);
-  if (!match) return null;
-  const year = Number(match[1]);
-  const month = Number(match[2]);
-  const day = Number(match[3]);
-  if (!year || month < 1 || month > 12 || day < 1 || day > 31) return null;
-  return { year, month, day };
-}
-
-function parseTimeToMinutes(value: string) {
-  const match = /^(\d{1,2}):(\d{2})$/.exec(value.trim());
-  if (!match) return null;
-  const hours = Number(match[1]);
-  const minutes = Number(match[2]);
-  if (!Number.isFinite(hours) || !Number.isFinite(minutes)) return null;
-  if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) return null;
-  return hours * 60 + minutes;
-}
-
-function formatLicenseDate(ymd: string) {
-  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(ymd);
-  if (!match) return ymd;
-  const year = Number(match[1]);
-  const month = Number(match[2]);
-  const day = Number(match[3]);
-  return `${String(month).padStart(2, '0')}/${String(day).padStart(2, '0')}/${year}`;
-}
-
-function formatLicenseTime(minutes: number) {
-  const hours24 = Math.floor(minutes / 60) % 24;
-  const mins = minutes % 60;
-  const period = hours24 >= 12 ? 'PM' : 'AM';
-  const hours12 = hours24 % 12 || 12;
-  return `${hours12}:${String(mins).padStart(2, '0')} ${period}`;
-}
-
-function getLicenseTimes(event: EventWithCreator) {
-  const startMinutes = parseTimeToMinutes(event.startTime);
-  const endMinutes = parseTimeToMinutes(event.endTime);
-  if (startMinutes === null || endMinutes === null) return null;
-  const earliestMinutes = 5 * 60;
-  const latestMinutes = 23 * 60;
-  const start = Math.max(earliestMinutes, startMinutes - 120);
-  const end = Math.min(latestMinutes, endMinutes + 120);
-  return {
-    startDate: formatLicenseDate(event.eventDate),
-    startTime: formatLicenseTime(start),
-    endDate: formatLicenseDate(event.eventDate),
-    endTime: formatLicenseTime(end),
-  };
-}
-
-function validateTimeWindow(startTime: string, endTime: string) {
-  const startMinutes = parseTimeToMinutes(startTime);
-  const endMinutes = parseTimeToMinutes(endTime);
-  const earliestMinutes = 5 * 60;
-  const latestMinutes = 23 * 60;
-  if (startMinutes === null || endMinutes === null) {
-    return 'Start and end times are required.';
-  }
-  if (startMinutes < earliestMinutes || startMinutes > latestMinutes) {
-    return 'Start time must be between 5:00 AM and 11:00 PM.';
-  }
-  if (endMinutes > latestMinutes) {
-    return 'End time must be no later than 11:00 PM.';
-  }
-  if (endMinutes <= startMinutes) {
-    return 'End time must be after start time.';
-  }
-  return null;
-}
-
-function toLocalDate(dateStr: string) {
-  const parsed = parseYmd(dateStr);
-  if (parsed) {
-    return new Date(parsed.year, parsed.month - 1, parsed.day);
-  }
-  const fallback = new Date(dateStr);
-  return Number.isNaN(fallback.getTime()) ? null : fallback;
-}
-
-function toLocalDateTime(dateStr: string, timeStr: string) {
-  const date = toLocalDate(dateStr);
-  if (!date) return Number.NaN;
-  const [hours, minutes] = timeStr.split(':').map((value) => Number(value));
-  const safeHours = Number.isFinite(hours) ? hours : 0;
-  const safeMinutes = Number.isFinite(minutes) ? minutes : 0;
-  date.setHours(safeHours, safeMinutes, 0, 0);
-  return date.getTime();
-}
-
-function formatPhone(value?: string | null) {
-  if (!value) return '';
-  const digits = value.replace(/\D/g, '');
-  if (!digits) return '';
-
-  let normalized = digits;
-  if (normalized.length === 11 && normalized.startsWith('1')) {
-    normalized = normalized.slice(1);
-  }
-  if (normalized.length > 10) {
-    normalized = normalized.slice(0, 10);
-  }
-
-  if (normalized.length <= 3) return normalized;
-  if (normalized.length <= 6) {
-    return `(${normalized.slice(0, 3)}) ${normalized.slice(3)}`;
-  }
-  return `(${normalized.slice(0, 3)}) ${normalized.slice(3, 6)}-${normalized.slice(6)}`;
-}
-
-function formatDate(dateStr: string) {
-  const date = toLocalDate(dateStr);
-  if (!date) return dateStr;
-
-  return date.toLocaleDateString('en-US', {
-    weekday: 'short',
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  });
-}
-
-function formatDateNoYear(dateStr: string) {
-  const date = toLocalDate(dateStr);
-  if (!date) return dateStr;
-
-  return date.toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-  });
-}
-
-function formatTime(timeStr: string) {
-  const [hours, minutes] = timeStr.split(':').map((value) => Number(value));
-  const dt = new Date();
-  dt.setHours(hours, minutes, 0, 0);
-  return dt.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-}
-
-function formatTimeRange(startTime: string, endTime: string) {
-  return `${formatTime(startTime)} – ${formatTime(endTime)}`;
-}
-
-function getDaysUntil(dateStr: string) {
-  const parsed = parseYmd(dateStr);
-  if (!parsed) return '—';
-
-  const now = new Date();
-  const todayUtc = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
-  const targetUtc = Date.UTC(parsed.year, parsed.month - 1, parsed.day);
-  const diff = Math.floor((targetUtc - todayUtc) / (1000 * 60 * 60 * 24));
-  if (diff < 0) return 'Past';
-  if (diff === 0) return 'Today';
-  if (diff === 1) return '1 day';
-  return `${diff} days`;
-}
-
-function getDaysUntilValue(dateStr: string) {
-  const parsed = parseYmd(dateStr);
-  if (!parsed) return Number.NaN;
-
-  const now = new Date();
-  const todayUtc = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
-  const targetUtc = Date.UTC(parsed.year, parsed.month - 1, parsed.day);
-  return Math.floor((targetUtc - todayUtc) / (1000 * 60 * 60 * 24));
-}
-
-function getFirstName(fullName: string) {
-  const parts = fullName.trim().split(/\s+/).filter(Boolean);
-  return parts[0] || fullName;
-}
-
-function buildTemplateContext(event: EventWithCreator) {
-  const firstName = getFirstName(event.name);
-  const dateShort = formatDateNoYear(event.eventDate);
-  const dateLong = formatDate(event.eventDate);
-  const timeRange = formatTimeRange(event.startTime, event.endTime);
-  const phone = formatPhone(event.phone) || '—';
-  const email = event.email?.trim() ? event.email : '—';
-  const licenseTimes = getLicenseTimes(event);
-  const licenseWindow = licenseTimes
-    ? licenseTimes.startDate === licenseTimes.endDate
-      ? `${licenseTimes.startDate} (${licenseTimes.startTime} – ${licenseTimes.endTime})`
-      : `${licenseTimes.startDate} ${licenseTimes.startTime} – ${licenseTimes.endDate} ${licenseTimes.endTime}`
-    : '';
-
-  return {
-    '{firstName}': firstName,
-    '{fullName}': event.name,
-    '{building}': event.building,
-    '{ward}': event.ward ?? '—',
-    '{eventDate}': dateShort,
-    '{eventDateLong}': dateLong,
-    '{startTime}': formatTime(event.startTime),
-    '{endTime}': formatTime(event.endTime),
-    '{timeRange}': timeRange,
-    '{description}': event.description,
-    '{email}': email,
-    '{phone}': phone,
-    '{policyLink}': DEFAULT_POLICY_LINK,
-    '{licenseStartDate}': licenseTimes?.startDate ?? '',
-    '{licenseStartTime}': licenseTimes?.startTime ?? '',
-    '{licenseEndDate}': licenseTimes?.endDate ?? '',
-    '{licenseEndTime}': licenseTimes?.endTime ?? '',
-    '{licenseWindow}': licenseWindow,
-  };
-}
-
-function applyTemplate(template: string, context: Record<string, string>) {
-  return template.replace(/\{[a-zA-Z0-9_]+\}/g, (token) => context[token] ?? token);
-}
-
-function renderMessageTemplate(
-  event: EventWithCreator,
-  key: MessageTemplateKey,
-  templates?: MessageTemplateMap
-) {
-  const template = templates?.[key] ?? '';
-  return applyTemplate(template, buildTemplateContext(event));
-}
+import { CloneEventDialog } from '@/components/EventTable/CloneEventDialog';
+import { DeleteEventDialog } from '@/components/EventTable/DeleteEventDialog';
+import { EditEventDialog } from '@/components/EventTable/EditEventDialog';
+import { EventMessagesDialog } from '@/components/EventTable/EventMessagesDialog';
+import { KindooLicenseDialog } from '@/components/EventTable/KindooLicenseDialog';
+import type { EventTableProps, SortDir, SortKey } from '@/components/EventTable/types';
+import type { Building, Ward } from '@/schema/schema';
+import { formatDate, getDaysUntil, getDaysUntilValue, toLocalDateTime } from '@/utils/dateUtils';
+import { getLicenseTimes, renderMessageTemplate } from '@/utils/eventTemplateUtils';
+import { DESCRIPTION_MAX_LENGTH } from '@/utils/eventConstants';
+import { formatPhone } from '@/utils/phoneUtils';
+import { formatTimeRange, validateTimeWindow } from '@/utils/timeUtils';
 
 export function EventTable({
   events,
@@ -338,7 +81,6 @@ export function EventTable({
   const [pendingDeleteEvent, setPendingDeleteEvent] = useState<EventWithCreator | null>(null);
   const [editingEvent, setEditingEvent] = useState<EventWithCreator | null>(null);
   const [licenseEvent, setLicenseEvent] = useState<EventWithCreator | null>(null);
-  const licenseDialogContentRef = useRef<HTMLDivElement | null>(null);
   const [isSavingLicenseStatus, setIsSavingLicenseStatus] = useState(false);
   const submitKindooLicenseStatus = async (event: EventWithCreator, nextValue: boolean) => {
     if (!onSetKindooLicenseCreated || isSavingLicenseStatus) return;
@@ -604,6 +346,10 @@ export function EventTable({
         toast.error(timeError);
         return;
       }
+      if (editDescription.trim().length > DESCRIPTION_MAX_LENGTH) {
+        toast.error(`Description must be ${DESCRIPTION_MAX_LENGTH} characters or less.`);
+        return;
+      }
       await onEdit({
         id: editingEvent.id,
         building: editBuilding,
@@ -660,6 +406,10 @@ export function EventTable({
     }
     if (!cloneDescription.trim()) {
       toast.error('Description is required.');
+      return;
+    }
+    if (cloneDescription.trim().length > DESCRIPTION_MAX_LENGTH) {
+      toast.error(`Description must be ${DESCRIPTION_MAX_LENGTH} characters or less.`);
       return;
     }
 
@@ -1331,718 +1081,86 @@ export function EventTable({
         </div>
       </div>
 
-      <Dialog
-        open={!!pendingDeleteEvent}
-        onOpenChange={(open) => !open && setPendingDeleteEvent(null)}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Delete event?</DialogTitle>
-            <DialogDescription>
-              {pendingDeleteEvent
-                ? `This will permanently delete "${pendingDeleteEvent.name}".`
-                : 'This action cannot be undone.'}
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setPendingDeleteEvent(null)}>
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={confirmDelete}
-              disabled={!pendingDeleteEvent || deletingId === pendingDeleteEvent.id}
-            >
-              {pendingDeleteEvent && deletingId === pendingDeleteEvent.id ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Deleting…
-                </>
-              ) : (
-                'Delete'
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <DeleteEventDialog
+        pendingDeleteEvent={pendingDeleteEvent}
+        deletingId={deletingId}
+        onCloseAction={() => setPendingDeleteEvent(null)}
+        onConfirmAction={confirmDelete}
+      />
 
-      <Dialog open={!!editingEvent} onOpenChange={(open) => !open && setEditingEvent(null)}>
-        <DialogContent className="sm:max-w-3xl">
-          <DialogHeader>
-            <DialogTitle>Edit event</DialogTitle>
-            <DialogDescription>Update the event details and save your changes.</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-3">
-            <div className="space-y-1.5">
-              <Label htmlFor="edit-building">Building</Label>
-              <Select
-                value={editBuilding}
-                onValueChange={(value) => setEditBuilding(value as Building)}
-              >
-                <SelectTrigger id="edit-building">
-                  <SelectValue placeholder="Select building" />
-                </SelectTrigger>
-                <SelectContent>
-                  {BUILDINGS.map((b) => (
-                    <SelectItem key={b} value={b}>
-                      {b}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="edit-ward">Ward</Label>
-              <Select value={editWard} onValueChange={(value) => setEditWard(value as Ward)}>
-                <SelectTrigger id="edit-ward">
-                  <SelectValue placeholder="Select ward" />
-                </SelectTrigger>
-                <SelectContent>
-                  {WARDS.map((ward) => (
-                    <SelectItem key={ward} value={ward}>
-                      {ward}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="edit-name">Member Name</Label>
-              <Input
-                id="edit-name"
-                value={editName}
-                onChange={(e) => setEditName(e.target.value)}
-              />
-            </div>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-              <div className="space-y-1.5 min-w-0">
-                <Label htmlFor="edit-event-date">Date</Label>
-                <Input
-                  id="edit-event-date"
-                  type="date"
-                  value={editEventDate}
-                  onChange={(e) => setEditEventDate(e.target.value)}
-                />
-              </div>
-              <div className="space-y-1.5 min-w-0">
-                <Label htmlFor="edit-start-time">Start</Label>
-                <Input
-                  id="edit-start-time"
-                  type="time"
-                  min="05:00"
-                  max="23:00"
-                  value={editStartTime}
-                  onChange={(e) => setEditStartTime(e.target.value)}
-                />
-              </div>
-              <div className="space-y-1.5 min-w-0">
-                <Label htmlFor="edit-end-time">End</Label>
-                <Input
-                  id="edit-end-time"
-                  type="time"
-                  min="05:00"
-                  max="23:00"
-                  value={editEndTime}
-                  onChange={(e) => setEditEndTime(e.target.value)}
-                />
-              </div>
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="edit-phone">Phone</Label>
-              <Input
-                id="edit-phone"
-                type="tel"
-                value={editPhone}
-                onChange={(e) => setEditPhone(formatPhone(e.target.value))}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="edit-email">Email</Label>
-              <Input
-                id="edit-email"
-                type="email"
-                value={editEmail}
-                onChange={(e) => setEditEmail(e.target.value)}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="edit-description">Description</Label>
-              <Textarea
-                id="edit-description"
-                rows={4}
-                value={editDescription}
-                onChange={(e) => setEditDescription(e.target.value)}
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setEditingEvent(null)}>
-              Cancel
-            </Button>
-            <Button onClick={submitEdit} disabled={!editingEvent || isSavingEdit || !onEdit}>
-              {isSavingEdit ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Saving…
-                </>
-              ) : (
-                'Save changes'
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <EditEventDialog
+        open={!!editingEvent}
+        editBuilding={editBuilding}
+        editWard={editWard}
+        editName={editName}
+        editEventDate={editEventDate}
+        editStartTime={editStartTime}
+        editEndTime={editEndTime}
+        editPhone={editPhone}
+        editEmail={editEmail}
+        editDescription={editDescription}
+        isSavingEdit={isSavingEdit}
+        canSave={!!editingEvent && !!onEdit}
+        onCloseAction={() => setEditingEvent(null)}
+        onSubmitAction={submitEdit}
+        setEditBuildingAction={setEditBuilding}
+        setEditWardAction={setEditWard}
+        setEditNameAction={setEditName}
+        setEditEventDateAction={setEditEventDate}
+        setEditStartTimeAction={setEditStartTime}
+        setEditEndTimeAction={setEditEndTime}
+        setEditPhoneAction={setEditPhone}
+        setEditEmailAction={setEditEmail}
+        setEditDescriptionAction={setEditDescription}
+        formatPhoneAction={formatPhone}
+      />
 
-      <Dialog open={!!cloningEvent} onOpenChange={(open) => !open && setCloningEvent(null)}>
-        <DialogContent className="sm:max-w-3xl">
-          <DialogHeader>
-            <DialogTitle>Clone event</DialogTitle>
-            <DialogDescription>Adjust the details and save as a new event.</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-3">
-            <div className="space-y-1.5">
-              <Label htmlFor="clone-building">Building</Label>
-              <Select
-                value={cloneBuilding}
-                onValueChange={(value) => setCloneBuilding(value as Building)}
-              >
-                <SelectTrigger id="clone-building">
-                  <SelectValue placeholder="Select building" />
-                </SelectTrigger>
-                <SelectContent>
-                  {BUILDINGS.map((b) => (
-                    <SelectItem key={b} value={b}>
-                      {b}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="clone-ward">Ward</Label>
-              <Select value={cloneWard} onValueChange={(value) => setCloneWard(value as Ward)}>
-                <SelectTrigger id="clone-ward">
-                  <SelectValue placeholder="Select ward" />
-                </SelectTrigger>
-                <SelectContent>
-                  {WARDS.map((ward) => (
-                    <SelectItem key={ward} value={ward}>
-                      {ward}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="clone-name">Member Name</Label>
-              <Input
-                id="clone-name"
-                value={cloneName}
-                onChange={(e) => setCloneName(e.target.value)}
-              />
-            </div>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-              <div className="space-y-1.5 min-w-0">
-                <Label htmlFor="clone-event-date">Date</Label>
-                <Input
-                  id="clone-event-date"
-                  type="date"
-                  value={cloneEventDate}
-                  onChange={(e) => setCloneEventDate(e.target.value)}
-                />
-              </div>
-              <div className="space-y-1.5 min-w-0">
-                <Label htmlFor="clone-start-time">Start</Label>
-                <Input
-                  id="clone-start-time"
-                  type="time"
-                  min="05:00"
-                  max="23:00"
-                  value={cloneStartTime}
-                  onChange={(e) => setCloneStartTime(e.target.value)}
-                />
-              </div>
-              <div className="space-y-1.5 min-w-0">
-                <Label htmlFor="clone-end-time">End</Label>
-                <Input
-                  id="clone-end-time"
-                  type="time"
-                  min="05:00"
-                  max="23:00"
-                  value={cloneEndTime}
-                  onChange={(e) => setCloneEndTime(e.target.value)}
-                />
-              </div>
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="clone-phone">Phone</Label>
-              <Input
-                id="clone-phone"
-                type="tel"
-                value={clonePhone}
-                onChange={(e) => setClonePhone(formatPhone(e.target.value))}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="clone-email">Email</Label>
-              <Input
-                id="clone-email"
-                type="email"
-                value={cloneEmail}
-                onChange={(e) => setCloneEmail(e.target.value)}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="clone-description">Description</Label>
-              <Textarea
-                id="clone-description"
-                rows={4}
-                value={cloneDescription}
-                onChange={(e) => setCloneDescription(e.target.value)}
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setCloningEvent(null)}>
-              Cancel
-            </Button>
-            <Button onClick={submitClone} disabled={!cloningEvent || isSavingClone || !onClone}>
-              {isSavingClone ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Saving…
-                </>
-              ) : (
-                'Save new event'
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <CloneEventDialog
+        open={!!cloningEvent}
+        cloneBuilding={cloneBuilding}
+        cloneWard={cloneWard}
+        cloneName={cloneName}
+        cloneEventDate={cloneEventDate}
+        cloneStartTime={cloneStartTime}
+        cloneEndTime={cloneEndTime}
+        clonePhone={clonePhone}
+        cloneEmail={cloneEmail}
+        cloneDescription={cloneDescription}
+        isSavingClone={isSavingClone}
+        canSave={!!cloningEvent && !!onClone}
+        onCloseAction={() => setCloningEvent(null)}
+        onSubmitAction={submitClone}
+        setCloneBuildingAction={setCloneBuilding}
+        setCloneWardAction={setCloneWard}
+        setCloneNameAction={setCloneName}
+        setCloneEventDateAction={setCloneEventDate}
+        setCloneStartTimeAction={setCloneStartTime}
+        setCloneEndTimeAction={setCloneEndTime}
+        setClonePhoneAction={setClonePhone}
+        setCloneEmailAction={setCloneEmail}
+        setCloneDescriptionAction={setCloneDescription}
+        formatPhoneAction={formatPhone}
+      />
 
-      <Dialog open={!!copyingEvent} onOpenChange={(open) => !open && setCopyingEvent(null)}>
-        <DialogContent className="sm:max-w-3xl" onOpenAutoFocus={(event) => event.preventDefault()}>
-          <DialogHeader>
-            <DialogTitle>Event messages</DialogTitle>
-            <DialogDescription>Copy a formatted message to share.</DialogDescription>
-          </DialogHeader>
-          {copyingEvent && (
-            <div className="space-y-4">
-              {(copyingEvent.email?.trim() || copyingEvent.phone?.trim()) && (
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  {copyingEvent.email?.trim() && (
-                    <div className="space-y-2">
-                      <Label>Email</Label>
-                      <div className="flex w-full items-center gap-2">
-                        <Input readOnly value={copyingEvent.email} className="min-w-0 flex-1" />
-                        <Button
-                          variant="secondary"
-                          size="icon"
-                          className="shrink-0 sm:mr-3"
-                          aria-label="Copy email"
-                          onClick={async () => {
-                            try {
-                              await navigator.clipboard.writeText(copyingEvent.email ?? '');
-                              toast.success('Email copied.');
-                            } catch {
-                              toast.error('Failed to copy.');
-                            }
-                          }}
-                        >
-                          <Copy className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  )}
-                  {copyingEvent.phone?.trim() && (
-                    <div className="space-y-2">
-                      <Label>Phone</Label>
-                      <div className="flex w-full items-center gap-2">
-                        <Input
-                          readOnly
-                          value={formatPhone(copyingEvent.phone)}
-                          className="min-w-0 flex-1"
-                        />
-                        <Button
-                          variant="secondary"
-                          size="icon"
-                          className="shrink-0 sm:mr-3"
-                          aria-label="Copy phone"
-                          onClick={async () => {
-                            try {
-                              await navigator.clipboard.writeText(formatPhone(copyingEvent.phone));
-                              toast.success('Phone copied.');
-                            } catch {
-                              toast.error('Failed to copy.');
-                            }
-                          }}
-                        >
-                          <Copy className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-              <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-                <div className="flex h-full flex-col gap-2">
-                  <Label>Availability inquiry text</Label>
-                  <Textarea
-                    readOnly
-                    rows={4}
-                    className="min-w-0 flex-1 min-h-35"
-                    value={renderMessageTemplate(
-                      copyingEvent,
-                      'availability_inquiry',
-                      messageTemplates
-                    )}
-                  />
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    className="self-start"
-                    onClick={async () => {
-                      try {
-                        await navigator.clipboard.writeText(
-                          renderMessageTemplate(
-                            copyingEvent,
-                            'availability_inquiry',
-                            messageTemplates
-                          )
-                        );
-                        toast.success('Availability inquiry text copied.');
-                      } catch {
-                        toast.error('Failed to copy.');
-                      }
-                    }}
-                  >
-                    <Copy className="mr-2 h-4 w-4" />
-                    Copy Message
-                  </Button>
-                </div>
-                <div className="flex h-full flex-col gap-2">
-                  <Label>Calendar item description</Label>
-                  <Textarea
-                    readOnly
-                    rows={6}
-                    className="min-w-0 flex-1 min-h-35"
-                    value={renderMessageTemplate(copyingEvent, 'calendar_item', messageTemplates)}
-                  />
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    className="self-start"
-                    onClick={async () => {
-                      try {
-                        await navigator.clipboard.writeText(
-                          renderMessageTemplate(copyingEvent, 'calendar_item', messageTemplates)
-                        );
-                        toast.success('Calendar item description copied.');
-                      } catch {
-                        toast.error('Failed to copy.');
-                      }
-                    }}
-                  >
-                    <Copy className="mr-2 h-4 w-4" />
-                    Copy Message
-                  </Button>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label>Availability confirmed + policy text</Label>
-                <Textarea
-                  readOnly
-                  rows={9}
-                  className="min-w-0"
-                  value={renderMessageTemplate(
-                    copyingEvent,
-                    'availability_confirmed',
-                    messageTemplates
-                  )}
-                />
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={async () => {
-                    try {
-                      await navigator.clipboard.writeText(
-                        renderMessageTemplate(
-                          copyingEvent,
-                          'availability_confirmed',
-                          messageTemplates
-                        )
-                      );
-                      toast.success('Availability confirmed + policy text copied.');
-                    } catch {
-                      toast.error('Failed to copy.');
-                    }
-                  }}
-                >
-                  <Copy className="mr-2 h-4 w-4" />
-                  Copy Message
-                </Button>
-              </div>
-            </div>
-          )}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setCopyingEvent(null)}>
-              Close
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <EventMessagesDialog
+        copyingEvent={copyingEvent}
+        messageTemplates={messageTemplates}
+        onCloseAction={() => setCopyingEvent(null)}
+        formatPhoneAction={formatPhone}
+        renderMessageTemplateAction={renderMessageTemplate}
+      />
 
-      <Dialog open={!!licenseEvent} onOpenChange={(open) => !open && setLicenseEvent(null)}>
-        <DialogContent
-          ref={licenseDialogContentRef}
-          tabIndex={-1}
-          className="sm:max-w-3xl"
-          onOpenAutoFocus={(event) => {
-            event.preventDefault();
-            requestAnimationFrame(() => {
-              licenseDialogContentRef.current?.focus();
-            });
-          }}
-        >
-          <DialogHeader>
-            <DialogTitle>Kindoo License</DialogTitle>
-            <DialogDescription>Copy these values into the Kindoo setup form.</DialogDescription>
-          </DialogHeader>
-          {licenseEvent && (
-            <div className="space-y-4">
-              <div className="rounded-md border border-border bg-muted/40 p-3 text-sm">
-                <p className="font-medium text-foreground">License timing reference</p>
-                <p className="text-muted-foreground">
-                  Event: {formatDate(licenseEvent.eventDate)} ·{' '}
-                  {formatTimeRange(licenseEvent.startTime, licenseEvent.endTime)}
-                </p>
-                <p className="text-muted-foreground">
-                  Generated values use 2 hours before event start and 2 hours after event end,
-                  capped to the allowed 5:00 AM–11:00 PM window.
-                </p>
-              </div>
-              <div className="space-y-2">
-                <Label>Email of the new user</Label>
-                <div className="flex w-full items-center gap-2">
-                  <Input
-                    readOnly
-                    value={licenseEvent.email || ''}
-                    placeholder="No email"
-                    className="min-w-0 flex-1"
-                  />
-                  <Button
-                    variant="secondary"
-                    size="icon"
-                    className="shrink-0 sm:mr-3"
-                    aria-label="Copy email"
-                    disabled={!licenseEvent.email}
-                    onClick={async () => {
-                      try {
-                        await navigator.clipboard.writeText(licenseEvent.email ?? '');
-                        toast.success('Email copied.');
-                      } catch {
-                        toast.error('Failed to copy.');
-                      }
-                    }}
-                  >
-                    <Copy className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-              {(() => {
-                const licenseTimes = getLicenseTimes(licenseEvent);
-                if (!licenseTimes) return null;
-                return (
-                  <>
-                    <div className="space-y-2">
-                      <Label>Rights activated starting</Label>
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2">
-                          <Input
-                            readOnly
-                            value={licenseTimes.startDate}
-                            className="min-w-0 flex-1"
-                          />
-                          <Button
-                            variant="secondary"
-                            size="icon"
-                            className="shrink-0 sm:mr-3"
-                            aria-label="Copy start date"
-                            onClick={async () => {
-                              try {
-                                await navigator.clipboard.writeText(licenseTimes.startDate);
-                                toast.success('Start date copied.');
-                              } catch {
-                                toast.error('Failed to copy.');
-                              }
-                            }}
-                          >
-                            <Copy className="h-4 w-4" />
-                          </Button>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Input
-                            readOnly
-                            value={licenseTimes.startTime}
-                            className="min-w-0 flex-1"
-                          />
-                          <Button
-                            variant="secondary"
-                            size="icon"
-                            className="shrink-0 sm:mr-3"
-                            aria-label="Copy start time"
-                            onClick={async () => {
-                              try {
-                                await navigator.clipboard.writeText(licenseTimes.startTime);
-                                toast.success('Start time copied.');
-                              } catch {
-                                toast.error('Failed to copy.');
-                              }
-                            }}
-                          >
-                            <Copy className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>User expiry date and time</Label>
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2">
-                          <Input readOnly value={licenseTimes.endDate} className="min-w-0 flex-1" />
-                          <Button
-                            variant="secondary"
-                            size="icon"
-                            className="shrink-0 sm:mr-3"
-                            aria-label="Copy expiry date"
-                            onClick={async () => {
-                              try {
-                                await navigator.clipboard.writeText(licenseTimes.endDate);
-                                toast.success('Expiry date copied.');
-                              } catch {
-                                toast.error('Failed to copy.');
-                              }
-                            }}
-                          >
-                            <Copy className="h-4 w-4" />
-                          </Button>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Input readOnly value={licenseTimes.endTime} className="min-w-0 flex-1" />
-                          <Button
-                            variant="secondary"
-                            size="icon"
-                            className="shrink-0 sm:mr-3"
-                            aria-label="Copy expiry time"
-                            onClick={async () => {
-                              try {
-                                await navigator.clipboard.writeText(licenseTimes.endTime);
-                                toast.success('Expiry time copied.');
-                              } catch {
-                                toast.error('Failed to copy.');
-                              }
-                            }}
-                          >
-                            <Copy className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  </>
-                );
-              })()}
-              <div className="space-y-2">
-                <Label>User description</Label>
-                <div className="flex w-full items-center gap-2">
-                  <Input
-                    readOnly
-                    className="min-w-0 flex-1"
-                    value={`[${licenseEvent.ward ?? ''}] - [Private Event] - [${licenseEvent.name}]`}
-                  />
-                  <Button
-                    variant="secondary"
-                    size="icon"
-                    className="shrink-0 sm:mr-3"
-                    aria-label="Copy user description"
-                    onClick={async () => {
-                      try {
-                        await navigator.clipboard.writeText(
-                          `[${licenseEvent.ward ?? ''}] - [Private Event] - [${licenseEvent.name}]`
-                        );
-                        toast.success('User description copied.');
-                      } catch {
-                        toast.error('Failed to copy.');
-                      }
-                    }}
-                  >
-                    <Copy className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-              <div>
-                <a
-                  href="https://web.kindoo.tech/"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex cursor-pointer items-center gap-1 text-sm font-medium text-foreground underline underline-offset-4 hover:text-primary"
-                >
-                  Open Kindoo
-                  <ExternalLink className="h-3.5 w-3.5" />
-                </a>
-              </div>
-              <div className="rounded-md border border-border p-3">
-                <label className="flex items-center gap-2 text-sm font-medium text-foreground">
-                  <input
-                    type="checkbox"
-                    className="h-4 w-4 accent-emerald-600"
-                    checked={!!licenseEvent.kindooLicenseCreated}
-                    disabled={!onSetKindooLicenseCreated}
-                    onChange={(e) => {
-                      void submitKindooLicenseStatus(licenseEvent, e.target.checked);
-                    }}
-                  />
-                  Temporary license created
-                </label>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Mark this when setup is complete so the table shows the event as finished.
-                </p>
-                <div className="mt-3 border-t border-border pt-3 space-y-2">
-                  <Label className="text-xs text-muted-foreground">
-                    Temporary license created text
-                  </Label>
-                  <Textarea
-                    readOnly
-                    rows={3}
-                    value={renderMessageTemplate(licenseEvent, 'license_created', messageTemplates)}
-                  />
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={async () => {
-                      try {
-                        await navigator.clipboard.writeText(
-                          renderMessageTemplate(licenseEvent, 'license_created', messageTemplates)
-                        );
-                        toast.success('Temporary license message copied.');
-                      } catch {
-                        toast.error('Failed to copy.');
-                      }
-                    }}
-                  >
-                    <Copy className="mr-2 h-4 w-4" />
-                    Copy Message
-                  </Button>
-                </div>
-              </div>
-            </div>
-          )}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setLicenseEvent(null)}>
-              Close
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <KindooLicenseDialog
+        licenseEvent={licenseEvent}
+        messageTemplates={messageTemplates}
+        onCloseAction={() => setLicenseEvent(null)}
+        onToggleLicenseCreatedAction={onSetKindooLicenseCreated}
+        submitKindooLicenseStatusAction={submitKindooLicenseStatus}
+        getLicenseTimesAction={getLicenseTimes}
+        formatDateAction={formatDate}
+        formatTimeRangeAction={formatTimeRange}
+        renderMessageTemplateAction={renderMessageTemplate}
+      />
     </TooltipProvider>
   );
 }

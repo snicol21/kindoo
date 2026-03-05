@@ -15,7 +15,6 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import {
   Select,
   SelectContent,
@@ -28,6 +27,10 @@ import { Loader2 } from 'lucide-react';
 import { useAddEvent } from '@/hooks/useEvents';
 import type { Building, Ward } from '@/schema/schema';
 import { BUILDINGS, WARDS } from '@/schema/schema';
+import { formatPhone } from '@/utils/phoneUtils';
+import { getTomorrowYmd } from '@/utils/dateUtils';
+import { parseTimeToMinutes } from '@/utils/timeUtils';
+import { DESCRIPTION_MAX_LENGTH } from '@/utils/eventConstants';
 
 interface AddEventDialogProps {
   open: boolean;
@@ -61,49 +64,6 @@ interface FormState {
   };
 }
 
-function formatPhone(value: string) {
-  const digits = value.replace(/\D/g, '');
-  if (!digits) return '';
-
-  let normalized = digits;
-  if (normalized.length === 11 && normalized.startsWith('1')) {
-    normalized = normalized.slice(1);
-  }
-  if (normalized.length > 10) {
-    normalized = normalized.slice(0, 10);
-  }
-
-  if (normalized.length <= 3) return normalized;
-  if (normalized.length <= 6) {
-    return `(${normalized.slice(0, 3)}) ${normalized.slice(3)}`;
-  }
-  return `(${normalized.slice(0, 3)}) ${normalized.slice(3, 6)}-${normalized.slice(6)}`;
-}
-
-function formatYmd(date: Date) {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-}
-
-function getTomorrowYmd() {
-  const tomorrow = new Date();
-  tomorrow.setHours(0, 0, 0, 0);
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  return formatYmd(tomorrow);
-}
-
-function parseTimeToMinutes(value: string) {
-  const match = /^(\d{1,2}):(\d{2})$/.exec(value.trim());
-  if (!match) return null;
-  const hours = Number(match[1]);
-  const minutes = Number(match[2]);
-  if (!Number.isFinite(hours) || !Number.isFinite(minutes)) return null;
-  if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) return null;
-  return hours * 60 + minutes;
-}
-
 function SubmitButton() {
   const { pending } = useFormStatus();
 
@@ -128,6 +88,7 @@ export function AddEventDialog({
 }: AddEventDialogProps) {
   const formRef = useRef<HTMLFormElement>(null);
   const [selectedBuilding, setSelectedBuilding] = useState<Building>(defaultBuilding);
+  const [descriptionValue, setDescriptionValue] = useState('');
   const { mutate: addEventMutation, isPending } = useAddEvent(() => {
     onOpenChange(false);
   });
@@ -208,6 +169,8 @@ export function AddEventDialog({
       }
       if (!description?.trim()) {
         errors.description = 'Description is required.';
+      } else if (description.trim().length > DESCRIPTION_MAX_LENGTH) {
+        errors.description = `Description must be ${DESCRIPTION_MAX_LENGTH} characters or less.`;
       }
       if (formattedPhone && !/^[\d\s\-+().]{7,20}$/.test(formattedPhone)) {
         errors.phone = 'Invalid phone format (7–20 chars, digits/spaces/-/+/().)';
@@ -281,8 +244,14 @@ export function AddEventDialog({
   useEffect(() => {
     if (!open) {
       formRef.current?.reset();
+      setDescriptionValue('');
     }
   }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    setDescriptionValue(state.values?.description ?? '');
+  }, [open, state.values?.description]);
 
   useEffect(() => {
     if (open) {
@@ -476,14 +445,18 @@ export function AddEventDialog({
             <Label htmlFor="description">
               Event Description <span className="text-destructive">*</span>
             </Label>
-            <Textarea
+            <Input
               id="description"
               name="description"
               placeholder="Short description (e.g., Wedding reception or Birthday party)"
-              rows={4}
-              defaultValue={state.values?.description}
+              maxLength={DESCRIPTION_MAX_LENGTH}
+              value={descriptionValue}
+              onChange={(event) => setDescriptionValue(event.target.value)}
               className={state.errors?.description ? 'border-destructive' : ''}
             />
+            <p className="text-xs text-muted-foreground">
+              {descriptionValue.length}/{DESCRIPTION_MAX_LENGTH} characters
+            </p>
             {state.errors?.description && (
               <p className="text-xs text-destructive">{state.errors.description}</p>
             )}

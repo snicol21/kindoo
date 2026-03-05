@@ -5,7 +5,7 @@ import { ArrowLeft } from 'lucide-react';
 import { auth } from '@/lib/auth';
 import { MessageTemplatesEditor } from '@/components/MessageTemplatesEditor';
 import { Button } from '@/components/ui/button';
-import { EMPTY_MESSAGE_TEMPLATES } from '@/lib/message-templates';
+import { DEFAULT_MESSAGE_TEMPLATES } from '@/lib/message-templates';
 import { getMessageTemplates } from '@/actions/message-templates';
 
 export const metadata: Metadata = {
@@ -20,7 +20,9 @@ export default async function MessageTemplatesPage() {
   }
 
   const result = await getMessageTemplates();
-  const templates = result.success && result.data ? result.data : EMPTY_MESSAGE_TEMPLATES;
+  const resolvedTemplates = result.success && result.data ? result.data : DEFAULT_MESSAGE_TEMPLATES;
+  const hasAnyTemplate = Object.values(resolvedTemplates).some((value) => value.trim().length > 0);
+  const templates = hasAnyTemplate ? resolvedTemplates : DEFAULT_MESSAGE_TEMPLATES;
 
   return (
     <div className="container mx-auto max-w-4xl px-4 py-8">

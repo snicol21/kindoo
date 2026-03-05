@@ -16,6 +16,11 @@ import {
 import { and, eq, inArray } from 'drizzle-orm';
 import { revalidateTag } from 'next/cache';
 import { isAdminEmail } from '@/lib/admin';
+import { isFutureDate } from '@/utils/dateUtils';
+import { normalizePhoneForStorage } from '@/utils/phoneUtils';
+import { normalizeEmail } from '@/utils/stringUtils';
+import { parseTimeToMinutes } from '@/utils/timeUtils';
+import { DESCRIPTION_MAX_LENGTH } from '@/utils/eventConstants';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -59,36 +64,6 @@ function resolveRole(session: { user?: { role?: UserRole; email?: string | null 
 
 // ─── Validation Helper ────────────────────────────────────────────────────────
 
-function parseYmd(value: string) {
-  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
-  if (!match) return null;
-  const year = Number(match[1]);
-  const month = Number(match[2]);
-  const day = Number(match[3]);
-  if (!year || month < 1 || month > 12 || day < 1 || day > 31) return null;
-  return { year, month, day };
-}
-
-function isFutureDate(ymd: string) {
-  const parsed = parseYmd(ymd);
-  if (!parsed) return false;
-
-  const now = new Date();
-  const todayUtc = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
-  const targetUtc = Date.UTC(parsed.year, parsed.month - 1, parsed.day);
-  return targetUtc > todayUtc;
-}
-
-function parseTimeToMinutes(value: string) {
-  const match = /^(\d{1,2}):(\d{2})$/.exec(value.trim());
-  if (!match) return null;
-  const hours = Number(match[1]);
-  const minutes = Number(match[2]);
-  if (!Number.isFinite(hours) || !Number.isFinite(minutes)) return null;
-  if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) return null;
-  return hours * 60 + minutes;
-}
-
 function minutesToTime(minutes: number) {
   const normalized = Math.max(0, Math.min(23 * 60 + 59, Math.floor(minutes)));
   const hours = Math.floor(normalized / 60);
@@ -114,26 +89,6 @@ function clampImportTimes(input: AddEventInput): AddEventInput {
   };
 }
 
-function formatPhoneForStorage(value?: string) {
-  if (!value) return undefined;
-  const digits = value.replace(/\D/g, '');
-  if (!digits) return undefined;
-
-  let normalized = digits;
-  if (normalized.length === 11 && normalized.startsWith('1')) {
-    normalized = normalized.slice(1);
-  }
-  if (normalized.length > 10) {
-    normalized = normalized.slice(0, 10);
-  }
-
-  if (normalized.length <= 3) return normalized;
-  if (normalized.length <= 6) {
-    return `(${normalized.slice(0, 3)}) ${normalized.slice(3)}`;
-  }
-  return `(${normalized.slice(0, 3)}) ${normalized.slice(3, 6)}-${normalized.slice(6)}`;
-}
-
 function normalizeEventInput(input: AddEventInput): AddEventInput {
   return {
     ...input,
@@ -141,8 +96,8 @@ function normalizeEventInput(input: AddEventInput): AddEventInput {
     eventDate: input.eventDate.trim(),
     startTime: input.startTime.trim(),
     endTime: input.endTime.trim(),
-    phone: formatPhoneForStorage(input.phone),
-    email: input.email?.trim().toLowerCase() || undefined,
+    phone: normalizePhoneForStorage(input.phone),
+    email: normalizeEmail(input.email),
     description: input.description.trim(),
   };
 }
@@ -181,6 +136,9 @@ function validateEventInput(input: AddEventInput): string | null {
     return 'Email must be valid if provided.';
   }
   if (!input.description?.trim()) return 'Description is required.';
+  if (input.description.trim().length > DESCRIPTION_MAX_LENGTH) {
+    return `Description must be ${DESCRIPTION_MAX_LENGTH} characters or less.`;
+  }
   if (input.phone && !/^[\d\s\-+().]{7,20}$/.test(input.phone)) {
     return 'Invalid phone number format.';
   }
