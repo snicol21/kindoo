@@ -815,11 +815,11 @@ export function EventTable({
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="w-48">
                               <DropdownMenuItem
-                                disabled={isOptimistic}
-                                onSelect={() => setCopyingEvent(event)}
+                                disabled={isOptimistic || !onEdit}
+                                onSelect={() => openEditDialog(event)}
                               >
-                                <MessageSquare className="h-4 w-4" />
-                                Event messages
+                                <Pencil className="h-4 w-4" />
+                                Edit event
                               </DropdownMenuItem>
                               <DropdownMenuItem
                                 disabled={isOptimistic || !onClone}
@@ -829,11 +829,11 @@ export function EventTable({
                                 Clone event
                               </DropdownMenuItem>
                               <DropdownMenuItem
-                                disabled={isOptimistic || !onEdit}
-                                onSelect={() => openEditDialog(event)}
+                                disabled={isOptimistic}
+                                onSelect={() => setCopyingEvent(event)}
                               >
-                                <Pencil className="h-4 w-4" />
-                                Edit event
+                                <MessageSquare className="h-4 w-4" />
+                                Event messages
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
                               <DropdownMenuItem
@@ -1050,11 +1050,11 @@ export function EventTable({
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="w-48">
                             <DropdownMenuItem
-                              disabled={isOptimistic}
-                              onSelect={() => setCopyingEvent(event)}
+                              disabled={isOptimistic || !onEdit}
+                              onSelect={() => openEditDialog(event)}
                             >
-                              <MessageSquare className="h-4 w-4" />
-                              Event messages
+                              <Pencil className="h-4 w-4" />
+                              Edit event
                             </DropdownMenuItem>
                             <DropdownMenuItem
                               disabled={isOptimistic || !onClone}
@@ -1064,11 +1064,11 @@ export function EventTable({
                               Clone event
                             </DropdownMenuItem>
                             <DropdownMenuItem
-                              disabled={isOptimistic || !onEdit}
-                              onSelect={() => openEditDialog(event)}
+                              disabled={isOptimistic}
+                              onSelect={() => setCopyingEvent(event)}
                             >
-                              <Pencil className="h-4 w-4" />
-                              Edit event
+                              <MessageSquare className="h-4 w-4" />
+                              Event messages
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem
@@ -1216,14 +1216,14 @@ export function EventTable({
                             <Button
                               variant="ghost"
                               size="icon"
-                              aria-label={`Copy ${event.contactName}`}
-                              disabled={isOptimistic}
-                              onClick={() => setCopyingEvent(event)}
+                              aria-label={`Edit ${event.contactName}`}
+                              disabled={isOptimistic || !onEdit}
+                              onClick={() => openEditDialog(event)}
                             >
-                              <MessageSquare className="h-4 w-4" />
+                              <Pencil className="h-4 w-4" />
                             </Button>
                           </TooltipTrigger>
-                          <TooltipContent>Event messages</TooltipContent>
+                          <TooltipContent>Edit event</TooltipContent>
                         </Tooltip>
                         <Tooltip>
                           <TooltipTrigger asChild>
@@ -1244,14 +1244,14 @@ export function EventTable({
                             <Button
                               variant="ghost"
                               size="icon"
-                              aria-label={`Edit ${event.contactName}`}
-                              disabled={isOptimistic || !onEdit}
-                              onClick={() => openEditDialog(event)}
+                              aria-label={`Copy ${event.contactName}`}
+                              disabled={isOptimistic}
+                              onClick={() => setCopyingEvent(event)}
                             >
-                              <Pencil className="h-4 w-4" />
+                              <MessageSquare className="h-4 w-4" />
                             </Button>
                           </TooltipTrigger>
-                          <TooltipContent>Edit event</TooltipContent>
+                          <TooltipContent>Event messages</TooltipContent>
                         </Tooltip>
                         <Tooltip>
                           <TooltipTrigger asChild>
