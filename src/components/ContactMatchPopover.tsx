@@ -140,11 +140,11 @@ export function ContactMatchPopover({
       tabIndex={-1}
       role={effectiveMatch && isSingleMatch ? 'button' : undefined}
       aria-label={ariaLabel}
-      className={`absolute right-1 top-1/2 z-10 w-56 max-w-[calc(100vw-1.5rem)] -translate-y-1/2 rounded-md border border-blue-200 bg-linear-to-br from-blue-50/95 via-blue-50/95 to-blue-200/60 p-2 text-xs text-blue-950 shadow-lg transition duration-150 ease-out dark:border-blue-900/80 dark:from-blue-950/95 dark:via-blue-950/95 dark:to-blue-900/60 dark:text-blue-100 ${
+      className={`absolute right-0 top-full z-10 mt-1 w-56 max-w-[calc(100vw-1.5rem)] translate-y-0 rounded-md border border-blue-200 bg-linear-to-br from-blue-50/95 via-blue-50/95 to-blue-200/60 p-2 text-xs text-blue-950 shadow-lg transition duration-150 ease-out dark:border-blue-900/80 dark:from-blue-950/95 dark:via-blue-950/95 dark:to-blue-900/60 dark:text-blue-100 ${
         isOpen ? 'scale-100 opacity-100' : 'pointer-events-none scale-95 opacity-0'
       } ${
         effectiveMatch && isSingleMatch
-          ? 'cursor-pointer hover:-translate-y-[52%] hover:border-blue-300 hover:bg-blue-100/95 hover:shadow-xl dark:hover:border-blue-700 dark:hover:bg-blue-900/70'
+          ? 'touch-manipulation cursor-pointer active:scale-[0.99] active:bg-blue-200/80 dark:active:bg-blue-900/75 sm:active:scale-100 sm:hover:-translate-y-[52%] sm:hover:border-blue-300 sm:hover:bg-blue-100/95 sm:hover:shadow-xl dark:sm:hover:border-blue-700 dark:sm:hover:bg-blue-900/70'
           : ''
       }`}
       onMouseDown={(event) => event.preventDefault()}
@@ -194,7 +194,7 @@ export function ContactMatchPopover({
       {effectiveMatch && isSingleMatch && (
         <button
           type="button"
-          className="absolute right-2 top-2 inline-flex h-6 w-6 items-center justify-center rounded-full text-blue-700 hover:bg-blue-200/70 hover:text-blue-900 dark:text-blue-200 dark:hover:bg-blue-900/50 dark:hover:text-blue-50"
+          className="absolute right-2 top-2 inline-flex h-6 w-6 touch-manipulation items-center justify-center rounded-full text-blue-700 transition-transform active:scale-95 active:bg-blue-200/80 hover:bg-blue-200/70 hover:text-blue-900 dark:text-blue-200 dark:active:bg-blue-900/60 dark:hover:bg-blue-900/50 dark:hover:text-blue-50"
           aria-label="Dismiss match"
           onClick={(event) => {
             event.stopPropagation();
@@ -230,7 +230,7 @@ export function ContactMatchPopover({
                     key={contact.id}
                     type="button"
                     data-contact-option="true"
-                    className={`w-full min-w-0 rounded-sm px-1.5 py-1 text-left transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-blue-500/70 focus-visible:ring-offset-1 focus-visible:ring-offset-transparent hover:bg-blue-100/70 dark:hover:bg-blue-900/55 ${
+                    className={`w-full min-w-0 touch-manipulation rounded-sm px-1.5 py-1 text-left transition-[background-color,transform] active:scale-[0.99] active:bg-blue-200/80 focus:outline-none focus-visible:ring-1 focus-visible:ring-blue-500/70 focus-visible:ring-offset-1 focus-visible:ring-offset-transparent hover:bg-blue-100/70 dark:active:bg-blue-900/70 dark:hover:bg-blue-900/55 ${
                       index > 0 ? 'border-t border-blue-200/60 pt-1.5 dark:border-blue-800/60' : ''
                     }`}
                     tabIndex={0}
