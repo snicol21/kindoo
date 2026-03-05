@@ -7,7 +7,7 @@ import { DashboardClient } from '@/components/DashboardClient';
 import type { Metadata } from 'next';
 import type { Building } from '@/schema/schema';
 import { connection } from 'next/server';
-import { getMessageTemplates } from '@/actions/message-templates';
+import { loadMessageTemplatesForUser } from '@/lib/message-templates-store';
 import { EMPTY_MESSAGE_TEMPLATES } from '@/lib/message-templates';
 import { isAdminEmail } from '@/lib/admin';
 
@@ -132,11 +132,12 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
       .orderBy(events.createdAt),
   ]);
 
-  const templatesResult = await getMessageTemplates();
-  const messageTemplates =
-    templatesResult.success && templatesResult.data
-      ? templatesResult.data
-      : EMPTY_MESSAGE_TEMPLATES;
+  let messageTemplates = EMPTY_MESSAGE_TEMPLATES;
+  try {
+    messageTemplates = await loadMessageTemplatesForUser(session.user.id);
+  } catch (error) {
+    console.error('[DashboardPage] Failed to load message templates:', error);
+  }
 
   return (
     <DashboardClient

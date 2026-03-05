@@ -4,8 +4,8 @@ import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { messageTemplateDefaults, messageTemplates } from '@/schema/schema';
 import { eq, sql } from 'drizzle-orm';
+import { loadMessageTemplatesForUser } from '@/lib/message-templates-store';
 import {
-  EMPTY_MESSAGE_TEMPLATES,
   MESSAGE_TEMPLATE_KEYS,
   type MessageTemplateKey,
   type MessageTemplateMap,
@@ -44,33 +44,8 @@ export async function getMessageTemplates(): Promise<ActionResult<MessageTemplat
       return { success: false, error: 'Not authenticated.' };
     }
 
-    const defaults = await db
-      .select({ key: messageTemplateDefaults.key, body: messageTemplateDefaults.body })
-      .from(messageTemplateDefaults);
-
-    const defaultMap = defaults.reduce(
-      (acc, row) => {
-        if (MESSAGE_TEMPLATE_KEYS.includes(row.key as MessageTemplateKey)) {
-          acc[row.key as MessageTemplateKey] = row.body;
-        }
-        return acc;
-      },
-      { ...EMPTY_MESSAGE_TEMPLATES } as MessageTemplateMap
-    );
-
-    const rows = await db
-      .select({ key: messageTemplates.key, body: messageTemplates.body })
-      .from(messageTemplates)
-      .where(eq(messageTemplates.userId, session.user.id));
-
-    const merged: MessageTemplateMap = { ...defaultMap };
-    for (const row of rows) {
-      if (MESSAGE_TEMPLATE_KEYS.includes(row.key as MessageTemplateKey)) {
-        merged[row.key as MessageTemplateKey] =
-          row.body ?? defaultMap[row.key as MessageTemplateKey] ?? '';
-      }
-    }
-    return { success: true, data: merged };
+    const data = await loadMessageTemplatesForUser(session.user.id);
+    return { success: true, data };
   } catch (error) {
     console.error('[getMessageTemplates] Error:', error);
     return { success: false, error: 'Failed to load message templates.' };

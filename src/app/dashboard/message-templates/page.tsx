@@ -2,7 +2,6 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
-import { auth } from '@/lib/auth';
 import { MessageTemplatesEditor } from '@/components/MessageTemplatesEditor';
 import { Button } from '@/components/_ui/button';
 import { DEFAULT_MESSAGE_TEMPLATES } from '@/lib/message-templates';
@@ -13,13 +12,11 @@ export const metadata: Metadata = {
 };
 
 export default async function MessageTemplatesPage() {
-  const session = await auth();
-
-  if (!session?.user?.id) {
+  const result = await getMessageTemplates();
+  if (!result.success && result.error === 'Not authenticated.') {
     redirect('/auth/signin');
   }
 
-  const result = await getMessageTemplates();
   const resolvedTemplates = result.success && result.data ? result.data : DEFAULT_MESSAGE_TEMPLATES;
   const hasAnyTemplate = Object.values(resolvedTemplates).some((value) => value.trim().length > 0);
   const templates = hasAnyTemplate ? resolvedTemplates : DEFAULT_MESSAGE_TEMPLATES;

@@ -1,5 +1,3 @@
-// src/components/NavbarUserSection.tsx
-import { connection } from 'next/server';
 import { auth, signOut } from '@/lib/auth';
 import Link from 'next/link';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/_ui/avatar';
@@ -17,7 +15,6 @@ import { LayoutDashboard, Settings, Shield, LogOut, MessageSquare } from 'lucide
 import { isAdminEmail } from '@/lib/admin';
 
 export async function NavbarUserSection() {
-  await connection();
   const session = await auth();
 
   const userInitials = session?.user?.name
