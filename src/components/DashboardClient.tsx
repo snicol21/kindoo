@@ -12,6 +12,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { EventTable } from '@/components/EventTable';
 import { AddEventDialog } from '@/components/AddEventDialog';
 import { CsvImportDialog } from '@/components/CsvImportDialog';
@@ -23,7 +29,7 @@ import {
   useEvents,
   useUpdateEvent,
 } from '@/hooks/useEvents';
-import { Building2, Plus, CalendarDays, Upload } from 'lucide-react';
+import { Building2, Plus, CalendarDays, Upload, ChevronDown } from 'lucide-react';
 import type { Building } from '@/schema/schema';
 import type { EventWithCreator } from '@/actions/events';
 import type { MessageTemplateMap } from '@/lib/message-templates';
@@ -402,16 +408,8 @@ export function DashboardClient({
         onValueChange={(value) => setActiveTab(normalizeTab(value))}
         className="space-y-4"
       >
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-          <Button
-            variant="outline"
-            onClick={() => setImportOpen(true)}
-            className="order-1 w-full gap-2 sm:order-2 sm:w-auto sm:ml-auto"
-          >
-            <Upload className="h-4 w-4" />
-            Import CSV
-          </Button>
-          <TabsList className="w-full sm:w-auto order-2 sm:order-1">
+        <div className="flex items-center justify-between gap-3">
+          <TabsList className="w-full sm:w-auto">
             <TabsTrigger value="stake-center" className="flex-1 gap-2 sm:flex-none">
               <Building2 className="hidden h-4 w-4 sm:inline-block" />
               Stake Center
@@ -439,13 +437,31 @@ export function DashboardClient({
               <CardDescription>{activeBuildingSubtitle}</CardDescription>
             </div>
             <div className="flex w-full flex-row flex-wrap gap-2 sm:w-auto sm:flex-nowrap">
-              <Button
-                onClick={() => openDialogFor(tabToBuilding(activeTab))}
-                className="flex-1 gap-2 sm:flex-none"
-              >
-                <Plus className="h-4 w-4" />
-                Add Event
-              </Button>
+              <div className="flex w-full sm:w-auto">
+                <Button
+                  onClick={() => openDialogFor(tabToBuilding(activeTab))}
+                  className="flex-1 gap-2 rounded-r-none sm:flex-none"
+                >
+                  <Plus className="h-4 w-4" />
+                  Add Event
+                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      className="rounded-l-none border-l border-primary-foreground/30 px-3"
+                      aria-label="More event actions"
+                    >
+                      <ChevronDown className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-44">
+                    <DropdownMenuItem onSelect={() => setImportOpen(true)}>
+                      <Upload className="h-4 w-4" />
+                      Import CSV
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
             </div>
           </CardHeader>
         </Card>

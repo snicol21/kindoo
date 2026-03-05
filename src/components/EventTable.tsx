@@ -204,6 +204,7 @@ function formatDate(dateStr: string) {
   if (!date) return dateStr;
 
   return date.toLocaleDateString('en-US', {
+    weekday: 'short',
     month: 'short',
     day: 'numeric',
     year: 'numeric',
@@ -382,6 +383,7 @@ export function EventTable({
   const [cloneDescription, setCloneDescription] = useState('');
   const [isSavingClone, setIsSavingClone] = useState(false);
   const [internalSelectedIds, setInternalSelectedIds] = useState<Set<string>>(new Set());
+  const [isCompactView, setIsCompactView] = useState(false);
   const [isMobileView, setIsMobileView] = useState(false);
 
   const selectedIdSet = useMemo(
@@ -414,20 +416,33 @@ export function EventTable({
   }, [selectableEvents, selectedIdSet]);
 
   useEffect(() => {
-    const mediaQuery = window.matchMedia('(max-width: 767px)');
-    const handleChange = (event: MediaQueryListEvent) => {
-      setIsMobileView(event.matches);
+    const compactQuery = window.matchMedia('(max-width: 1023px)');
+    const mobileQuery = window.matchMedia('(max-width: 767px)');
+    const syncBreakpoints = () => {
+      setIsCompactView(compactQuery.matches);
+      setIsMobileView(mobileQuery.matches);
     };
 
-    setIsMobileView(mediaQuery.matches);
+    syncBreakpoints();
 
-    if (typeof mediaQuery.addEventListener === 'function') {
-      mediaQuery.addEventListener('change', handleChange);
-      return () => mediaQuery.removeEventListener('change', handleChange);
+    if (
+      typeof compactQuery.addEventListener === 'function' &&
+      typeof mobileQuery.addEventListener === 'function'
+    ) {
+      compactQuery.addEventListener('change', syncBreakpoints);
+      mobileQuery.addEventListener('change', syncBreakpoints);
+      return () => {
+        compactQuery.removeEventListener('change', syncBreakpoints);
+        mobileQuery.removeEventListener('change', syncBreakpoints);
+      };
     }
 
-    mediaQuery.addListener(handleChange);
-    return () => mediaQuery.removeListener(handleChange);
+    compactQuery.addListener(syncBreakpoints);
+    mobileQuery.addListener(syncBreakpoints);
+    return () => {
+      compactQuery.removeListener(syncBreakpoints);
+      mobileQuery.removeListener(syncBreakpoints);
+    };
   }, []);
 
   const handleSort = (key: SortKey) => {
@@ -663,19 +678,21 @@ export function EventTable({
     <TooltipProvider delayDuration={200}>
       <div
         className={`rounded-t-md rounded-b-none border-b ${
-          isMobileView ? 'overflow-hidden' : 'overflow-x-auto'
+          isCompactView ? 'overflow-hidden' : 'overflow-x-auto'
         }`}
       >
         <Table
           className={`${
             isMobileView
               ? 'table-fixed [&_th]:px-2 [&_td]:px-2 [&_th]:py-1.5 [&_td]:py-1.5'
-              : 'table-auto [&_th]:px-2 [&_td]:px-2 [&_th]:py-2 [&_td]:py-2'
+              : isCompactView
+                ? 'table-auto [&_th]:px-3 [&_td]:px-3 [&_th]:py-2 [&_td]:py-2'
+                : 'table-auto [&_th]:px-2 [&_td]:px-2 [&_th]:py-2 [&_td]:py-2'
           }`}
         >
           <TableHeader className="[&_th]:text-xs">
             <TableRow>
-              <TableHead className="w-[36px]">
+              <TableHead className="w-9">
                 <input
                   type="checkbox"
                   aria-label="Select all events"
@@ -697,17 +714,21 @@ export function EventTable({
                   }}
                 />
               </TableHead>
-              <TableHead className="min-w-0 sm:min-w-[200px]">
+              <TableHead
+                className={isCompactView && !isMobileView ? 'w-1/2' : 'min-w-0 sm:min-w-50'}
+              >
                 <SortButton col="eventDate" label="Event" />
               </TableHead>
               {!isMobileView && (
+                <TableHead className={isCompactView ? 'w-1/2' : 'w-60'}>
+                  <SortButton col="name" label="Member" />
+                </TableHead>
+              )}
+              {!isCompactView && (
                 <>
-                  <TableHead className="w-[240px]">
-                    <SortButton col="name" label="Member" />
-                  </TableHead>
-                  <TableHead className="w-[240px]">Member Contact</TableHead>
-                  <TableHead className="w-[140px]">Created</TableHead>
-                  <TableHead className="w-[120px]">Actions</TableHead>
+                  <TableHead className="w-60">Member Contact</TableHead>
+                  <TableHead className="w-35">Created</TableHead>
+                  <TableHead className="w-30">Actions</TableHead>
                 </>
               )}
             </TableRow>
@@ -724,7 +745,7 @@ export function EventTable({
                   key={event.id}
                   className={isOptimistic ? 'opacity-60 animate-pulse' : undefined}
                 >
-                  <TableCell className="w-[36px]">
+                  <TableCell className="w-9">
                     <input
                       type="checkbox"
                       aria-label={`Select ${event.name}`}
@@ -741,7 +762,9 @@ export function EventTable({
                       }}
                     />
                   </TableCell>
-                  <TableCell className="min-w-0 align-top">
+                  <TableCell
+                    className={`min-w-0 align-top ${isCompactView && !isMobileView ? 'w-1/2' : ''}`}
+                  >
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
                         <div className="flex flex-wrap items-center gap-2">
@@ -845,7 +868,7 @@ export function EventTable({
                       )}
                     </div>
                     {isMobileView && (
-                      <div className="mt-2">
+                      <div className="mt-2 space-y-2">
                         <div className="flex flex-wrap items-baseline gap-1">
                           <div
                             className="truncate text-foreground text-sm font-semibold"
@@ -949,8 +972,138 @@ export function EventTable({
                       </div>
                     )}
                   </TableCell>
-                  {!isMobileView && (
-                    <TableCell className="max-w-[360px] align-top">
+                  {isCompactView && !isMobileView && (
+                    <TableCell className="w-1/2 align-top">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0 space-y-1.5">
+                          <div
+                            className="truncate text-foreground text-sm font-semibold"
+                            title={event.name}
+                          >
+                            {event.name}
+                          </div>
+                          <div className="flex items-center gap-1.5 text-muted-foreground text-xs">
+                            <Church className="h-3.5 w-3.5 shrink-0" />
+                            <span>{event.ward ?? '—'}</span>
+                          </div>
+                          <div className="flex items-center gap-1.5 text-muted-foreground text-xs">
+                            <Mail className="h-3.5 w-3.5 shrink-0" />
+                            {event.email ? (
+                              <div className="flex min-w-0 items-center gap-1.5">
+                                <a
+                                  href={`mailto:${event.email}`}
+                                  className="max-w-44 truncate text-muted-foreground hover:underline"
+                                  title={event.email}
+                                >
+                                  {event.email}
+                                </a>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-5 w-5 p-0"
+                                  aria-label={`Copy email for ${event.name}`}
+                                  onClick={async () => {
+                                    try {
+                                      await navigator.clipboard.writeText(event.email ?? '');
+                                      toast.success('Email copied.');
+                                    } catch {
+                                      toast.error('Failed to copy.');
+                                    }
+                                  }}
+                                >
+                                  <Copy className="h-3.5 w-3.5" />
+                                </Button>
+                              </div>
+                            ) : (
+                              <span className="text-muted-foreground/50">—</span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-1.5 text-muted-foreground text-xs">
+                            <Phone className="h-3.5 w-3.5 shrink-0" />
+                            {event.phone ? (
+                              <div className="flex min-w-0 items-center gap-1.5">
+                                <a
+                                  href={`tel:${event.phone.replace(/\D/g, '')}`}
+                                  className="max-w-44 truncate hover:text-foreground hover:underline"
+                                  title={formatPhone(event.phone)}
+                                >
+                                  {formatPhone(event.phone)}
+                                </a>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-5 w-5 p-0"
+                                  aria-label={`Copy phone for ${event.name}`}
+                                  onClick={async () => {
+                                    try {
+                                      await navigator.clipboard.writeText(event.phone ?? '');
+                                      toast.success('Phone copied.');
+                                    } catch {
+                                      toast.error('Failed to copy.');
+                                    }
+                                  }}
+                                >
+                                  <Copy className="h-3.5 w-3.5" />
+                                </Button>
+                              </div>
+                            ) : (
+                              <span className="text-muted-foreground/50">—</span>
+                            )}
+                          </div>
+                        </div>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 border border-border bg-secondary/60 text-foreground hover:bg-secondary"
+                              aria-label={`Actions for ${event.name}`}
+                            >
+                              <MoreVertical className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-48">
+                            <DropdownMenuItem
+                              disabled={isOptimistic}
+                              onSelect={() => setCopyingEvent(event)}
+                            >
+                              <MessageSquare className="h-4 w-4" />
+                              Event messages
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              disabled={isOptimistic || !onClone}
+                              onSelect={() => openCloneDialog(event)}
+                            >
+                              <CopyPlus className="h-4 w-4" />
+                              Clone event
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              disabled={isOptimistic || !onEdit}
+                              onSelect={() => openEditDialog(event)}
+                            >
+                              <Pencil className="h-4 w-4" />
+                              Edit event
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              className="text-destructive focus:text-destructive"
+                              disabled={isOptimistic || deletingId === event.id || !onDelete}
+                              onSelect={() => setPendingDeleteEvent(event)}
+                            >
+                              {deletingId === event.id ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <Trash2 className="h-4 w-4" />
+                              )}
+                              Delete event
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    </TableCell>
+                  )}
+                  {!isCompactView && (
+                    <TableCell className="max-w-90 align-top">
                       <div className="space-y-1.5">
                         <div
                           className="truncate text-foreground text-sm font-semibold"
@@ -965,8 +1118,8 @@ export function EventTable({
                       </div>
                     </TableCell>
                   )}
-                  {!isMobileView && (
-                    <TableCell className="max-w-[280px] align-top">
+                  {!isCompactView && (
+                    <TableCell className="max-w-70 align-top">
                       <div className="space-y-1.5">
                         <div className="flex items-center gap-1.5 text-muted-foreground text-xs">
                           <Mail className="h-3.5 w-3.5 shrink-0" />
@@ -1047,7 +1200,7 @@ export function EventTable({
                       </div>
                     </TableCell>
                   )}
-                  {!isMobileView && (
+                  {!isCompactView && (
                     <TableCell className="text-muted-foreground whitespace-nowrap text-sm align-top">
                       {isOptimistic ? (
                         '—'
@@ -1067,7 +1220,7 @@ export function EventTable({
                       )}
                     </TableCell>
                   )}
-                  {!isMobileView && (
+                  {!isCompactView && (
                     <TableCell className="align-top">
                       <div className="flex items-center gap-1">
                         <Tooltip>
@@ -1527,7 +1680,7 @@ export function EventTable({
                   <Textarea
                     readOnly
                     rows={4}
-                    className="min-w-0 flex-1 min-h-[140px]"
+                    className="min-w-0 flex-1 min-h-35"
                     value={renderMessageTemplate(
                       copyingEvent,
                       'availability_inquiry',
@@ -1562,7 +1715,7 @@ export function EventTable({
                   <Textarea
                     readOnly
                     rows={6}
-                    className="min-w-0 flex-1 min-h-[140px]"
+                    className="min-w-0 flex-1 min-h-35"
                     value={renderMessageTemplate(copyingEvent, 'calendar_item', messageTemplates)}
                   />
                   <Button
