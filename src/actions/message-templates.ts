@@ -63,26 +63,6 @@ export async function getMessageTemplates(): Promise<ActionResult<MessageTemplat
       .from(messageTemplates)
       .where(eq(messageTemplates.userId, session.user.id));
 
-    const existingKeys = new Set(
-      rows
-        .map((row) => row.key)
-        .filter((key): key is MessageTemplateKey =>
-          MESSAGE_TEMPLATE_KEYS.includes(key as MessageTemplateKey)
-        )
-    );
-    const missingKeys = MESSAGE_TEMPLATE_KEYS.filter((key) => !existingKeys.has(key));
-
-    if (missingKeys.length > 0) {
-      const insertRows = missingKeys.map((key) => ({
-        id: crypto.randomUUID(),
-        userId: session.user.id,
-        key,
-        body: defaultMap[key] ?? '',
-      }));
-
-      await db.insert(messageTemplates).values(insertRows);
-    }
-
     const merged: MessageTemplateMap = { ...defaultMap };
     for (const row of rows) {
       if (MESSAGE_TEMPLATE_KEYS.includes(row.key as MessageTemplateKey)) {
@@ -90,10 +70,6 @@ export async function getMessageTemplates(): Promise<ActionResult<MessageTemplat
           row.body ?? defaultMap[row.key as MessageTemplateKey] ?? '';
       }
     }
-    for (const key of missingKeys) {
-      merged[key] = defaultMap[key] ?? '';
-    }
-
     return { success: true, data: merged };
   } catch (error) {
     console.error('[getMessageTemplates] Error:', error);
