@@ -3,8 +3,8 @@
 import type { EventWithCreator, UpdateEventInput, AddEventInput } from '@/actions/events';
 import type { Building } from '@/schema/schema';
 import type { MessageTemplateMap } from '@/lib/message-templates';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/_ui/button';
+import { Card, CardContent } from '@/components/_ui/card';
 import { EventTable } from '@/components/EventTable';
 
 type EventsTabPanelProps = {

@@ -1,11 +1,11 @@
 import { auth } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import type { Metadata } from 'next';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { PasswordInput } from '@/components/ui/password-input';
-import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/_ui/card';
+import { Input } from '@/components/_ui/input';
+import { PasswordInput } from '@/components/_ui/password-input';
+import { Button } from '@/components/_ui/button';
+import { Label } from '@/components/_ui/label';
 import { LicenseLeadTimeSetting } from '@/components/LicenseLeadTimeSetting';
 import { DefaultBuildingSetting } from '@/components/DefaultBuildingSetting';
 import { changeProfile, changePassword } from '@/actions/auth';

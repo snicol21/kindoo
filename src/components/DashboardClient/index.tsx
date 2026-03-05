@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { Tabs, TabsContent } from '@/components/ui/tabs';
+import { Tabs, TabsContent } from '@/components/_ui/tabs';
 import { AddEventDialog } from '@/components/AddEventDialog';
 import { CsvImportDialog } from '@/components/CsvImportDialog';
 import {

@@ -2,7 +2,7 @@
 
 import type { Building, Ward } from '@/schema/schema';
 import { BUILDINGS, WARDS } from '@/schema/schema';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/components/_ui/button';
 import {
   Dialog,
   DialogContent,
@@ -10,16 +10,16 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+} from '@/components/_ui/dialog';
+import { Input } from '@/components/_ui/input';
+import { Label } from '@/components/_ui/label';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
+} from '@/components/_ui/select';
 import { Loader2 } from 'lucide-react';
 import { DESCRIPTION_MAX_LENGTH } from '@/utils/eventConstants';
 

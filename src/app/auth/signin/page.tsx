@@ -1,9 +1,9 @@
 import { auth, signIn } from '@/lib/auth';
 import { redirect } from 'next/navigation';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { PasswordInput } from '@/components/ui/password-input';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/_ui/card';
+import { Button } from '@/components/_ui/button';
+import { Input } from '@/components/_ui/input';
+import { PasswordInput } from '@/components/_ui/password-input';
 import { CalendarDays } from 'lucide-react';
 import type { Metadata } from 'next';
 import { connection } from 'next/server';

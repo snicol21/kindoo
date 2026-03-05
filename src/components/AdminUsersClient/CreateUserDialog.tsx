@@ -1,6 +1,6 @@
 'use client';
 
-import { Button } from '@/components/ui/button';
+import { Button } from '@/components/_ui/button';
 import {
   Dialog,
   DialogContent,
@@ -8,17 +8,17 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { PasswordInput } from '@/components/ui/password-input';
+} from '@/components/_ui/dialog';
+import { Input } from '@/components/_ui/input';
+import { Label } from '@/components/_ui/label';
+import { PasswordInput } from '@/components/_ui/password-input';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
+} from '@/components/_ui/select';
 import { USER_ROLES, type UserRole } from '@/schema/schema';
 
 type CreateUserDialogProps = {

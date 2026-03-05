@@ -4,7 +4,7 @@ import { redirect } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
 import { auth } from '@/lib/auth';
 import { MessageTemplatesEditor } from '@/components/MessageTemplatesEditor';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/components/_ui/button';
 import { DEFAULT_MESSAGE_TEMPLATES } from '@/lib/message-templates';
 import { getMessageTemplates } from '@/actions/message-templates';
 

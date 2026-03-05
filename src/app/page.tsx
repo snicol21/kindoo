@@ -1,7 +1,7 @@
 import { auth } from '@/lib/auth';
 import { redirect } from 'next/navigation';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/_ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/_ui/card';
 import { CalendarDays, Building2, Shield } from 'lucide-react';
 import Link from 'next/link';
 import { connection } from 'next/server';

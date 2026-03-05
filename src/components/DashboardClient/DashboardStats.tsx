@@ -1,6 +1,6 @@
 'use client';
 
-import { Card, CardDescription, CardHeader } from '@/components/ui/card';
+import { Card, CardDescription, CardHeader } from '@/components/_ui/card';
 import type { DashboardCounts, DotCalendarDay, WardBreakdownRow } from './types';
 import { formatShortDate } from './utils';
 

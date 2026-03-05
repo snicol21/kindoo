@@ -1,6 +1,6 @@
 'use client';
 
-import { TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { TabsList, TabsTrigger } from '@/components/_ui/tabs';
 import { Building2 } from 'lucide-react';
 
 type DashboardTabsHeaderProps = {

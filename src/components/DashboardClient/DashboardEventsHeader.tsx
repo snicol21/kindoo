@@ -1,13 +1,13 @@
 'use client';
 
-import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import { Card, CardDescription, CardHeader, CardTitle } from '@/components/_ui/card';
+import { Button } from '@/components/_ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+} from '@/components/_ui/dropdown-menu';
 import { CalendarDays, ChevronDown, Plus, Upload } from 'lucide-react';
 
 type DashboardEventsHeaderProps = {

@@ -1,14 +1,14 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Label } from '@/components/ui/label';
+import { Label } from '@/components/_ui/label';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
+} from '@/components/_ui/select';
 import { updateLicenseLeadDays } from '@/actions/auth';
 import { toast } from 'sonner';
 

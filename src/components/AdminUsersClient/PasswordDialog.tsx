@@ -1,6 +1,6 @@
 'use client';
 
-import { Button } from '@/components/ui/button';
+import { Button } from '@/components/_ui/button';
 import {
   Dialog,
   DialogContent,
@@ -8,9 +8,9 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog';
-import { Label } from '@/components/ui/label';
-import { PasswordInput } from '@/components/ui/password-input';
+} from '@/components/_ui/dialog';
+import { Label } from '@/components/_ui/label';
+import { PasswordInput } from '@/components/_ui/password-input';
 import type { ManagedUser } from '@/components/AdminUsersClient/types';
 
 type PasswordDialogProps = {

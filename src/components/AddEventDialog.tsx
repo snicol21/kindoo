@@ -11,10 +11,10 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+} from '@/components/_ui/dialog';
+import { Button } from '@/components/_ui/button';
+import { Input } from '@/components/_ui/input';
+import { Label } from '@/components/_ui/label';
 import {
   Select,
   SelectContent,
@@ -22,7 +22,7 @@ import {
   SelectSeparator,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
+} from '@/components/_ui/select';
 import { Loader2 } from 'lucide-react';
 import { useAddEvent } from '@/hooks/useEvents';
 import type { Building, Ward } from '@/schema/schema';

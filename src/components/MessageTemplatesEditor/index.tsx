@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { TooltipProvider } from '@/components/ui/tooltip';
+import { TooltipProvider } from '@/components/_ui/tooltip';
 import { toast } from 'sonner';
 import { updateMessageTemplate } from '@/actions/message-templates';
 import { MESSAGE_TEMPLATE_DEFINITIONS, type MessageTemplateKey } from '@/lib/message-templates';

@@ -1,14 +1,14 @@
 'use client';
 
-import { Button } from '@/components/ui/button';
-import { CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/_ui/button';
+import { CardDescription, CardHeader, CardTitle } from '@/components/_ui/card';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
+} from '@/components/_ui/select';
 import { Plus } from 'lucide-react';
 import { USER_ROLES } from '@/schema/schema';
 import type { RoleFilter } from '@/components/AdminUsersClient/types';

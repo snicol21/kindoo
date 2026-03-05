@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { PasswordInput } from '@/components/ui/password-input';
+import { PasswordInput } from '@/components/_ui/password-input';
 import { cn } from '@/lib/utils';
 
 type PasswordInputWithCountProps = {

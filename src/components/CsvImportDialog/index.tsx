@@ -8,10 +8,10 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+} from '@/components/_ui/dialog';
+import { Button } from '@/components/_ui/button';
+import { Input } from '@/components/_ui/input';
+import { Label } from '@/components/_ui/label';
 import {
   Table,
   TableBody,
@@ -19,7 +19,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table';
+} from '@/components/_ui/table';
 import { Download } from 'lucide-react';
 import { toast } from 'sonner';
 import { useImportEvents } from '@/hooks/useEvents';

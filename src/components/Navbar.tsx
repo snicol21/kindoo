@@ -3,7 +3,7 @@ import { ThemeToggle } from '@/components/ThemeToggle';
 import { CalendarDays } from 'lucide-react';
 import { Suspense } from 'react';
 import { NavbarUserSection } from '@/components/NavbarUserSection';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/components/_ui/button';
 
 function NavbarUserFallback() {
   return (

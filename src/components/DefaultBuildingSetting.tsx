@@ -1,14 +1,14 @@
 'use client';
 
 import { useState } from 'react';
-import { Label } from '@/components/ui/label';
+import { Label } from '@/components/_ui/label';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
+} from '@/components/_ui/select';
 import { updateDefaultBuilding } from '@/actions/auth';
 import { BUILDINGS, type Building } from '@/schema/schema';
 import { toast } from 'sonner';

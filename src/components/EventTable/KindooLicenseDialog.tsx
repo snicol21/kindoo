@@ -2,7 +2,7 @@
 
 import type { EventWithCreator } from '@/actions/events';
 import type { MessageTemplateMap } from '@/lib/message-templates';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/components/_ui/button';
 import {
   Dialog,
   DialogContent,
@@ -10,10 +10,10 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+} from '@/components/_ui/dialog';
+import { Input } from '@/components/_ui/input';
+import { Label } from '@/components/_ui/label';
+import { Textarea } from '@/components/_ui/textarea';
 import { Copy, ExternalLink } from 'lucide-react';
 import { useRef } from 'react';
 import { toast } from 'sonner';

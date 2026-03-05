@@ -1,7 +1,7 @@
 'use client';
 
 import type { EventWithCreator } from '@/actions/events';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/components/_ui/button';
 import {
   Dialog,
   DialogContent,
@@ -9,7 +9,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog';
+} from '@/components/_ui/dialog';
 import { Loader2 } from 'lucide-react';
 
 type DeleteEventDialogProps = {

@@ -2,8 +2,8 @@
 import { connection } from 'next/server';
 import { auth, signOut } from '@/lib/auth';
 import Link from 'next/link';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Button } from '@/components/ui/button';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/_ui/avatar';
+import { Button } from '@/components/_ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,7 +11,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+} from '@/components/_ui/dropdown-menu';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { LayoutDashboard, Settings, Shield, LogOut, MessageSquare } from 'lucide-react';
 import { isAdminEmail } from '@/lib/admin';

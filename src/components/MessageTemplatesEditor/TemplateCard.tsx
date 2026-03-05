@@ -1,18 +1,18 @@
 'use client';
 
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/_ui/badge';
+import { Button } from '@/components/_ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/_ui/card';
+import { Label } from '@/components/_ui/label';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+} from '@/components/_ui/select';
+import { Textarea } from '@/components/_ui/textarea';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/_ui/tooltip';
 import {
   PLACEHOLDER_EXAMPLES,
   PLACEHOLDER_LOOKUP,
