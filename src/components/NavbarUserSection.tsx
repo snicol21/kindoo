@@ -82,12 +82,6 @@ export async function NavbarUserSection() {
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
-                <Link href="/dashboard/message-templates" className="gap-2 cursor-pointer">
-                  <MessageSquare className="h-4 w-4" />
-                  Message templates
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
                 <Link href="/account" className="gap-2 cursor-pointer">
                   <Settings className="h-4 w-4" />
                   Account Settings
@@ -101,6 +95,13 @@ export async function NavbarUserSection() {
                   </Link>
                 </DropdownMenuItem>
               )}
+              <DropdownMenuSeparator />
+              <DropdownMenuItem asChild>
+                <Link href="/dashboard/message-templates" className="gap-2 cursor-pointer">
+                  <MessageSquare className="h-4 w-4" />
+                  Message templates
+                </Link>
+              </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem asChild>
                 <form
