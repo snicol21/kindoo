@@ -73,7 +73,7 @@ export default async function HomePage() {
           </Button>
         </div>
 
-        <p className="mt-3 mb-6 text-sm text-muted-foreground text-center">Authorized personnel only.</p>
+        <p className="mt-3 mb-10 text-sm text-muted-foreground text-center">Authorized personnel only.</p>
       </div>
     </div>
   );
