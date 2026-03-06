@@ -158,10 +158,18 @@ export function EventTable({
   const editLookupQuery = editEmail.trim() || editPhone.trim() || editName.trim();
   const cloneLookupQuery = cloneEmail.trim() || clonePhone.trim() || cloneName.trim();
 
-  const { data: editMatchingContacts = [], isFetching: isFetchingEditMatches } =
-    useContactSearch(editLookupQuery);
-  const { data: cloneMatchingContacts = [], isFetching: isFetchingCloneMatches } =
-    useContactSearch(cloneLookupQuery);
+  const { data: editMatchingContacts = [], isFetching: isFetchingEditMatches } = useContactSearch(
+    editLookupQuery,
+    {
+      ward: editWard || undefined,
+    }
+  );
+  const { data: cloneMatchingContacts = [], isFetching: isFetchingCloneMatches } = useContactSearch(
+    cloneLookupQuery,
+    {
+      ward: cloneWard || undefined,
+    }
+  );
 
   const editNameMatches = useMemo(
     () =>

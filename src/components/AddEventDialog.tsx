@@ -118,8 +118,12 @@ export function AddEventDialog({
   );
   const [descriptionValue, setDescriptionValue] = useState('');
   const contactLookupQuery = typedEmail.trim() || typedPhone.trim() || typedName.trim();
-  const { data: matchingContacts = [], isFetching: searchingContacts } =
-    useContactSearch(contactLookupQuery);
+  const { data: matchingContacts = [], isFetching: searchingContacts } = useContactSearch(
+    contactLookupQuery,
+    {
+      ward: selectedWard || undefined,
+    }
+  );
   const { mutate: addEventMutation, isPending } = useAddEvent(() => {
     onOpenChange(false);
   });
