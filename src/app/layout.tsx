@@ -52,31 +52,32 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </Suspense>
             <main className="flex-1 min-h-[calc(100vh-4rem)]">{children}</main>
             <footer className="border-t bg-muted/20">
-              <div className="container mx-auto max-w-7xl px-4 py-4 text-xs leading-relaxed text-muted-foreground">
+              <div className="container mx-auto max-w-7xl px-4 py-4 text-xs leading-relaxed text-muted-foreground text-center sm:text-left">
                 <p>
-                  Event Tracker is an independent local utility, not affiliated with or endorsed by{' '}
-                  <a
-                    href="https://churchofjesuschrist.org"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="underline underline-offset-2 decoration-muted-foreground/60 hover:text-foreground"
-                  >
-                    The Church of Jesus Christ of Latter-day Saints
-                  </a>{' '}
-                  or{' '}
-                  <a
-                    href="https://kindoo.tech"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="underline underline-offset-2 decoration-muted-foreground/60 hover:text-foreground"
-                  >
-                    Kindoo
-                  </a>
-                  .
+                  Independent local utility.{' '}
+                  <span className="block sm:inline">
+                    Not affiliated with{' '}
+                    <a
+                      href="https://churchofjesuschrist.org"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="underline underline-offset-2 decoration-muted-foreground/60 hover:text-foreground"
+                    >
+                      The Church of Jesus Christ of Latter-day Saints
+                    </a>{' '}
+                    or{' '}
+                    <a
+                      href="https://kindoo.tech"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="underline underline-offset-2 decoration-muted-foreground/60 hover:text-foreground"
+                    >
+                      Kindoo
+                    </a>
+                    .
+                  </span>
                 </p>
-                <p className="mt-1">
-                  For support, contact Spencer Nicol (spencer.nicol@gmail.com).
-                </p>
+                <p className="mt-1">Support: Spencer Nicol (spencer.nicol@gmail.com).</p>
                 <p className="mt-1">Kindoo is a trademark of its respective owner.</p>
               </div>
             </footer>
