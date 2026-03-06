@@ -107,6 +107,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             session.user.name = currentUser.name ?? null;
             session.user.email = currentUser.email;
             session.user.role = (currentUser.role ?? 'user') as UserRole;
+            session.user.image = currentUser.image ?? null;
 
             if (isAdminEmail(currentUser.email) && currentUser.role !== 'admin') {
               await db.update(users).set({ role: 'admin' }).where(eq(users.id, currentUser.id));

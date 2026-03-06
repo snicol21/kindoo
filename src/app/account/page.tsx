@@ -15,13 +15,19 @@ import { eq } from 'drizzle-orm';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 import { PageContainer } from '@/components/PageContainer';
+import { ProfileImageUploader } from '@/components/ProfileImageUploader';
 
 export const metadata: Metadata = {
   title: 'Account Settings',
 };
 
 interface AccountPageProps {
-  searchParams: Promise<{ updated?: string; nameUpdated?: string; error?: string }>;
+  searchParams: Promise<{
+    updated?: string;
+    nameUpdated?: string;
+    imageUpdated?: string;
+    error?: string;
+  }>;
 }
 
 export default async function AccountPage({ searchParams }: AccountPageProps) {
@@ -45,11 +51,22 @@ export default async function AccountPage({ searchParams }: AccountPageProps) {
 
   const message = params.error
     ? decodeURIComponent(params.error)
-    : params.nameUpdated === '1'
-      ? 'Name updated.'
-      : params.updated === '1'
-        ? 'Password updated.'
-        : null;
+    : params.imageUpdated === '1'
+      ? 'Profile photo updated.'
+      : params.nameUpdated === '1'
+        ? 'Name updated.'
+        : params.updated === '1'
+          ? 'Password updated.'
+          : null;
+
+  const userInitials = session?.user?.name
+    ? session.user.name
+        .split(' ')
+        .map((n) => n[0])
+        .join('')
+        .toUpperCase()
+        .slice(0, 2)
+    : (session?.user?.email?.[0]?.toUpperCase() ?? '?');
 
   return (
     <PageContainer width="narrow">
@@ -72,38 +89,46 @@ export default async function AccountPage({ searchParams }: AccountPageProps) {
             <CardDescription>Update how your name appears in the app.</CardDescription>
           </CardHeader>
           <CardContent>
-            <form
-              action={async (formData: FormData) => {
-                'use server';
-                const result = await changeProfile({
-                  name: String(formData.get('name') ?? ''),
-                });
+            <div className="space-y-6">
+              <form
+                action={async (formData: FormData) => {
+                  'use server';
+                  const result = await changeProfile({
+                    name: String(formData.get('name') ?? ''),
+                  });
 
-                if (!result.success) {
-                  const msg = encodeURIComponent(result.error ?? 'Failed to update name.');
-                  redirect(`/account?error=${msg}`);
-                }
+                  if (!result.success) {
+                    const msg = encodeURIComponent(result.error ?? 'Failed to update name.');
+                    redirect(`/account?error=${msg}`);
+                  }
 
-                redirect('/account?nameUpdated=1');
-              }}
-              className="space-y-4"
-            >
-              <div className="space-y-3">
-                <Label htmlFor="name">Display name</Label>
-                <Input
-                  id="name"
-                  name="name"
-                  type="text"
-                  placeholder="Your name"
-                  defaultValue={session.user.name ?? ''}
-                />
-              </div>
-              <div className="flex justify-end">
-                <Button type="submit" variant="secondary">
-                  Update profile name
-                </Button>
-              </div>
-            </form>
+                  redirect('/account?nameUpdated=1');
+                }}
+                className="space-y-4"
+              >
+                <div className="space-y-3">
+                  <Label htmlFor="name">Display name</Label>
+                  <Input
+                    id="name"
+                    name="name"
+                    type="text"
+                    placeholder="Your name"
+                    defaultValue={session.user.name ?? ''}
+                  />
+                </div>
+                <div className="flex justify-end">
+                  <Button type="submit" variant="secondary">
+                    Update profile name
+                  </Button>
+                </div>
+              </form>
+
+              <ProfileImageUploader
+                initialImageUrl={session.user.image ?? null}
+                initials={userInitials}
+                displayName={session.user.name ?? 'User'}
+              />
+            </div>
           </CardContent>
         </Card>
 

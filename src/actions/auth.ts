@@ -7,6 +7,7 @@ import { BUILDINGS, type Building } from '@/schema/schema';
 import { eq } from 'drizzle-orm';
 import { getAdminEmails, isAdminEmail } from '@/lib/admin';
 import { hashPassword, verifyPassword } from '@/lib/password';
+import { put } from '@vercel/blob';
 
 export interface ActionResult<T = unknown> {
   success: boolean;
@@ -17,6 +18,17 @@ export interface ActionResult<T = unknown> {
 const PASSWORD_MIN_LENGTH = 12;
 const LICENSE_LEAD_MIN_DAYS = 0;
 const LICENSE_LEAD_MAX_DAYS = 14;
+const MAX_PROFILE_IMAGE_SIZE = 3 * 1024 * 1024;
+const ALLOWED_PROFILE_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
+
+function sanitizeFilename(filename: string) {
+  return filename
+    .toLowerCase()
+    .replace(/[^a-z0-9._-]+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/(^-|-$)/g, '')
+    .slice(0, 80);
+}
 
 function isValidEmail(email: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
@@ -221,6 +233,37 @@ export async function changeProfile(input: { name: string }): Promise<ActionResu
 
   await db.update(users).set({ name }).where(eq(users.id, userId));
   return { success: true };
+}
+
+export async function updateProfileImage(input: {
+  image: File | string | null;
+}): Promise<ActionResult<{ imageUrl: string }>> {
+  const session = await auth();
+  const userId = session?.user?.id ?? null;
+
+  if (!userId) return { success: false, error: 'Not authenticated.' };
+
+  const image = input.image;
+  if (!image || typeof image === 'string') {
+    return { success: false, error: 'Please choose an image to upload.' };
+  }
+
+  if (!ALLOWED_PROFILE_IMAGE_TYPES.has(image.type)) {
+    return { success: false, error: 'Profile photo must be a JPG, PNG, or WebP image.' };
+  }
+
+  if (image.size > MAX_PROFILE_IMAGE_SIZE) {
+    return { success: false, error: 'Profile photo must be 3MB or less.' };
+  }
+
+  const safeName = sanitizeFilename(image.name || 'profile-image');
+  const blob = await put(`profiles/${userId}/${Date.now()}-${safeName}`, image, {
+    access: 'public',
+    contentType: image.type,
+  });
+
+  await db.update(users).set({ image: blob.url }).where(eq(users.id, userId));
+  return { success: true, data: { imageUrl: blob.url } };
 }
 
 export async function updateLicenseLeadDays(input: {
