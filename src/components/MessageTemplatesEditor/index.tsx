@@ -58,7 +58,7 @@ export function MessageTemplatesEditor({ initialTemplates }: MessageTemplatesEdi
     const overlay = overlayRefs.current[key];
     if (!textarea || !overlay) return;
     textarea.style.height = 'auto';
-    const nextHeight = Math.max(textarea.scrollHeight, 120);
+    const nextHeight = textarea.scrollHeight;
     textarea.style.height = `${nextHeight}px`;
     overlay.style.height = `${nextHeight}px`;
   };

@@ -77,7 +77,7 @@ export function TemplateCard({
           <div className="relative">
             <div
               aria-hidden="true"
-              className="pointer-events-none absolute inset-0 whitespace-pre-wrap break-words rounded-md border border-transparent px-3 py-2 text-sm"
+              className="pointer-events-none absolute inset-0 whitespace-pre-wrap break-words rounded-md border border-transparent px-3 py-2 text-[16px] leading-6 sm:text-sm sm:leading-5"
               ref={onOverlayRefAction}
             >
               {renderHighlightedTemplate(draftBody)}
@@ -87,7 +87,7 @@ export function TemplateCard({
               rows={TEMPLATE_TEXTAREA_ROWS[template.key]}
               value={draftBody}
               onChange={(event) => onBodyChangeAction(event.target.value)}
-              className="relative z-10 resize-none overflow-hidden text-transparent caret-[color:var(--color-foreground)]"
+              className="relative z-10 resize-none overflow-hidden text-[16px] leading-6 text-transparent caret-[color:var(--color-foreground)] sm:text-sm sm:leading-5"
               spellCheck={false}
               ref={onTextareaRefAction}
             />

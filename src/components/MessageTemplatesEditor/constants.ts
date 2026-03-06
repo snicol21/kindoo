@@ -40,8 +40,8 @@ export const EMPTY_PLACEHOLDER_SELECTION: Record<MessageTemplateKey, string> = {
 };
 
 export const TEMPLATE_TEXTAREA_ROWS: Record<MessageTemplateKey, number> = {
-  availability_inquiry: 6,
-  calendar_item: 6,
-  availability_confirmed: 10,
-  license_created: 6,
+  availability_inquiry: 3,
+  calendar_item: 3,
+  availability_confirmed: 4,
+  license_created: 3,
 };
