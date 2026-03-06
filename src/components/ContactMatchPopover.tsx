@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import type { KeyboardEvent, RefObject } from 'react';
-import { Lightbulb, X } from 'lucide-react';
+import { Lightbulb } from 'lucide-react';
 import type { Ward } from '@/schema/schema';
 
 export type ContactMatch = {
@@ -44,7 +44,6 @@ type ContactMatchPopoverProps = {
   suggestedCount?: number;
   formatPhone?: (value?: string | null) => string;
   onUseMatch: (contact: ContactMatch) => void;
-  onDismiss: (contactId: string) => void;
   focusRef?: RefObject<HTMLDivElement | null>;
   onBlur?: () => void;
   onTabNext?: () => void;
@@ -64,7 +63,6 @@ export function ContactMatchPopover({
   suggestedCount = 0,
   formatPhone,
   onUseMatch,
-  onDismiss,
   focusRef,
   onBlur,
   onTabNext,
@@ -191,26 +189,12 @@ export function ContactMatchPopover({
         }
       }}
     >
-      {effectiveMatch && isSingleMatch && (
-        <button
-          type="button"
-          className="absolute right-2 top-2 inline-flex h-6 w-6 touch-manipulation items-center justify-center rounded-full text-blue-700 transition-transform active:scale-95 active:bg-blue-200/80 hover:bg-blue-200/70 hover:text-blue-900 dark:text-blue-200 dark:active:bg-blue-900/60 dark:hover:bg-blue-900/50 dark:hover:text-blue-50"
-          aria-label="Dismiss match"
-          onClick={(event) => {
-            event.stopPropagation();
-            onDismiss(effectiveMatch.id);
-          }}
-        >
-          <X className="h-3.5 w-3.5" />
-        </button>
-      )}
-
       <div className="flex min-w-0 items-start gap-2">
         <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-blue-600 text-white dark:bg-blue-500">
           <Lightbulb className="h-2.5 w-2.5" />
         </span>
         <div className="min-w-0 flex-1">
-          <div className={`flex items-center gap-1.5 font-medium ${isSingleMatch ? 'pr-7' : ''}`}>
+          <div className="flex items-center gap-1.5 font-medium">
             <span className={showSearchingState ? 'animate-pulse' : ''}>{matchLabel}</span>
             {countLabel > 1 && <span>({countLabel})</span>}
             {showSearchingState && (

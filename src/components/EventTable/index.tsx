@@ -1377,12 +1377,6 @@ export function EventTable({
           setEditMatchCandidate(null);
           setEditDismissedMatchId(null);
         }}
-        onDismissMatch={(contactId) => {
-          setEditMatchedContactId(null);
-          setEditMatchedContact(null);
-          setEditMatchCandidate(null);
-          setEditDismissedMatchId(contactId);
-        }}
         onClearLinkedContact={() => {
           if (editMatchedContactId) {
             setEditDismissedMatchId(editMatchedContactId);
@@ -1452,12 +1446,6 @@ export function EventTable({
           applyCloneMatch(contact);
           setCloneMatchCandidate(null);
           setCloneDismissedMatchId(null);
-        }}
-        onDismissMatch={(contactId) => {
-          setCloneMatchedContactId(null);
-          setCloneMatchedContact(null);
-          setCloneMatchCandidate(null);
-          setCloneDismissedMatchId(contactId);
         }}
         onClearLinkedContact={() => {
           if (cloneMatchedContactId) {

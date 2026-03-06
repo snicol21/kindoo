@@ -604,11 +604,6 @@ export function AddEventDialog({
                   setDismissedMatchId(null);
                   focusNextAfterMatch(contact);
                 }}
-                onDismiss={(contactId) => {
-                  clearSelectedContact();
-                  setDismissedMatchId(contactId);
-                  setMatchCandidate(null);
-                }}
                 onBlur={() => setContactFocusField(null)}
                 onTabNext={() => phoneRef.current?.focus()}
                 onTabPrev={() => nameRef.current?.focus()}
@@ -681,11 +676,6 @@ export function AddEventDialog({
                     setDismissedMatchId(null);
                     focusNextAfterMatch(contact);
                   }}
-                  onDismiss={(contactId) => {
-                    clearSelectedContact();
-                    setDismissedMatchId(contactId);
-                    setMatchCandidate(null);
-                  }}
                   onBlur={() => setContactFocusField(null)}
                   onTabNext={() => emailRef.current?.focus()}
                   onTabPrev={() => phoneRef.current?.focus()}
@@ -756,11 +746,6 @@ export function AddEventDialog({
                     setMatchCandidate(null);
                     setDismissedMatchId(null);
                     focusNextAfterMatch(contact);
-                  }}
-                  onDismiss={(contactId) => {
-                    clearSelectedContact();
-                    setDismissedMatchId(contactId);
-                    setMatchCandidate(null);
                   }}
                   onBlur={() => setContactFocusField(null)}
                   onTabNext={() => wardTriggerRef.current?.focus()}

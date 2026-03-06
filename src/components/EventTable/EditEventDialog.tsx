@@ -67,7 +67,6 @@ type EditEventDialogProps = {
   onContactFocus: (field: 'name' | 'phone' | 'email') => void;
   onContactBlur: () => void;
   onUseMatch: (contact: ContactMatch) => void;
-  onDismissMatch: (contactId: string) => void;
   onClearLinkedContact: () => void;
   contactChangeState: ContactChangeState;
 };
@@ -108,7 +107,6 @@ export function EditEventDialog({
   onContactFocus,
   onContactBlur,
   onUseMatch,
-  onDismissMatch,
   onClearLinkedContact,
   contactChangeState,
 }: EditEventDialogProps) {
@@ -239,7 +237,6 @@ export function EditEventDialog({
                 suggestedCount={isNameFocus ? nameMatchCount : 0}
                 formatPhone={formatPhoneAction}
                 onUseMatch={handleUseMatch}
-                onDismiss={onDismissMatch}
                 onBlur={onContactBlur}
                 onTabNext={() => phoneInputRef.current?.focus()}
                 onTabPrev={() => nameInputRef.current?.focus()}
@@ -286,7 +283,6 @@ export function EditEventDialog({
                 suggestedCount={0}
                 formatPhone={formatPhoneAction}
                 onUseMatch={handleUseMatch}
-                onDismiss={onDismissMatch}
                 onBlur={onContactBlur}
                 onTabNext={() => emailInputRef.current?.focus()}
                 onTabPrev={() => phoneInputRef.current?.focus()}
@@ -333,7 +329,6 @@ export function EditEventDialog({
                 suggestedCount={0}
                 formatPhone={formatPhoneAction}
                 onUseMatch={handleUseMatch}
-                onDismiss={onDismissMatch}
                 onBlur={onContactBlur}
                 onTabNext={() => wardTriggerRef.current?.focus()}
                 onTabPrev={() => emailInputRef.current?.focus()}
