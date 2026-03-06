@@ -22,6 +22,29 @@ export interface ContactActionResult<T = unknown> {
   error?: string;
 }
 
+function scoreNameMatch(contactName: string, rawQuery: string): number {
+  const query = rawQuery.trim().toLowerCase();
+  if (!query) return 0;
+
+  const name = contactName.trim().toLowerCase();
+  if (!name) return 0;
+
+  if (name === query) return 5000;
+  if (name.startsWith(query)) return 4000;
+
+  const tokens = name.split(/\s+/).filter(Boolean);
+  if (tokens.some((token) => token === query)) return 3200;
+  if (tokens.some((token) => token.startsWith(query))) return 2800;
+
+  const includesAt = name.indexOf(query);
+  if (includesAt >= 0) {
+    // Earlier substring hits are generally stronger than trailing hits.
+    return Math.max(1200 - includesAt * 5, 600);
+  }
+
+  return 0;
+}
+
 export async function updateContact(input: {
   id: string;
   name: string;
@@ -150,6 +173,15 @@ export async function searchContacts(input: {
       if (broadClause) {
         await takeRows(broadClause);
       }
+    }
+
+    if (!isEmailSearch && !isPhoneSearch) {
+      rows.sort((a, b) => {
+        const scoreA = scoreNameMatch(a.name, normalized);
+        const scoreB = scoreNameMatch(b.name, normalized);
+        if (scoreA !== scoreB) return scoreB - scoreA;
+        return a.name.localeCompare(b.name);
+      });
     }
 
     return { success: true, data: rows };
