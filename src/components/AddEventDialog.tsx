@@ -920,16 +920,17 @@ export function AddEventDialog({
             )}
           </div>
 
-          <DialogFooter className="flex flex-col gap-2 pt-2 sm:flex-row sm:items-center sm:justify-end">
-            <div className="flex gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => onOpenChange(false)}
-                disabled={isPending}
-              >
-                Cancel
-              </Button>
+          <DialogFooter className="pt-2">
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full sm:w-auto"
+              onClick={() => onOpenChange(false)}
+              disabled={isPending}
+            >
+              Cancel
+            </Button>
+            <div className="w-full sm:w-auto [&>button]:w-full sm:[&>button]:w-auto">
               <SubmitButton />
             </div>
           </DialogFooter>

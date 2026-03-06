@@ -243,96 +243,102 @@ export function EditEventDialog({
               />
             </div>
           </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="edit-phone">Phone</Label>
-            <div className="relative">
-              <Input
-                ref={phoneInputRef}
-                id="edit-phone"
-                type="tel"
-                autoComplete="new-password"
-                value={editPhone}
-                className={matchedContactId ? 'pr-24' : ''}
-                onFocus={() => onContactFocus('phone')}
-                onBlur={(event) => {
-                  if (phoneMatchRef.current?.contains(event.relatedTarget as Node)) return;
-                  onContactBlur();
-                }}
-                onKeyDown={handleContactMatchKeyDown({
-                  open: isPhoneFocus && (searchingContacts || !!matchCandidate),
-                  match: matchCandidate,
-                  onTabFocus: () => {
-                    window.setTimeout(() => {
-                      const firstOption = phoneMatchRef.current?.querySelector<HTMLButtonElement>(
-                        'button[data-contact-option="true"]'
-                      );
-                      firstOption?.focus();
-                    }, 0);
-                  },
-                  onUseMatch: handleUseMatch,
-                })}
-                onChange={(e) => setEditPhoneAction(formatPhoneAction(e.target.value))}
-              />
-              {showLinkedState && <MatchedContactBadge update={contactChangeState.changed.phone} />}
-              <ContactMatchPopover
-                focusRef={phoneMatchRef}
-                open={isPhoneFocus && (searchingContacts || !!matchCandidate)}
-                searching={searchingContacts}
-                matchCandidate={matchCandidate}
-                suggestedMatch={null}
-                suggestedCount={0}
-                formatPhone={formatPhoneAction}
-                onUseMatch={handleUseMatch}
-                onBlur={onContactBlur}
-                onTabNext={() => emailInputRef.current?.focus()}
-                onTabPrev={() => phoneInputRef.current?.focus()}
-              />
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-phone">Phone</Label>
+              <div className="relative">
+                <Input
+                  ref={phoneInputRef}
+                  id="edit-phone"
+                  type="tel"
+                  autoComplete="new-password"
+                  value={editPhone}
+                  className={matchedContactId ? 'pr-24' : ''}
+                  onFocus={() => onContactFocus('phone')}
+                  onBlur={(event) => {
+                    if (phoneMatchRef.current?.contains(event.relatedTarget as Node)) return;
+                    onContactBlur();
+                  }}
+                  onKeyDown={handleContactMatchKeyDown({
+                    open: isPhoneFocus && (searchingContacts || !!matchCandidate),
+                    match: matchCandidate,
+                    onTabFocus: () => {
+                      window.setTimeout(() => {
+                        const firstOption = phoneMatchRef.current?.querySelector<HTMLButtonElement>(
+                          'button[data-contact-option="true"]'
+                        );
+                        firstOption?.focus();
+                      }, 0);
+                    },
+                    onUseMatch: handleUseMatch,
+                  })}
+                  onChange={(e) => setEditPhoneAction(formatPhoneAction(e.target.value))}
+                />
+                {showLinkedState && (
+                  <MatchedContactBadge update={contactChangeState.changed.phone} />
+                )}
+                <ContactMatchPopover
+                  focusRef={phoneMatchRef}
+                  open={isPhoneFocus && (searchingContacts || !!matchCandidate)}
+                  searching={searchingContacts}
+                  matchCandidate={matchCandidate}
+                  suggestedMatch={null}
+                  suggestedCount={0}
+                  formatPhone={formatPhoneAction}
+                  onUseMatch={handleUseMatch}
+                  onBlur={onContactBlur}
+                  onTabNext={() => emailInputRef.current?.focus()}
+                  onTabPrev={() => phoneInputRef.current?.focus()}
+                />
+              </div>
             </div>
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="edit-email">Email</Label>
-            <div className="relative">
-              <Input
-                ref={emailInputRef}
-                id="edit-email"
-                type="email"
-                autoComplete="new-password"
-                value={editEmail}
-                className={matchedContactId ? 'pr-24' : ''}
-                onFocus={() => onContactFocus('email')}
-                onBlur={(event) => {
-                  if (emailMatchRef.current?.contains(event.relatedTarget as Node)) return;
-                  onContactBlur();
-                }}
-                onKeyDown={handleContactMatchKeyDown({
-                  open: isEmailFocus && (searchingContacts || !!matchCandidate),
-                  match: matchCandidate,
-                  onTabFocus: () => {
-                    window.setTimeout(() => {
-                      const firstOption = emailMatchRef.current?.querySelector<HTMLButtonElement>(
-                        'button[data-contact-option="true"]'
-                      );
-                      firstOption?.focus();
-                    }, 0);
-                  },
-                  onUseMatch: handleUseMatch,
-                })}
-                onChange={(e) => setEditEmailAction(e.target.value)}
-              />
-              {showLinkedState && <MatchedContactBadge update={contactChangeState.changed.email} />}
-              <ContactMatchPopover
-                focusRef={emailMatchRef}
-                open={isEmailFocus && (searchingContacts || !!matchCandidate)}
-                searching={searchingContacts}
-                matchCandidate={matchCandidate}
-                suggestedMatch={null}
-                suggestedCount={0}
-                formatPhone={formatPhoneAction}
-                onUseMatch={handleUseMatch}
-                onBlur={onContactBlur}
-                onTabNext={() => wardTriggerRef.current?.focus()}
-                onTabPrev={() => emailInputRef.current?.focus()}
-              />
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-email">Email</Label>
+              <div className="relative">
+                <Input
+                  ref={emailInputRef}
+                  id="edit-email"
+                  type="email"
+                  autoComplete="new-password"
+                  value={editEmail}
+                  className={matchedContactId ? 'pr-24' : ''}
+                  onFocus={() => onContactFocus('email')}
+                  onBlur={(event) => {
+                    if (emailMatchRef.current?.contains(event.relatedTarget as Node)) return;
+                    onContactBlur();
+                  }}
+                  onKeyDown={handleContactMatchKeyDown({
+                    open: isEmailFocus && (searchingContacts || !!matchCandidate),
+                    match: matchCandidate,
+                    onTabFocus: () => {
+                      window.setTimeout(() => {
+                        const firstOption = emailMatchRef.current?.querySelector<HTMLButtonElement>(
+                          'button[data-contact-option="true"]'
+                        );
+                        firstOption?.focus();
+                      }, 0);
+                    },
+                    onUseMatch: handleUseMatch,
+                  })}
+                  onChange={(e) => setEditEmailAction(e.target.value)}
+                />
+                {showLinkedState && (
+                  <MatchedContactBadge update={contactChangeState.changed.email} />
+                )}
+                <ContactMatchPopover
+                  focusRef={emailMatchRef}
+                  open={isEmailFocus && (searchingContacts || !!matchCandidate)}
+                  searching={searchingContacts}
+                  matchCandidate={matchCandidate}
+                  suggestedMatch={null}
+                  suggestedCount={0}
+                  formatPhone={formatPhoneAction}
+                  onUseMatch={handleUseMatch}
+                  onBlur={onContactBlur}
+                  onTabNext={() => wardTriggerRef.current?.focus()}
+                  onTabPrev={() => emailInputRef.current?.focus()}
+                />
+              </div>
             </div>
           </div>
           <div className="space-y-1.5">
@@ -445,11 +451,12 @@ export function EditEventDialog({
             </p>
           </div>
         </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={onCloseAction}>
+        <DialogFooter className="pt-2">
+          <Button variant="outline" className="w-full sm:w-auto" onClick={onCloseAction}>
             Cancel
           </Button>
           <Button
+            className="w-full gap-2 sm:w-auto"
             onClick={() => {
               void onSubmitAction();
             }}
@@ -457,7 +464,7 @@ export function EditEventDialog({
           >
             {isSavingEdit ? (
               <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                <Loader2 className="h-4 w-4 animate-spin" />
                 Saving…
               </>
             ) : (
