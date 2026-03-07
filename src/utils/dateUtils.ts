@@ -15,7 +15,7 @@ export function isFutureDate(ymd: string) {
   const now = new Date();
   const todayUtc = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
   const targetUtc = Date.UTC(parsed.year, parsed.month - 1, parsed.day);
-  return targetUtc > todayUtc;
+  return targetUtc >= todayUtc;
 }
 
 export function toLocalDate(dateStr: string) {
@@ -95,4 +95,10 @@ export function getTomorrowYmd() {
   tomorrow.setHours(0, 0, 0, 0);
   tomorrow.setDate(tomorrow.getDate() + 1);
   return formatYmd(tomorrow);
+}
+
+export function getTodayYmd() {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return formatYmd(today);
 }

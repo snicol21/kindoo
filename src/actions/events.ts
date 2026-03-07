@@ -127,7 +127,7 @@ function validateEventInput(input: AddEventInput): string | null {
   }
   if (!input.eventDate?.trim()) return 'Event date is required.';
   if (!isFutureDate(input.eventDate.trim())) {
-    return 'Event date must be in the future.';
+    return 'Event date must be today or in the future.';
   }
   if (!input.startTime?.trim()) return 'Start time is required.';
   if (!input.endTime?.trim()) return 'End time is required.';

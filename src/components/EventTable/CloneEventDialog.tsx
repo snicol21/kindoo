@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { Building, Ward } from '@/schema/schema';
 import { BUILDINGS, WARDS } from '@/schema/schema';
 import { Button } from '@/components/_ui/button';
@@ -28,6 +28,7 @@ import {
   type ContactMatch,
 } from '@/components/ContactMatchPopover';
 import { MatchedContactBadge } from '@/components/MatchedContactBadge';
+import { UnsavedChangesDialog } from '@/components/UnsavedChangesDialog';
 import { DESCRIPTION_MAX_LENGTH } from '@/utils/eventConstants';
 import type { ContactChangeState, LinkedContactSnapshot } from '@/lib/contact-linking';
 
@@ -110,6 +111,9 @@ export function CloneEventDialog({
   onClearLinkedContact,
   contactChangeState,
 }: CloneEventDialogProps) {
+  const initialSnapshotRef = useRef<Record<string, string> | null>(null);
+  const wasOpenRef = useRef(false);
+  const [showDiscardDialog, setShowDiscardDialog] = useState(false);
   const isNameFocus = contactFocusField === 'name';
   const isPhoneFocus = contactFocusField === 'phone';
   const isEmailFocus = contactFocusField === 'email';
@@ -161,8 +165,46 @@ export function CloneEventDialog({
     ? 'text-amber-800/80 dark:text-amber-100/80'
     : 'text-emerald-800/80 dark:text-emerald-100/80';
 
+  const getCurrentSnapshot = () => ({
+    building: cloneBuilding,
+    ward: cloneWard,
+    name: cloneName.trim(),
+    eventDate: cloneEventDate,
+    startTime: cloneStartTime,
+    endTime: cloneEndTime,
+    phone: clonePhone.trim(),
+    email: cloneEmail.trim(),
+    description: cloneDescription.trim(),
+  });
+
+  const isDirty = () => {
+    const initial = initialSnapshotRef.current;
+    if (!initial) return false;
+    const current = getCurrentSnapshot();
+    return Object.keys(initial).some((key) => initial[key] !== current[key]);
+  };
+
+  const handleRequestClose = () => {
+    if (isDirty()) {
+      setShowDiscardDialog(true);
+      return;
+    }
+    onCloseAction();
+  };
+
+  useEffect(() => {
+    if (open && !wasOpenRef.current) {
+      initialSnapshotRef.current = getCurrentSnapshot();
+    }
+    if (!open) {
+      wasOpenRef.current = false;
+      return;
+    }
+    wasOpenRef.current = true;
+  }, [open, cloneBuilding, cloneWard, cloneName, cloneEventDate]);
+
   return (
-    <Dialog open={open} onOpenChange={(nextOpen) => !nextOpen && onCloseAction()}>
+    <Dialog open={open} onOpenChange={(nextOpen) => !nextOpen && handleRequestClose()}>
       <DialogContent className="sm:max-w-3xl">
         <DialogHeader>
           <DialogTitle>Clone event</DialogTitle>
@@ -422,6 +464,7 @@ export function CloneEventDialog({
                 type="time"
                 min="05:00"
                 max="23:00"
+                step={900}
                 autoComplete="off"
                 value={cloneStartTime}
                 onChange={(e) => setCloneStartTimeAction(e.target.value)}
@@ -434,6 +477,7 @@ export function CloneEventDialog({
                 type="time"
                 min="05:00"
                 max="23:00"
+                step={900}
                 autoComplete="off"
                 value={cloneEndTime}
                 onChange={(e) => setCloneEndTimeAction(e.target.value)}
@@ -455,7 +499,7 @@ export function CloneEventDialog({
           </div>
         </div>
         <DialogFooter className="pt-2">
-          <Button variant="outline" className="w-full sm:w-auto" onClick={onCloseAction}>
+          <Button variant="outline" className="w-full sm:w-auto" onClick={handleRequestClose}>
             Cancel
           </Button>
           <Button
@@ -476,6 +520,14 @@ export function CloneEventDialog({
           </Button>
         </DialogFooter>
       </DialogContent>
+      <UnsavedChangesDialog
+        open={showDiscardDialog}
+        onCancel={() => setShowDiscardDialog(false)}
+        onConfirm={() => {
+          setShowDiscardDialog(false);
+          onCloseAction();
+        }}
+      />
     </Dialog>
   );
 }

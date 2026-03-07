@@ -32,14 +32,31 @@ import { updateContact, type ContactSearchResult } from '@/actions/contacts';
 import type { Building, Ward } from '@/schema/schema';
 import { BUILDINGS, WARDS } from '@/schema/schema';
 import { formatPhone } from '@/utils/phoneUtils';
-import { getTomorrowYmd } from '@/utils/dateUtils';
+import { getTodayYmd } from '@/utils/dateUtils';
 import { parseTimeToMinutes } from '@/utils/timeUtils';
 import { DESCRIPTION_MAX_LENGTH } from '@/utils/eventConstants';
 import { getContactChangeState } from '@/lib/contact-linking';
 import { useContactChangeState } from '@/hooks/useContactChangeState';
 import { findExactContact, getContactSuggestions } from '@/lib/contact-matching';
+import { UnsavedChangesDialog } from '@/components/UnsavedChangesDialog';
 
 const phoneDigits = (value?: string | null) => (value ?? '').replace(/\D/g, '');
+
+function formatHourTime(hour: number) {
+  return `${String(hour).padStart(2, '0')}:00`;
+}
+
+function getDefaultTimeWindow() {
+  const now = new Date();
+  let startHour = now.getHours();
+  if (startHour < 5) startHour = 5;
+  if (startHour > 22) startHour = 22;
+  const endHour = Math.min(startHour + 1, 23);
+  return {
+    startTime: formatHourTime(startHour),
+    endTime: formatHourTime(endHour),
+  };
+}
 
 interface AddEventDialogProps {
   open: boolean;
@@ -95,7 +112,12 @@ export function AddEventDialog({
   onOpenChange,
   defaultBuilding = 'Stake Center',
 }: AddEventDialogProps) {
+  type Snapshot = Record<string, string>;
   const formRef = useRef<HTMLFormElement>(null);
+  const initialSnapshotRef = useRef<Snapshot | null>(null);
+  const justSubmittedRef = useRef(false);
+  const wasOpenRef = useRef(false);
+  const [showDiscardDialog, setShowDiscardDialog] = useState(false);
   const nameRef = useRef<HTMLInputElement>(null);
   const phoneRef = useRef<HTMLInputElement>(null);
   const emailRef = useRef<HTMLInputElement>(null);
@@ -127,7 +149,47 @@ export function AddEventDialog({
   const { mutate: addEventMutation, isPending } = useAddEvent(() => {
     onOpenChange(false);
   });
-  const minEventDate = getTomorrowYmd();
+  const minEventDate = getTodayYmd();
+  const { startTime: defaultStartTime, endTime: defaultEndTime } = useMemo(
+    () => getDefaultTimeWindow(),
+    []
+  );
+
+  const getCurrentSnapshot = (): Snapshot => {
+    const form = formRef.current;
+    const formData = form ? new FormData(form) : new FormData();
+    return {
+      building: String(selectedBuilding),
+      ward: String(selectedWard),
+      name: typedName.trim(),
+      email: typedEmail.trim(),
+      phone: typedPhone.trim(),
+      description: descriptionValue.trim(),
+      eventDate: String(formData.get('eventDate') ?? ''),
+      startTime: String(formData.get('startTime') ?? ''),
+      endTime: String(formData.get('endTime') ?? ''),
+    };
+  };
+
+  const isDirty = () => {
+    const initial = initialSnapshotRef.current;
+    if (!initial) return false;
+    const current = getCurrentSnapshot();
+    return Object.entries(initial).some(([key, value]) => value !== current[key]);
+  };
+
+  const handleRequestClose = () => {
+    if (justSubmittedRef.current) {
+      justSubmittedRef.current = false;
+      onOpenChange(false);
+      return;
+    }
+    if (isDirty()) {
+      setShowDiscardDialog(true);
+      return;
+    }
+    onOpenChange(false);
+  };
 
   const prioritizedWards = useMemo(() => {
     const stakePriority: Ward[] = ['3rd Ward', '4th Ward', '6th Ward'];
@@ -212,7 +274,15 @@ export function AddEventDialog({
   };
 
   useEffect(() => {
-    if (!open) return;
+    if (open && !wasOpenRef.current) {
+      initialSnapshotRef.current = getCurrentSnapshot();
+      justSubmittedRef.current = false;
+    }
+    if (!open) {
+      wasOpenRef.current = false;
+      return;
+    }
+    wasOpenRef.current = true;
 
     const match = findExactContact(matchingContacts, {
       name: typedName,
@@ -294,7 +364,7 @@ export function AddEventDialog({
       if (!eventDate?.trim()) {
         errors.eventDate = 'Event date is required.';
       } else if (eventDate < minEventDate) {
-        errors.eventDate = 'Please select a future date.';
+        errors.eventDate = 'Please select today or a future date.';
       }
       if (!startTime?.trim()) {
         errors.startTime = 'Start time is required.';
@@ -487,7 +557,7 @@ export function AddEventDialog({
     : 'text-emerald-800/80 dark:text-emerald-100/80';
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(nextOpen) => !nextOpen && handleRequestClose()}>
       <DialogContent className="sm:max-w-3xl">
         <DialogHeader>
           <DialogTitle>Add New Event</DialogTitle>
@@ -496,7 +566,15 @@ export function AddEventDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <form ref={formRef} action={formAction} className="space-y-4" autoComplete="off">
+        <form
+          ref={formRef}
+          action={formAction}
+          className="space-y-4"
+          autoComplete="off"
+          onSubmit={() => {
+            justSubmittedRef.current = true;
+          }}
+        >
           {/* General error */}
           {state.errors?.general && (
             <div className="rounded-md bg-destructive/10 border border-destructive/20 p-3 text-sm text-destructive">
@@ -869,8 +947,9 @@ export function AddEventDialog({
                 type="time"
                 min="05:00"
                 max="23:00"
+                step={900}
                 autoComplete="off"
-                defaultValue={state.values?.startTime}
+                defaultValue={state.values?.startTime ?? defaultStartTime}
                 className={state.errors?.startTime ? 'border-destructive' : ''}
               />
               {state.errors?.startTime && (
@@ -887,8 +966,9 @@ export function AddEventDialog({
                 type="time"
                 min="05:00"
                 max="23:00"
+                step={900}
                 autoComplete="off"
-                defaultValue={state.values?.endTime}
+                defaultValue={state.values?.endTime ?? defaultEndTime}
                 className={state.errors?.endTime ? 'border-destructive' : ''}
               />
               {state.errors?.endTime && (
@@ -925,7 +1005,7 @@ export function AddEventDialog({
               type="button"
               variant="outline"
               className="w-full sm:w-auto"
-              onClick={() => onOpenChange(false)}
+              onClick={handleRequestClose}
               disabled={isPending}
             >
               Cancel
@@ -936,6 +1016,14 @@ export function AddEventDialog({
           </DialogFooter>
         </form>
       </DialogContent>
+      <UnsavedChangesDialog
+        open={showDiscardDialog}
+        onCancel={() => setShowDiscardDialog(false)}
+        onConfirm={() => {
+          setShowDiscardDialog(false);
+          onOpenChange(false);
+        }}
+      />
     </Dialog>
   );
 }

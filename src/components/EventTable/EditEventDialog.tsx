@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { Building, Ward } from '@/schema/schema';
 import { BUILDINGS, WARDS } from '@/schema/schema';
 import { Button } from '@/components/_ui/button';
@@ -28,6 +28,7 @@ import {
   type ContactMatch,
 } from '@/components/ContactMatchPopover';
 import { MatchedContactBadge } from '@/components/MatchedContactBadge';
+import { UnsavedChangesDialog } from '@/components/UnsavedChangesDialog';
 import { DESCRIPTION_MAX_LENGTH } from '@/utils/eventConstants';
 import type { ContactChangeState, LinkedContactSnapshot } from '@/lib/contact-linking';
 
@@ -110,6 +111,9 @@ export function EditEventDialog({
   onClearLinkedContact,
   contactChangeState,
 }: EditEventDialogProps) {
+  const initialSnapshotRef = useRef<Record<string, string> | null>(null);
+  const wasOpenRef = useRef(false);
+  const [showDiscardDialog, setShowDiscardDialog] = useState(false);
   const isNameFocus = contactFocusField === 'name';
   const isPhoneFocus = contactFocusField === 'phone';
   const isEmailFocus = contactFocusField === 'email';
@@ -161,8 +165,46 @@ export function EditEventDialog({
     ? 'text-amber-800/80 dark:text-amber-100/80'
     : 'text-emerald-800/80 dark:text-emerald-100/80';
 
+  const getCurrentSnapshot = () => ({
+    building: editBuilding,
+    ward: editWard,
+    name: editName.trim(),
+    eventDate: editEventDate,
+    startTime: editStartTime,
+    endTime: editEndTime,
+    phone: editPhone.trim(),
+    email: editEmail.trim(),
+    description: editDescription.trim(),
+  });
+
+  const isDirty = () => {
+    const initial = initialSnapshotRef.current;
+    if (!initial) return false;
+    const current = getCurrentSnapshot();
+    return Object.keys(initial).some((key) => initial[key] !== current[key]);
+  };
+
+  const handleRequestClose = () => {
+    if (isDirty()) {
+      setShowDiscardDialog(true);
+      return;
+    }
+    onCloseAction();
+  };
+
+  useEffect(() => {
+    if (open && !wasOpenRef.current) {
+      initialSnapshotRef.current = getCurrentSnapshot();
+    }
+    if (!open) {
+      wasOpenRef.current = false;
+      return;
+    }
+    wasOpenRef.current = true;
+  }, [open, editBuilding, editWard, editName, editEventDate]);
+
   return (
-    <Dialog open={open} onOpenChange={(nextOpen) => !nextOpen && onCloseAction()}>
+    <Dialog open={open} onOpenChange={(nextOpen) => !nextOpen && handleRequestClose()}>
       <DialogContent className="sm:max-w-3xl">
         <DialogHeader>
           <DialogTitle>Edit event</DialogTitle>
@@ -419,6 +461,7 @@ export function EditEventDialog({
                 type="time"
                 min="05:00"
                 max="23:00"
+                step={900}
                 autoComplete="off"
                 value={editStartTime}
                 onChange={(e) => setEditStartTimeAction(e.target.value)}
@@ -431,6 +474,7 @@ export function EditEventDialog({
                 type="time"
                 min="05:00"
                 max="23:00"
+                step={900}
                 autoComplete="off"
                 value={editEndTime}
                 onChange={(e) => setEditEndTimeAction(e.target.value)}
@@ -452,7 +496,7 @@ export function EditEventDialog({
           </div>
         </div>
         <DialogFooter className="pt-2">
-          <Button variant="outline" className="w-full sm:w-auto" onClick={onCloseAction}>
+          <Button variant="outline" className="w-full sm:w-auto" onClick={handleRequestClose}>
             Cancel
           </Button>
           <Button
@@ -473,6 +517,14 @@ export function EditEventDialog({
           </Button>
         </DialogFooter>
       </DialogContent>
+      <UnsavedChangesDialog
+        open={showDiscardDialog}
+        onCancel={() => setShowDiscardDialog(false)}
+        onConfirm={() => {
+          setShowDiscardDialog(false);
+          onCloseAction();
+        }}
+      />
     </Dialog>
   );
 }
