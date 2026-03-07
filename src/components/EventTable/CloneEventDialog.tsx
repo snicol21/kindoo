@@ -111,7 +111,8 @@ export function CloneEventDialog({
   onClearLinkedContact,
   contactChangeState,
 }: CloneEventDialogProps) {
-  const initialSnapshotRef = useRef<Record<string, string> | null>(null);
+  type Snapshot = Record<string, string>;
+  const initialSnapshotRef = useRef<Snapshot | null>(null);
   const wasOpenRef = useRef(false);
   const [showDiscardDialog, setShowDiscardDialog] = useState(false);
   const isNameFocus = contactFocusField === 'name';
@@ -165,9 +166,9 @@ export function CloneEventDialog({
     ? 'text-amber-800/80 dark:text-amber-100/80'
     : 'text-emerald-800/80 dark:text-emerald-100/80';
 
-  const getCurrentSnapshot = () => ({
-    building: cloneBuilding,
-    ward: cloneWard,
+  const getCurrentSnapshot = (): Snapshot => ({
+    building: String(cloneBuilding),
+    ward: String(cloneWard),
     name: cloneName.trim(),
     eventDate: cloneEventDate,
     startTime: cloneStartTime,
@@ -181,7 +182,7 @@ export function CloneEventDialog({
     const initial = initialSnapshotRef.current;
     if (!initial) return false;
     const current = getCurrentSnapshot();
-    return Object.keys(initial).some((key) => initial[key] !== current[key]);
+    return Object.entries(initial).some(([key, value]) => value !== current[key]);
   };
 
   const handleRequestClose = () => {
