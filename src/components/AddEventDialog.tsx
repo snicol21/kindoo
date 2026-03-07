@@ -158,6 +158,9 @@ export function AddEventDialog({
   const getCurrentSnapshot = (): Snapshot => {
     const form = formRef.current;
     const formData = form ? new FormData(form) : new FormData();
+    const eventDateValue = String(formData.get('eventDate') ?? '') || minEventDate;
+    const startTimeValue = String(formData.get('startTime') ?? '') || defaultStartTime;
+    const endTimeValue = String(formData.get('endTime') ?? '') || defaultEndTime;
     return {
       building: String(selectedBuilding),
       ward: String(selectedWard),
@@ -165,9 +168,9 @@ export function AddEventDialog({
       email: typedEmail.trim(),
       phone: typedPhone.trim(),
       description: descriptionValue.trim(),
-      eventDate: String(formData.get('eventDate') ?? ''),
-      startTime: String(formData.get('startTime') ?? ''),
-      endTime: String(formData.get('endTime') ?? ''),
+      eventDate: eventDateValue,
+      startTime: startTimeValue,
+      endTime: endTimeValue,
     };
   };
 

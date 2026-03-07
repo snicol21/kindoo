@@ -194,15 +194,29 @@ export function CloneEventDialog({
   };
 
   useEffect(() => {
-    if (open && !wasOpenRef.current) {
-      initialSnapshotRef.current = getCurrentSnapshot();
-    }
     if (!open) {
       wasOpenRef.current = false;
+      initialSnapshotRef.current = null;
       return;
     }
+    if (wasOpenRef.current) return;
+    const snapshot = getCurrentSnapshot();
+    const snapshotReady = !!(snapshot.eventDate && snapshot.startTime && snapshot.endTime);
+    if (!snapshotReady) return;
+    initialSnapshotRef.current = snapshot;
     wasOpenRef.current = true;
-  }, [open, cloneBuilding, cloneWard, cloneName, cloneEventDate]);
+  }, [
+    open,
+    cloneBuilding,
+    cloneWard,
+    cloneName,
+    cloneEventDate,
+    cloneStartTime,
+    cloneEndTime,
+    clonePhone,
+    cloneEmail,
+    cloneDescription,
+  ]);
 
   return (
     <Dialog open={open} onOpenChange={(nextOpen) => !nextOpen && handleRequestClose()}>

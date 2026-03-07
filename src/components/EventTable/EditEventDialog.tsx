@@ -194,15 +194,29 @@ export function EditEventDialog({
   };
 
   useEffect(() => {
-    if (open && !wasOpenRef.current) {
-      initialSnapshotRef.current = getCurrentSnapshot();
-    }
     if (!open) {
       wasOpenRef.current = false;
+      initialSnapshotRef.current = null;
       return;
     }
+    if (wasOpenRef.current) return;
+    const snapshot = getCurrentSnapshot();
+    const snapshotReady = !!(snapshot.eventDate && snapshot.startTime && snapshot.endTime);
+    if (!snapshotReady) return;
+    initialSnapshotRef.current = snapshot;
     wasOpenRef.current = true;
-  }, [open, editBuilding, editWard, editName, editEventDate]);
+  }, [
+    open,
+    editBuilding,
+    editWard,
+    editName,
+    editEventDate,
+    editStartTime,
+    editEndTime,
+    editPhone,
+    editEmail,
+    editDescription,
+  ]);
 
   return (
     <Dialog open={open} onOpenChange={(nextOpen) => !nextOpen && handleRequestClose()}>
