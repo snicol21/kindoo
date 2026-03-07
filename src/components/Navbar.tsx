@@ -1,17 +1,13 @@
 import Link from 'next/link';
-import { ThemeToggle } from '@/components/ThemeToggle';
 import { CalendarDays } from 'lucide-react';
 import { Suspense } from 'react';
 import { NavbarUserSection } from '@/components/NavbarUserSection';
-import { Button } from '@/components/_ui/button';
 
 function NavbarUserFallback() {
   return (
-    <div className="flex items-center gap-3">
-      <ThemeToggle />
-      <Button asChild size="sm">
-        <Link href="/auth/signin">Sign In</Link>
-      </Button>
+    <div className="flex items-center gap-3" aria-hidden="true">
+      <div className="h-8 w-8 animate-pulse rounded bg-muted" />
+      <div className="h-9 w-24 animate-pulse rounded bg-muted" />
     </div>
   );
 }
