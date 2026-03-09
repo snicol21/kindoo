@@ -4,6 +4,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 AUTOMATION_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 PLIST_TARGET="${HOME}/Library/LaunchAgents/com.kindoo.license-worker.plist"
+WRAPPER_SCRIPT="${SCRIPT_DIR}/run-license-worker.sh"
 
 # Prefer stable Node install paths for launchd; avoid ephemeral fnm multishell paths.
 NODE_CANDIDATES=(
@@ -34,6 +35,7 @@ fi
 
 mkdir -p "${HOME}/Library/LaunchAgents"
 mkdir -p "${HOME}/Library/Logs"
+chmod +x "${WRAPPER_SCRIPT}"
 
 # Build stable dist snapshot used by the launch agent.
 cd "${AUTOMATION_ROOT}"
@@ -49,6 +51,7 @@ cat > "${PLIST_TARGET}" <<PLIST
 
     <key>ProgramArguments</key>
     <array>
+      <string>${WRAPPER_SCRIPT}</string>
       <string>${NODE_BIN}</string>
       <string>${AUTOMATION_ROOT}/dist/src/worker.js</string>
       <string>--watch</string>

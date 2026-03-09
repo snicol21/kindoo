@@ -7,6 +7,7 @@
 
     <key>ProgramArguments</key>
     <array>
+      <string>/Users/your-user/path/to/kindoo/automation-service/macos/run-license-worker.sh</string>
       <string>/usr/local/bin/node</string>
       <string>/Users/your-user/path/to/kindoo/automation-service/dist/src/worker.js</string>
       <string>--watch</string>

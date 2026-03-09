@@ -934,11 +934,6 @@ export function KindooLicenseDialog({
               Retry only after a Kindoo manager removes it.
             </p>
           )}
-          {showActionButtons && !isLicenseCompleted && !queuedJobId && !isPollingStatus && (
-            <p className="w-full max-w-[28rem] text-xs text-amber-700 dark:text-amber-300 sm:mr-auto sm:w-auto sm:max-w-none">
-              Early override: creating now may consume a Kindoo license seat sooner than needed.
-            </p>
-          )}
           {!showActionButtons && (
             <p className="w-full max-w-[28rem] text-xs text-muted-foreground sm:mr-auto sm:w-auto sm:max-w-none">
               Loading latest status...
@@ -1008,23 +1003,7 @@ export function KindooLicenseDialog({
               {isSubmitting ? 'Queueing...' : 'Retry anyway'}
             </Button>
           )}
-          {showActionButtons && !isLicenseCompleted && (
-            <Button
-              variant="outline"
-              className="w-full border-amber-400 bg-amber-100 text-amber-900 hover:border-amber-500 hover:bg-amber-200 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-100 dark:hover:border-amber-500 dark:hover:bg-amber-900/60 sm:w-auto"
-              disabled={!licenseEvent || isSubmitting || !!queuedJobId}
-              onClick={queueLicenseRequest}
-            >
-              {!isSubmitting && !(queuedJobId && isPollingStatus) && (
-                <AlertTriangle className="mr-2 h-4 w-4" />
-              )}
-              {isSubmitting
-                ? 'Requesting...'
-                : queuedJobId && isPollingStatus
-                  ? 'Processing...'
-                  : 'Create early license now'}
-            </Button>
-          )}
+          {showActionButtons && !isLicenseCompleted && null}
           {!showActionButtons && (
             <Button variant="outline" className="w-full sm:w-auto" disabled>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
