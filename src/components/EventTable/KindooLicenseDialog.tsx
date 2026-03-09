@@ -896,7 +896,7 @@ export function KindooLicenseDialog({
           {!isLicenseCompleted && (
             <Button
               variant="outline"
-              className="border-amber-400 bg-amber-100 text-amber-900 hover:border-amber-500 hover:bg-amber-200"
+              className="border-amber-400 bg-amber-100 text-amber-900 hover:border-amber-500 hover:bg-amber-200 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-100 dark:hover:border-amber-500 dark:hover:bg-amber-900/60"
               disabled={!licenseEvent || isSubmitting || !!queuedJobId}
               onClick={queueLicenseRequest}
             >
