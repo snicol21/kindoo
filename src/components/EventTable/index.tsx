@@ -347,7 +347,37 @@ export function EventTable({
     };
 
     let eventSource: EventSource | null = null;
-    if (typeof EventSource !== 'undefined') {
+    let reconnectTimeout: ReturnType<typeof globalThis.setTimeout> | null = null;
+    let reconnectDelayMs = 1000;
+
+    const clearReconnect = () => {
+      if (reconnectTimeout) {
+        globalThis.clearTimeout(reconnectTimeout);
+        reconnectTimeout = null;
+      }
+    };
+
+    const scheduleReconnect = () => {
+      if (document.visibilityState !== 'visible') return;
+      if (reconnectTimeout) return;
+      reconnectTimeout = globalThis.setTimeout(() => {
+        reconnectTimeout = null;
+        reconnectDelayMs = Math.min(reconnectDelayMs * 2, 30000);
+        connectStream();
+      }, reconnectDelayMs);
+    };
+
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        reconnectDelayMs = 1000;
+        clearReconnect();
+        connectStream();
+      }
+    };
+
+    const connectStream = () => {
+      if (typeof EventSource === 'undefined') return;
+      eventSource?.close();
       eventSource = new EventSource('/api/license-jobs/stream');
       eventSource.addEventListener('license-job-updated', (rawEvent) => {
         try {
@@ -361,7 +391,14 @@ export function EventTable({
           // Ignore parse errors and keep polling fallback.
         }
       });
-    }
+      eventSource.addEventListener('error', () => {
+        eventSource?.close();
+        scheduleReconnect();
+      });
+    };
+
+    connectStream();
+    document.addEventListener('visibilitychange', handleVisibility);
 
     const intervalId = globalThis.setInterval(() => {
       if (document.visibilityState === 'visible') {
@@ -375,6 +412,8 @@ export function EventTable({
         globalThis.clearTimeout(reloadTimeout);
       }
       globalThis.clearInterval(intervalId);
+      document.removeEventListener('visibilitychange', handleVisibility);
+      clearReconnect();
       eventSource?.close();
     };
   }, [events]);

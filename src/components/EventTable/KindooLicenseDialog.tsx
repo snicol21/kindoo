@@ -381,7 +381,37 @@ export function KindooLicenseDialog({
     void pollStatus();
 
     let eventSource: EventSource | null = null;
-    if (typeof EventSource !== 'undefined') {
+    let reconnectTimeout: ReturnType<typeof globalThis.setTimeout> | null = null;
+    let reconnectDelayMs = 1000;
+
+    const clearReconnect = () => {
+      if (reconnectTimeout) {
+        globalThis.clearTimeout(reconnectTimeout);
+        reconnectTimeout = null;
+      }
+    };
+
+    const scheduleReconnect = () => {
+      if (document.visibilityState !== 'visible') return;
+      if (reconnectTimeout) return;
+      reconnectTimeout = globalThis.setTimeout(() => {
+        reconnectTimeout = null;
+        reconnectDelayMs = Math.min(reconnectDelayMs * 2, 30000);
+        connectStream();
+      }, reconnectDelayMs);
+    };
+
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        reconnectDelayMs = 1000;
+        clearReconnect();
+        connectStream();
+      }
+    };
+
+    const connectStream = () => {
+      if (typeof EventSource === 'undefined') return;
+      eventSource?.close();
       eventSource = new EventSource('/api/license-jobs/stream');
       eventSource.addEventListener('license-job-updated', (rawEvent) => {
         try {
@@ -394,7 +424,14 @@ export function KindooLicenseDialog({
           // Ignore stream parse errors and keep polling fallback.
         }
       });
-    }
+      eventSource.addEventListener('error', () => {
+        eventSource?.close();
+        scheduleReconnect();
+      });
+    };
+
+    connectStream();
+    document.addEventListener('visibilitychange', handleVisibility);
 
     const interval = globalThis.setInterval(() => {
       void pollStatus();
@@ -403,6 +440,8 @@ export function KindooLicenseDialog({
     return () => {
       cancelled = true;
       globalThis.clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibility);
+      clearReconnect();
       eventSource?.close();
     };
   }, [queuedJobId, licenseEvent, isPollingStatus, hasAppliedCompletion]);
@@ -436,6 +475,10 @@ export function KindooLicenseDialog({
       : latestJob?.completionType === 'temporary-license-created'
         ? 'Temporary license created'
         : null;
+  const isLicenseCompleted =
+    !!licenseEvent?.kindooLicenseCreated ||
+    latestJob?.completionType === 'existing-active-license' ||
+    latestJob?.completionType === 'temporary-license-created';
   const latestDurationSec =
     typeof latestJob?.durationMs === 'number'
       ? Math.round((latestJob.durationMs ?? 0) / 1000)
@@ -781,14 +824,14 @@ export function KindooLicenseDialog({
           </div>
         )}
         <DialogFooter className="flex-col items-start gap-2 sm:flex-row sm:items-center">
-          {!!licenseEvent?.kindooLicenseCreated && !queuedJobId && !isPollingStatus && (
+          {isLicenseCompleted && !queuedJobId && !isPollingStatus && (
             <p className="w-full max-w-[28rem] text-xs text-muted-foreground sm:mr-auto sm:w-auto sm:max-w-none">
               This event already has a license.
               <br />
               Retry only after a Kindoo manager removes it.
             </p>
           )}
-          {!licenseEvent?.kindooLicenseCreated && !queuedJobId && !isPollingStatus && (
+          {!isLicenseCompleted && !queuedJobId && !isPollingStatus && (
             <p className="w-full max-w-[28rem] text-xs text-amber-700 dark:text-amber-300 sm:mr-auto sm:w-auto sm:max-w-none">
               Early override: creating now may consume a Kindoo license seat sooner than needed.
             </p>
@@ -845,12 +888,12 @@ export function KindooLicenseDialog({
               {isRetrying ? 'Retrying...' : 'Retry'}
             </Button>
           ) : null}
-          {!!licenseEvent?.kindooLicenseCreated && !queuedJobId && !isPollingStatus && (
+          {isLicenseCompleted && !queuedJobId && !isPollingStatus && (
             <Button variant="outline" disabled={isSubmitting} onClick={queueLicenseRequest}>
               {isSubmitting ? 'Queueing...' : 'Retry anyway'}
             </Button>
           )}
-          {!licenseEvent?.kindooLicenseCreated && (
+          {!isLicenseCompleted && (
             <Button
               variant="outline"
               className="border-amber-400 bg-amber-100 text-amber-900 hover:border-amber-500 hover:bg-amber-200"
