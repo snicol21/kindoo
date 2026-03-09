@@ -70,17 +70,17 @@ function getJobStatusVisual(status: LicenseJobStatus) {
     case 'processing':
       return {
         label: 'In progress',
-        textClassName: 'text-amber-800 dark:text-amber-300',
+        textClassName: 'text-blue-700 dark:text-blue-300',
         badgeClassName:
-          'border border-amber-300 bg-amber-100/80 dark:border-amber-700/60 dark:bg-amber-900/30',
+          'border border-blue-200 bg-blue-100/80 dark:border-blue-700/60 dark:bg-blue-900/30',
         icon: <Loader2 className="h-3.5 w-3.5 animate-spin" />,
       };
     case 'queued':
       return {
         label: 'Queued',
-        textClassName: 'text-amber-800 dark:text-amber-300',
+        textClassName: 'text-blue-700 dark:text-blue-300',
         badgeClassName:
-          'border border-amber-300 bg-amber-100/80 dark:border-amber-700/60 dark:bg-amber-900/30',
+          'border border-blue-200 bg-blue-100/80 dark:border-blue-700/60 dark:bg-blue-900/30',
         icon: <Clock className="h-3.5 w-3.5" />,
       };
     case 'failed':

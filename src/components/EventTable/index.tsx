@@ -87,14 +87,14 @@ const PERSIST_PENDING_OUTCOMES = new Set([
 function getLicenseOutcomeVisual(outcome: string) {
   if (outcome === 'Retry in progress') {
     return {
-      textClassName: 'text-amber-700 hover:text-amber-800',
+      textClassName: 'text-blue-600 hover:text-blue-700 dark:text-blue-300 dark:hover:text-blue-200',
       icon: <Loader2 className="h-3.5 w-3.5 animate-spin" />,
     };
   }
 
   if (outcome === 'Retry queued') {
     return {
-      textClassName: 'text-amber-700 hover:text-amber-800',
+      textClassName: 'text-blue-600 hover:text-blue-700 dark:text-blue-300 dark:hover:text-blue-200',
       icon: <Clock className="h-3.5 w-3.5" />,
     };
   }
@@ -108,14 +108,14 @@ function getLicenseOutcomeVisual(outcome: string) {
 
   if (outcome === 'Request in progress') {
     return {
-      textClassName: 'text-amber-700 hover:text-amber-800',
+      textClassName: 'text-blue-600 hover:text-blue-700 dark:text-blue-300 dark:hover:text-blue-200',
       icon: <Loader2 className="h-3.5 w-3.5 animate-spin" />,
     };
   }
 
   if (outcome === 'Request queued') {
     return {
-      textClassName: 'text-amber-700 hover:text-amber-800',
+      textClassName: 'text-blue-600 hover:text-blue-700 dark:text-blue-300 dark:hover:text-blue-200',
       icon: <Clock className="h-3.5 w-3.5" />,
     };
   }
@@ -136,7 +136,7 @@ function getLicenseOutcomeVisual(outcome: string) {
 
   if (outcome === 'Auto-schedule pending') {
     return {
-      textClassName: 'text-slate-600 hover:text-slate-700',
+      textClassName: 'text-slate-600 hover:text-slate-700 dark:text-slate-300 dark:hover:text-slate-200',
       icon: <Clock className="h-3.5 w-3.5" />,
     };
   }
@@ -1157,6 +1157,8 @@ export function EventTable({
                   ? `License schedules in ${formatCountdownMs(msUntilDue)}`
                   : 'License schedule time reached'
                 : licenseOutcome;
+              const scheduleTimeReached =
+                shouldUseCountdownAsOutcomeLabel && (msUntilDue === null || msUntilDue <= 0);
               return (
                 <TableRow
                   key={event.id}
@@ -1210,7 +1212,11 @@ export function EventTable({
                             {hasLicenseStatus ? (
                               <button
                                 type="button"
-                                className={`inline-flex w-fit cursor-pointer items-center gap-1.5 text-xs font-medium disabled:cursor-not-allowed ${getLicenseOutcomeVisual(licenseOutcome).textClassName}`}
+                                className={`inline-flex w-fit cursor-pointer items-center gap-1.5 text-xs font-medium disabled:cursor-not-allowed ${getLicenseOutcomeVisual(licenseOutcome).textClassName} ${
+                                  scheduleTimeReached
+                                    ? 'text-blue-700 hover:text-blue-800 dark:text-blue-200 dark:hover:text-blue-100'
+                                    : ''
+                                }`}
                                 onClick={() => {
                                   setLicenseEvent(event);
                                   setLicenseOutcomePreview(licenseOutcome);
@@ -1228,16 +1234,6 @@ export function EventTable({
                                 aria-hidden="true"
                               />
                             )}
-                          </div>
-                        )}
-                        {shouldShowScheduleCountdown && !shouldUseCountdownAsOutcomeLabel && (
-                          <div className="mt-1 flex items-center gap-1.5 text-[11px] font-medium text-amber-700">
-                            <Clock className="h-3.5 w-3.5 shrink-0" />
-                            <span>
-                              {msUntilDue !== null && msUntilDue > 0
-                                ? `License schedules in ${formatCountdownMs(msUntilDue)}`
-                                : 'License schedule time reached'}
-                            </span>
                           </div>
                         )}
                       </div>
@@ -1376,7 +1372,11 @@ export function EventTable({
                             {hasLicenseStatus ? (
                               <button
                                 type="button"
-                                className={`inline-flex w-fit cursor-pointer items-center gap-1.5 text-xs font-medium disabled:cursor-not-allowed ${getLicenseOutcomeVisual(licenseOutcome).textClassName}`}
+                                className={`inline-flex w-fit cursor-pointer items-center gap-1.5 text-xs font-medium disabled:cursor-not-allowed ${getLicenseOutcomeVisual(licenseOutcome).textClassName} ${
+                                  scheduleTimeReached
+                                    ? 'text-blue-700 hover:text-blue-800 dark:text-blue-200 dark:hover:text-blue-100'
+                                    : ''
+                                }`}
                                 onClick={() => {
                                   setLicenseEvent(event);
                                   setLicenseOutcomePreview(licenseOutcome);
