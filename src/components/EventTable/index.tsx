@@ -75,6 +75,13 @@ const HIDE_SCHEDULE_COUNTDOWN_OUTCOMES = new Set([
   'License created',
 ]);
 
+const PERSIST_PENDING_OUTCOMES = new Set([
+  'Request queued',
+  'Request in progress',
+  'Retry queued',
+  'Retry in progress',
+]);
+
 function getLicenseOutcomeVisual(outcome: string) {
   if (outcome === 'Retry in progress') {
     return {
@@ -381,17 +388,24 @@ export function EventTable({
       );
 
       if (cancelled) return;
-      const nextOutcomes: Record<string, string> = {};
-      for (const [eventId, outcome] of results) {
-        if (typeof outcome === 'string' && outcome.length > 0) {
-          nextOutcomes[eventId] = outcome;
+      setLicenseOutcomeByEvent((prev) => {
+        const nextOutcomes: Record<string, string> = {};
+        for (const [eventId, outcome] of results) {
+          if (typeof outcome === 'string' && outcome.length > 0) {
+            nextOutcomes[eventId] = outcome;
+            continue;
+          }
+          const previousOutcome = prev[eventId];
+          if (previousOutcome && PERSIST_PENDING_OUTCOMES.has(previousOutcome)) {
+            nextOutcomes[eventId] = previousOutcome;
+          }
         }
-      }
+        return nextOutcomes;
+      });
       const nextLoaded: Record<string, boolean> = {};
       for (const trackedEvent of trackedEvents) {
         nextLoaded[trackedEvent.id] = true;
       }
-      setLicenseOutcomeByEvent(nextOutcomes);
       setLicenseOutcomeLoadedByEvent(nextLoaded);
     };
 

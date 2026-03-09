@@ -10,9 +10,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/_ui/dialog';
-import { AlertTriangle, CheckCircle2, Clock, Loader2 } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Clock, Loader2, RotateCw } from 'lucide-react';
 import { parseTimeToMinutes } from '@/utils/timeUtils';
 import { useEffect, useRef, useState } from 'react';
+import { toast } from 'sonner';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/_ui/tooltip';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -196,13 +203,9 @@ export function KindooLicenseDialog({
   const licenseDialogContentRef = useRef<HTMLDivElement | null>(null);
   const submitKindooLicenseStatusRef = useRef(submitKindooLicenseStatusAction);
 
-  const [statusMessage, setStatusMessage] = useState<string | null>(null);
-  const [statusDetails, setStatusDetails] = useState<string | null>(null);
-  const [statusType, setStatusType] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [queuedJobId, setQueuedJobId] = useState<string | null>(null);
   const [jobStatus, setJobStatus] = useState<LicenseJobStatus | null>(null);
   const [latestJob, setLatestJob] = useState<LicenseJobSummary | null>(null);
-  const [workerPollIntervalMs, setWorkerPollIntervalMs] = useState<number | null>(null);
   const [isPollingStatus, setIsPollingStatus] = useState(false);
   const [isRetrying, setIsRetrying] = useState(false);
   const [hasAppliedCompletion, setHasAppliedCompletion] = useState(false);
@@ -216,13 +219,9 @@ export function KindooLicenseDialog({
   // Reset all state when dialog closes
   useEffect(() => {
     if (!licenseEvent) {
-      setStatusType('idle');
-      setStatusMessage(null);
-      setStatusDetails(null);
       setQueuedJobId(null);
       setJobStatus(null);
       setLatestJob(null);
-      setWorkerPollIntervalMs(null);
       setIsPollingStatus(false);
       setIsRetrying(false);
       setHasAppliedCompletion(false);
@@ -273,31 +272,15 @@ export function KindooLicenseDialog({
         const job = data?.job as LicenseJobSummary | null;
         setLatestJob(job ?? null);
 
-        if (typeof data?.workerPollIntervalMs === 'number')
-          setWorkerPollIntervalMs(data.workerPollIntervalMs);
-
         if (job?.status === 'queued' || job?.status === 'processing') {
           setQueuedJobId(job.id);
           setJobStatus(job.status);
           setIsPollingStatus(true);
-          setStatusType('loading');
 
           if (job.status === 'processing') {
             onLicenseOutcomeChangeAction?.(licenseEvent.id, 'Request in progress');
-            setStatusMessage('Creating temporary license…');
-            setStatusDetails('Worker is processing this request now.');
           } else {
             onLicenseOutcomeChangeAction?.(licenseEvent.id, 'Request queued');
-            setStatusMessage('Request queued.');
-            const pollSec =
-              typeof data?.workerPollIntervalMs === 'number'
-                ? Math.ceil(data.workerPollIntervalMs / 1000)
-                : null;
-            setStatusDetails(
-              pollSec
-                ? `Worker checks about every ${pollSec}s.`
-                : 'Waiting for worker to claim this request.'
-            );
           }
         }
       } catch {
@@ -323,9 +306,6 @@ export function KindooLicenseDialog({
         if (!res.ok) throw new Error(typeof data?.error === 'string' ? data.error : 'Failed to load status.');
 
         const job = data?.job;
-        if (typeof data?.workerPollIntervalMs === 'number')
-          setWorkerPollIntervalMs(data.workerPollIntervalMs);
-
         const nextStatus: LicenseJobStatus | null =
           ['queued', 'processing', 'completed', 'failed'].includes(job?.status)
             ? job.status
@@ -337,54 +317,26 @@ export function KindooLicenseDialog({
 
         if (nextStatus === 'queued') {
           onLicenseOutcomeChangeAction?.(licenseEvent.id, 'Request queued');
-          setStatusType('loading');
-          setStatusMessage('Request queued.');
-          const pollSec = data?.workerPollIntervalMs
-            ? Math.ceil(data.workerPollIntervalMs / 1000)
-            : workerPollIntervalMs
-              ? Math.ceil(workerPollIntervalMs / 1000)
-              : null;
-          setStatusDetails(
-            pollSec ? `Worker checks about every ${pollSec}s.` : 'Waiting for worker.'
-          );
           return;
         }
 
         if (nextStatus === 'processing') {
           onLicenseOutcomeChangeAction?.(licenseEvent.id, 'Request in progress');
-          setStatusType('loading');
-          setStatusMessage('Creating temporary license…');
-          setStatusDetails('Worker is processing this request now.');
           return;
         }
 
         if (nextStatus === 'failed') {
           onLicenseOutcomeChangeAction?.(licenseEvent.id, 'Request failed');
-          setStatusType('error');
-          setStatusMessage('License request failed.');
-          setStatusDetails(
-            typeof job?.lastError === 'string' && job.lastError.trim()
-              ? job.lastError
-              : 'The worker reported a failure.'
-          );
           setIsPollingStatus(false);
           return;
         }
 
         if (nextStatus === 'completed') {
-          setStatusType('success');
           const ct = typeof job?.completionType === 'string' ? job.completionType : 'temporary-license-created';
           onLicenseOutcomeChangeAction?.(
             licenseEvent.id,
             ct === 'existing-active-license' ? 'Active license already existed' : 'Temporary license created'
           );
-          const durationText = typeof job?.durationMs === 'number' ? ` (${Math.round(job.durationMs / 1000)}s)` : '';
-          setStatusMessage(
-            ct === 'existing-active-license'
-              ? `User already has an active Kindoo license.${durationText}`
-              : `Temporary Kindoo license created successfully.${durationText}`
-          );
-          setStatusDetails(typeof job?.statusDetails === 'string' ? job.statusDetails : null);
           setIsPollingStatus(false);
 
           if (!hasAppliedCompletion) {
@@ -392,11 +344,8 @@ export function KindooLicenseDialog({
             setHasAppliedCompletion(true);
           }
         }
-      } catch (err) {
+      } catch {
         if (cancelled) return;
-        setStatusType('error');
-        setStatusMessage('Unable to refresh request status.');
-        setStatusDetails(err instanceof Error ? err.message : 'Failed to load request status.');
       }
     };
 
@@ -500,6 +449,11 @@ export function KindooLicenseDialog({
   const latestRunTimestamp = latestJob?.claimedAt ?? latestJob?.createdAt ?? latestJob?.completedAt ?? null;
   const latestRunDate = latestRunTimestamp ? new Date(latestRunTimestamp) : null;
 
+  const latestFailureMessage = latestJob?.statusDetails ?? latestJob?.lastError ?? null;
+  const trimmedFailureMessage = latestFailureMessage
+    ? `${latestFailureMessage.slice(0, 140)}${latestFailureMessage.length > 140 ? '…' : ''}`
+    : null;
+
   const runDeltaMinutes =
     latestRunDate && scheduledDateTime
       ? (latestRunDate.getTime() - scheduledDateTime.getTime()) / 60_000
@@ -529,35 +483,23 @@ export function KindooLicenseDialog({
   const retryFailedJob = async () => {
     const retryJobId = queuedJobId ?? latestJob?.id;
     if (!retryJobId || !licenseEvent) {
-      setStatusType('error');
-      setStatusMessage('Retry failed.');
-      setStatusDetails('No failed job is available to retry.');
+      toast.error('No failed job is available to retry.');
       return;
     }
 
     setIsRetrying(true);
-    setStatusType('loading');
-    setStatusMessage('Retry queued.');
-    setStatusDetails('Waiting for worker to claim this request.');
 
     try {
       const res = await fetch(`/api/license-jobs/${retryJobId}/retry`, { method: 'POST' });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(typeof data?.error === 'string' ? data.error : 'Failed to retry request.');
 
-      if (typeof data?.workerPollIntervalMs === 'number') setWorkerPollIntervalMs(data.workerPollIntervalMs);
-
       onLicenseOutcomeChangeAction?.(licenseEvent.id, 'Retry queued');
       setQueuedJobId(retryJobId);
       setJobStatus('queued');
       setIsPollingStatus(true);
-      setStatusType('loading');
-      setStatusMessage('Retry queued.');
-      setStatusDetails('Waiting for worker to claim this request.');
     } catch (err) {
-      setStatusType('error');
-      setStatusMessage('Retry failed.');
-      setStatusDetails(err instanceof Error ? err.message : 'Retry failed.');
+      toast.error(err instanceof Error ? err.message : 'Retry failed.');
     } finally {
       setIsRetrying(false);
     }
@@ -583,7 +525,8 @@ export function KindooLicenseDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex-1 space-y-5 overflow-y-auto pr-1">
+        <TooltipProvider delayDuration={200}>
+          <div className="flex-1 space-y-5 overflow-y-auto pr-1">
           {licenseEvent && (
             <>
               {/* Event details */}
@@ -628,16 +571,40 @@ export function KindooLicenseDialog({
                     <MetaRow
                       label="Status"
                       value={
-                        latestJob ? (
-                          <span
-                            className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-semibold ${latestStatusVisual?.textClassName} ${latestStatusVisual?.badgeClassName}`}
-                          >
-                            {latestStatusVisual?.icon}
-                            {latestStatusVisual?.label}
-                          </span>
-                        ) : (
-                          <span className="text-muted-foreground">Not started</span>
-                        )
+                        <div className="flex items-center justify-end gap-2">
+                          {latestJob ? (
+                            <span
+                              className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-semibold ${latestStatusVisual?.textClassName} ${latestStatusVisual?.badgeClassName}`}
+                            >
+                              {latestStatusVisual?.icon}
+                              {latestStatusVisual?.label}
+                            </span>
+                          ) : (
+                            <span className="text-muted-foreground">Not started</span>
+                          )}
+                          {canRetryFailedJob ? (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-6 w-6"
+                                  onClick={retryFailedJob}
+                                  disabled={isRetrying}
+                                  aria-label="Retry failed job"
+                                >
+                                  {isRetrying ? (
+                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                  ) : (
+                                    <RotateCw className="h-3.5 w-3.5" />
+                                  )}
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>Retry failed job</TooltipContent>
+                            </Tooltip>
+                          ) : null}
+                        </div>
                       }
                     />
                     <MetaRow
@@ -663,54 +630,10 @@ export function KindooLicenseDialog({
                     />
                   </div>
 
-                  <div className="border-t border-border/60 px-4 py-3 text-sm min-h-[96px]">
-                    {statusType !== 'idle' ? (
-                      <div
-                        className={`rounded-md border px-3 py-2 text-sm ${
-                          statusType === 'loading'
-                            ? 'border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-800/40 dark:bg-amber-950/40 dark:text-amber-100'
-                            : statusType === 'success'
-                              ? 'border-emerald-200 bg-emerald-50 text-emerald-900 dark:border-emerald-800/40 dark:bg-emerald-950/40 dark:text-emerald-100'
-                              : 'border-red-200 bg-red-50 text-red-900 dark:border-red-800/40 dark:bg-red-950/40 dark:text-red-100'
-                        }`}
-                      >
-                        <p className={`font-medium ${statusType === 'loading' ? 'animate-pulse' : ''}`}>
-                          {statusMessage}
-                        </p>
-                        {statusDetails && <p className="mt-1 text-xs opacity-80">{statusDetails}</p>}
-                      </div>
-                    ) : latestJob?.status === 'failed' && (latestJob.statusDetails || latestJob.lastError) ? (
-                      <p className="text-xs text-muted-foreground">
-                        {latestJob.statusDetails || latestJob.lastError}
-                      </p>
-                    ) : (
-                      <p className="text-xs text-muted-foreground">
-                        No active alert. Status updates will appear here.
-                      </p>
-                    )}
-
-                    <div className="mt-2 min-h-[32px]">
-                      {canRetryFailedJob ? (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={retryFailedJob}
-                          disabled={isRetrying}
-                        >
-                          {isRetrying ? (
-                            <>
-                              <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-                              Retrying…
-                            </>
-                          ) : (
-                            'Retry failed job'
-                          )}
-                        </Button>
-                      ) : (
-                        <span className="sr-only">No retry action</span>
-                      )}
-                    </div>
+                  <div className="border-t border-border/60 px-4 py-3 text-xs text-muted-foreground">
+                    {latestJob?.status === 'failed' && trimmedFailureMessage
+                      ? `Failure: ${trimmedFailureMessage}`
+                      : 'Status details are available on the scheduled job record.'}
                   </div>
                 </div>
               </section>
@@ -732,7 +655,8 @@ export function KindooLicenseDialog({
               )}
             </>
           )}
-        </div>
+          </div>
+        </TooltipProvider>
 
         <DialogFooter>
           <Button variant="outline" onClick={onCloseAction}>
