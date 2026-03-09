@@ -126,17 +126,6 @@ function getLicenseOutcomeVisual(outcome: string) {
   };
 }
 
-function getBaseLicenseOutcome(event: EventWithCreator, effectiveLeadDays: number) {
-  if (event.kindooLicenseCreated) return 'License created';
-  const daysValue = getDaysUntilValue(event.eventDate);
-  const isFutureOrToday = Number.isFinite(daysValue) && daysValue >= 0;
-  const withinWindow = isFutureOrToday && daysValue <= effectiveLeadDays;
-  const hasContactEmail = !!event.contactEmail?.trim();
-  if (withinWindow && hasContactEmail) return 'Scheduled for license';
-  if (isFutureOrToday && hasContactEmail && !withinWindow) return 'Auto-schedule pending';
-  return null;
-}
-
 export function EventTable({
   events,
   isLoading,
@@ -1076,13 +1065,10 @@ export function EventTable({
               const isOptimistic = event.id.startsWith('optimistic-');
               const licenseOutcome = licenseOutcomeByEvent[event.id] ?? null;
               const hasLicenseStatus = !!licenseOutcome;
-              const baseLicenseOutcome = getBaseLicenseOutcome(event, effectiveLeadDays);
               const isLicenseOutcomeLoading =
                 !isOptimistic && !licenseOutcomeLoadedByEvent[event.id];
               const shouldShowLicensePlaceholder =
-                !isOptimistic &&
-                (hasLicenseStatus || isLicenseOutcomeLoading || !!baseLicenseOutcome);
-              const showLicensePreview = isLicenseOutcomeLoading && !!baseLicenseOutcome;
+                !isOptimistic && (hasLicenseStatus || isLicenseOutcomeLoading);
               return (
                 <TableRow
                   key={event.id}
@@ -1139,7 +1125,7 @@ export function EventTable({
                                 className={`inline-flex w-fit cursor-pointer items-center gap-1.5 text-xs font-medium disabled:cursor-not-allowed ${getLicenseOutcomeVisual(licenseOutcome).textClassName}`}
                                 onClick={() => {
                                   setLicenseEvent(event);
-                                  setLicenseOutcomePreview(licenseOutcome ?? baseLicenseOutcome);
+                                  setLicenseOutcomePreview(licenseOutcome);
                                 }}
                                 disabled={!onSetKindooLicenseCreated || isSavingLicenseStatus}
                               >
@@ -1148,11 +1134,6 @@ export function EventTable({
                                   {licenseOutcome}
                                 </span>
                               </button>
-                            ) : showLicensePreview ? (
-                              <div className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-                                {getLicenseOutcomeVisual(baseLicenseOutcome).icon}
-                                <span>{baseLicenseOutcome}</span>
-                              </div>
                             ) : (
                               <div
                                 className="h-4 w-36 rounded-full bg-muted/60 animate-pulse"
@@ -1300,7 +1281,7 @@ export function EventTable({
                                 className={`inline-flex w-fit cursor-pointer items-center gap-1.5 text-xs font-medium disabled:cursor-not-allowed ${getLicenseOutcomeVisual(licenseOutcome).textClassName}`}
                                 onClick={() => {
                                   setLicenseEvent(event);
-                                  setLicenseOutcomePreview(licenseOutcome ?? baseLicenseOutcome);
+                                  setLicenseOutcomePreview(licenseOutcome);
                                 }}
                                 disabled={!onSetKindooLicenseCreated || isSavingLicenseStatus}
                               >
@@ -1309,11 +1290,6 @@ export function EventTable({
                                   {licenseOutcome}
                                 </span>
                               </button>
-                            ) : showLicensePreview ? (
-                              <div className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-                                {getLicenseOutcomeVisual(baseLicenseOutcome).icon}
-                                <span>{baseLicenseOutcome}</span>
-                              </div>
                             ) : (
                               <div
                                 className="h-4 w-36 rounded-full bg-muted/60 animate-pulse"
