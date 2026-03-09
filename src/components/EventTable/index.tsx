@@ -92,6 +92,20 @@ function getLicenseOutcomeVisual(outcome: string) {
     icon: <Clock className="h-3.5 w-3.5" />,
   };
 
+  const automationQueuedBadge = {
+    textClassName: 'text-sky-700 dark:text-sky-300',
+    badgeClassName:
+      'border border-sky-200 bg-sky-50/80 dark:border-sky-700/60 dark:bg-sky-900/25',
+    icon: <Clock className="h-3.5 w-3.5" />,
+  };
+
+  const futureScheduledBadge = {
+    textClassName: 'text-slate-700 dark:text-slate-300',
+    badgeClassName:
+      'border border-slate-300 bg-slate-100/80 dark:border-slate-700/60 dark:bg-slate-900/30',
+    icon: <Clock className="h-3.5 w-3.5" />,
+  };
+
   const inProgressBadge = {
     textClassName: 'text-blue-700 dark:text-blue-300',
     badgeClassName:
@@ -138,11 +152,15 @@ function getLicenseOutcomeVisual(outcome: string) {
   }
 
   if (outcome === 'Scheduled for license') {
-    return queuedBadge;
+    return futureScheduledBadge;
   }
 
   if (outcome === 'Auto-schedule pending') {
-    return queuedBadge;
+    return futureScheduledBadge;
+  }
+
+  if (outcome === 'Scheduling queued') {
+    return automationQueuedBadge;
   }
 
   return completedBadge;
@@ -1156,12 +1174,12 @@ export function EventTable({
               const licenseOutcomeLabel = shouldUseCountdownAsOutcomeLabel
                 ? msUntilDue !== null && msUntilDue > 0
                   ? `License schedules in ${formatCountdownMs(msUntilDue)}`
-                  : 'Automation queued'
+                  : 'Scheduling queued'
                 : licenseOutcome;
               const scheduleTimeReached =
                 shouldUseCountdownAsOutcomeLabel && (msUntilDue === null || msUntilDue <= 0);
               const licenseOutcomeVisual = getLicenseOutcomeVisual(
-                scheduleTimeReached ? 'Request queued' : licenseOutcome ?? ''
+                scheduleTimeReached ? 'Scheduling queued' : licenseOutcome ?? ''
               );
               return (
                 <TableRow

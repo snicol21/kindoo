@@ -103,16 +103,6 @@ function getJobStatusVisual(status: LicenseJobStatus) {
 }
 
 function getOutcomeStatusVisual(outcome: string) {
-  if (outcome.startsWith('License schedules in ')) {
-    return {
-      label: outcome,
-      textClassName: 'text-blue-700 dark:text-blue-300',
-      badgeClassName:
-        'border border-blue-200 bg-blue-100/80 dark:border-blue-700/60 dark:bg-blue-900/30',
-      icon: <Clock className="h-3.5 w-3.5" />,
-    };
-  }
-
   if (outcome === 'Request in progress' || outcome === 'Retry in progress') {
     return {
       label: outcome,
@@ -123,13 +113,27 @@ function getOutcomeStatusVisual(outcome: string) {
     };
   }
 
-  if (
-    outcome === 'Request queued' ||
-    outcome === 'Retry queued' ||
-    outcome === 'Auto-schedule pending' ||
-    outcome === 'Scheduled for license' ||
-    outcome === 'Automation queued'
-  ) {
+  if (outcome === 'Auto-schedule pending' || outcome === 'Scheduled for license') {
+    return {
+      label: outcome,
+      textClassName: 'text-slate-700 dark:text-slate-300',
+      badgeClassName:
+        'border border-slate-300 bg-slate-100/80 dark:border-slate-700/60 dark:bg-slate-900/30',
+      icon: <Clock className="h-3.5 w-3.5" />,
+    };
+  }
+
+  if (outcome === 'Scheduling queued') {
+    return {
+      label: outcome,
+      textClassName: 'text-sky-700 dark:text-sky-300',
+      badgeClassName:
+        'border border-sky-200 bg-sky-50/80 dark:border-sky-700/60 dark:bg-sky-900/25',
+      icon: <Clock className="h-3.5 w-3.5" />,
+    };
+  }
+
+  if (outcome === 'Request queued' || outcome === 'Retry queued') {
     return {
       label: outcome,
       textClassName: 'text-blue-700 dark:text-blue-300',
@@ -538,18 +542,9 @@ export function KindooLicenseDialog({
     (initialLicenseOutcome === 'Auto-schedule pending' ||
       initialLicenseOutcome === 'Scheduled for license');
 
-  const shouldUseScheduleCountdownLabel =
-    !latestJob &&
-    !isScheduledPast &&
-    !!countdownLabel &&
-    (initialLicenseOutcome === 'Auto-schedule pending' ||
-      initialLicenseOutcome === 'Scheduled for license');
-
-  const effectiveOutcome = shouldUseScheduleCountdownLabel
-    ? `License schedules in ${countdownLabel}`
-    : shouldShowAutomationQueued
-      ? 'Automation queued'
-      : (completionLabel ?? initialLicenseOutcome ?? null);
+  const effectiveOutcome = shouldShowAutomationQueued
+    ? 'Scheduling queued'
+    : (completionLabel ?? initialLicenseOutcome ?? null);
 
   const latestStatusVisual = effectiveOutcome
     ? getOutcomeStatusVisual(effectiveOutcome)
