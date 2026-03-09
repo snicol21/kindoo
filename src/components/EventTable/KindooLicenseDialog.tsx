@@ -540,23 +540,29 @@ export function KindooLicenseDialog({
   const showActionButtons = !isInitializingStatus;
   const showMessageSection =
     latestJob?.status === 'completed' && latestJob?.completionType === 'temporary-license-created';
-  const showScheduledStatusSection = !!latestJob || isInitializingStatus;
+  const messagePlaceholderOutcomes = new Set(['Temporary license created']);
+  const statusPlaceholderOutcomes = new Set([
+    'Request queued',
+    'Request in progress',
+    'Request failed',
+    'Retry queued',
+    'Retry in progress',
+    'Retry failed',
+    'Temporary license created',
+    'Active license already existed',
+    'License created',
+  ]);
+  const hideStatusSectionForOutcome =
+    initialLicenseOutcome === 'Auto-schedule pending' ||
+    initialLicenseOutcome === 'Scheduled for license';
+  const showScheduledStatusSection =
+    !!latestJob || (isInitializingStatus && !hideStatusSectionForOutcome);
   const shouldRenderMessageSection =
-    showMessageSection || initialLicenseOutcome === 'Temporary license created';
+    showMessageSection ||
+    (initialLicenseOutcome !== null && messagePlaceholderOutcomes.has(initialLicenseOutcome));
   const shouldRenderStatusSection =
     showScheduledStatusSection ||
-    (initialLicenseOutcome !== null &&
-      [
-        'Request queued',
-        'Request in progress',
-        'Request failed',
-        'Retry queued',
-        'Retry in progress',
-        'Retry failed',
-        'Temporary license created',
-        'Active license already existed',
-        'License created',
-      ].includes(initialLicenseOutcome));
+    (initialLicenseOutcome !== null && statusPlaceholderOutcomes.has(initialLicenseOutcome));
 
   const queueLicenseRequest = async () => {
     if (!licenseEvent || !requestPayload) {
