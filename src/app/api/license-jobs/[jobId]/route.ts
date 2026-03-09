@@ -47,8 +47,8 @@ export async function GET(_request: Request, context: { params: Promise<{ jobId:
     return NextResponse.json({ error: 'Job not found.' }, { status: 404 });
   }
 
-  const sessionRole = sessionUser?.role ?? 'user';
-  const canAccessJob = sessionRole !== 'user' || job.requestedByUserId === userId;
+  const sessionRole = sessionUser?.role ?? 'ward_user';
+  const canAccessJob = sessionRole !== 'ward_user' || job.requestedByUserId === userId;
   if (!canAccessJob) {
     return NextResponse.json({ error: 'Not authorized for this job.' }, { status: 403 });
   }

@@ -20,10 +20,14 @@ import {
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/_ui/tooltip';
 import { KeyRound, Mail, MoreVertical, Shield, Trash2 } from 'lucide-react';
 import type { ManagedUser } from '@/components/AdminUsersClient/types';
+import type { UserRole } from '@/schema/schema';
+import { ROLE_LABELS, canManageUser } from '@/lib/permissions';
 
 type UsersTableProps = {
   users: ManagedUser[];
   currentUserId: string;
+  currentUserRole: UserRole;
+  currentUserWard: string;
   onOpenRoleAction: (user: ManagedUser) => void;
   onOpenPasswordAction: (user: ManagedUser) => void;
   onOpenDeleteAction: (user: ManagedUser) => void;
@@ -32,6 +36,8 @@ type UsersTableProps = {
 export function UsersTable({
   users,
   currentUserId,
+  currentUserRole,
+  currentUserWard,
   onOpenRoleAction,
   onOpenPasswordAction,
   onOpenDeleteAction,
@@ -76,18 +82,35 @@ export function UsersTable({
               <TableRow key={user.id}>
                 <TableCell className="align-top">
                   <div className="space-y-1.5">
+                    {(() => {
+                      const canManage =
+                        canManageUser(currentUserRole, user.role) &&
+                        (currentUserRole !== 'ward_manager' || user.ward === currentUserWard);
+                      return (
+                        <>
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="truncate text-sm font-semibold">
                         {user.name?.trim() || 'No name set'}
                       </span>
                       <span className="rounded-full border border-border px-2 py-0.5 text-xs">
-                        {user.role}
+                        {ROLE_LABELS[user.role]}
                       </span>
                     </div>
                     <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                       <Mail className="h-3.5 w-3.5 shrink-0" />
                       <span className="truncate">{user.email}</span>
                     </div>
+                    <div className="text-xs text-muted-foreground">
+                      Ward: {user.ward} | Phone: {user.phone}
+                    </div>
+                    {!canManage && user.id !== currentUserId && (
+                      <p className="w-fit rounded-sm bg-yellow-200/35 px-1.5 py-0.5 text-xs italic text-yellow-900/80 dark:bg-yellow-300/20 dark:text-yellow-100/85">
+                        No permission to manage this user.
+                      </p>
+                    )}
+                        </>
+                      );
+                    })()}
                   </div>
                 </TableCell>
                 <TableCell className="text-right">
@@ -110,17 +133,33 @@ export function UsersTable({
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="w-48">
-                            <DropdownMenuItem onSelect={() => onOpenRoleAction(user)}>
+                            <DropdownMenuItem
+                              disabled={
+                                !canManageUser(currentUserRole, user.role) ||
+                                (currentUserRole === 'ward_manager' && user.ward !== currentUserWard)
+                              }
+                              onSelect={() => onOpenRoleAction(user)}
+                            >
                               <Shield className="h-4 w-4" />
                               Change role
                             </DropdownMenuItem>
-                            <DropdownMenuItem onSelect={() => onOpenPasswordAction(user)}>
+                            <DropdownMenuItem
+                              disabled={
+                                !canManageUser(currentUserRole, user.role) ||
+                                (currentUserRole === 'ward_manager' && user.ward !== currentUserWard)
+                              }
+                              onSelect={() => onOpenPasswordAction(user)}
+                            >
                               <KeyRound className="h-4 w-4" />
                               Change password
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem
                               className="text-destructive focus:text-destructive"
+                              disabled={
+                                !canManageUser(currentUserRole, user.role) ||
+                                (currentUserRole === 'ward_manager' && user.ward !== currentUserWard)
+                              }
                               onSelect={() => onOpenDeleteAction(user)}
                             >
                               <Trash2 className="h-4 w-4" />
@@ -136,6 +175,11 @@ export function UsersTable({
                                 size="icon"
                                 variant="ghost"
                                 aria-label={`Change role for ${user.email}`}
+                                disabled={
+                                  !canManageUser(currentUserRole, user.role) ||
+                                  (currentUserRole === 'ward_manager' &&
+                                    user.ward !== currentUserWard)
+                                }
                                 onClick={() => onOpenRoleAction(user)}
                               >
                                 <Shield className="h-4 w-4" />
@@ -149,6 +193,11 @@ export function UsersTable({
                                 size="icon"
                                 variant="ghost"
                                 aria-label={`Change password for ${user.email}`}
+                                disabled={
+                                  !canManageUser(currentUserRole, user.role) ||
+                                  (currentUserRole === 'ward_manager' &&
+                                    user.ward !== currentUserWard)
+                                }
                                 onClick={() => onOpenPasswordAction(user)}
                               >
                                 <KeyRound className="h-4 w-4" />
@@ -162,6 +211,11 @@ export function UsersTable({
                                 size="icon"
                                 variant="ghost"
                                 aria-label={`Delete ${user.email}`}
+                                disabled={
+                                  !canManageUser(currentUserRole, user.role) ||
+                                  (currentUserRole === 'ward_manager' &&
+                                    user.ward !== currentUserWard)
+                                }
                                 onClick={() => onOpenDeleteAction(user)}
                               >
                                 <Trash2 className="h-4 w-4 text-destructive" />

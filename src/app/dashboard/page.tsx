@@ -1,7 +1,7 @@
 import { auth } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { db } from '@/lib/db';
-import { contacts, events, users, type UserRole } from '@/schema/schema';
+import { contacts, events, users, WARD_BUILDING, type UserRole } from '@/schema/schema';
 import { and, eq } from 'drizzle-orm';
 import { DashboardClient } from '@/components/DashboardClient';
 import type { Metadata } from 'next';
@@ -39,17 +39,19 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
 
   const role: UserRole = isAdminEmail(session.user.email ?? null)
     ? 'admin'
-    : ((session.user.role ?? 'user') as UserRole);
+    : ((session.user.role ?? 'ward_user') as UserRole);
 
   const userPreference = await db
     .select({
       defaultBuilding: users.defaultBuilding,
+      ward: users.ward,
     })
     .from(users)
     .where(eq(users.id, session.user.id))
     .limit(1);
 
   const initialDefaultBuilding = userPreference[0]?.defaultBuilding ?? 'Stake Center';
+  const userWard = userPreference[0]?.ward ?? '1st Ward';
   const fallbackTab =
     initialDefaultBuilding === 'Maples Building' ? 'maples-building' : 'stake-center';
   const rawBuilding = Array.isArray(params.building) ? params.building[0] : params.building;
@@ -71,6 +73,8 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   }
 
   const initialTab = normalizedBuilding ?? fallbackTab;
+  const canSelectAnyWard = role === 'admin' || role === 'stake_manager';
+  const fixedBuildingForWardUsers = canSelectAnyWard ? undefined : WARD_BUILDING[userWard];
 
   // Initial data fetch for both buildings (runs in parallel)
   const [stakeCenterEvents, maplesEvents] = await Promise.all([
@@ -97,9 +101,15 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
       .innerJoin(users, eq(events.userId, users.id))
       .innerJoin(contacts, eq(events.contactId, contacts.id))
       .where(
-        role === 'user'
-          ? and(eq(events.building, 'Stake Center' as Building), eq(events.userId, session.user.id))
-          : eq(events.building, 'Stake Center' as Building)
+        role === 'admin' || role === 'stake_manager'
+          ? eq(events.building, 'Stake Center' as Building)
+          : role === 'ward_manager'
+            ? and(eq(events.building, 'Stake Center' as Building), eq(contacts.ward, userWard))
+            : and(
+                eq(events.building, 'Stake Center' as Building),
+                eq(events.userId, session.user.id),
+                eq(contacts.ward, userWard)
+              )
       )
       .orderBy(events.createdAt),
     db
@@ -125,12 +135,15 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
       .innerJoin(users, eq(events.userId, users.id))
       .innerJoin(contacts, eq(events.contactId, contacts.id))
       .where(
-        role === 'user'
-          ? and(
-              eq(events.building, 'Maples Building' as Building),
-              eq(events.userId, session.user.id)
-            )
-          : eq(events.building, 'Maples Building' as Building)
+        role === 'admin' || role === 'stake_manager'
+          ? eq(events.building, 'Maples Building' as Building)
+          : role === 'ward_manager'
+            ? and(eq(events.building, 'Maples Building' as Building), eq(contacts.ward, userWard))
+            : and(
+                eq(events.building, 'Maples Building' as Building),
+                eq(events.userId, session.user.id),
+                eq(contacts.ward, userWard)
+              )
       )
       .orderBy(events.createdAt),
   ]);
@@ -149,6 +162,10 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
       initialStakeCenterEvents={stakeCenterEvents}
       initialMaplesEvents={maplesEvents}
       messageTemplates={messageTemplates}
+      currentUserRole={role}
+      currentUserWard={userWard}
+      canSelectAnyWard={canSelectAnyWard}
+      fixedBuildingForWardUsers={fixedBuildingForWardUsers}
     />
   );
 }

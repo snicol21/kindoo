@@ -13,6 +13,8 @@ import {
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { LayoutDashboard, Settings, Shield, LogOut, MessageSquare } from 'lucide-react';
 import { isAdminEmail } from '@/lib/admin';
+import { ROLE_LABELS, canAccessUserAdmin } from '@/lib/permissions';
+import type { UserRole } from '@/schema/schema';
 
 export async function NavbarUserSection() {
   const session = await auth();
@@ -27,9 +29,9 @@ export async function NavbarUserSection() {
     : (session?.user?.email?.[0]?.toUpperCase() ?? '?');
 
   const displayRole = session?.user
-    ? session.user.role === 'admin' || isAdminEmail(session.user.email ?? null)
-      ? 'admin'
-      : (session.user.role ?? 'user')
+    ? (isAdminEmail(session.user.email ?? null)
+        ? 'admin'
+        : ((session.user.role ?? 'ward_user') as UserRole))
     : null;
 
   return (
@@ -60,18 +62,16 @@ export async function NavbarUserSection() {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
               <DropdownMenuLabel>
-                <div className="flex flex-col space-y-1">
-                  <div className="flex items-center gap-2">
-                    <p className="text-sm font-medium leading-none">
-                      {session.user.name ?? 'User'}
-                    </p>
-                    {displayRole && (
-                      <span className="rounded-full border border-border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                        {displayRole}
-                      </span>
-                    )}
-                  </div>
+                <div className="flex flex-col space-y-1 gap-0.5">
+                  <p className="text-sm font-medium leading-none">
+                    {session.user.name ?? 'User'}
+                  </p>
                   <p className="text-xs leading-none text-muted-foreground">{session.user.email}</p>
+                  {displayRole && (
+                    <span className="w-fit rounded-full border border-border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                      {ROLE_LABELS[displayRole]}
+                    </span>
+                  )}
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
@@ -87,11 +87,15 @@ export async function NavbarUserSection() {
                   Account Settings
                 </Link>
               </DropdownMenuItem>
-              {(session.user.role === 'admin' || isAdminEmail(session.user.email ?? null)) && (
+              {canAccessUserAdmin(
+                isAdminEmail(session.user.email ?? null)
+                  ? 'admin'
+                  : ((session.user.role ?? 'ward_user') as UserRole)
+              ) && (
                 <DropdownMenuItem asChild>
                   <Link href="/admin/users" className="gap-2 cursor-pointer">
                     <Shield className="h-4 w-4" />
-                    Admin
+                    User Admin
                   </Link>
                 </DropdownMenuItem>
               )}

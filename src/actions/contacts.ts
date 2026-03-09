@@ -7,6 +7,8 @@ import { and, asc, eq, like, or } from 'drizzle-orm';
 import type { SQL } from 'drizzle-orm';
 import { normalizeEmail } from '@/utils/stringUtils';
 import { normalizePhoneForStorage } from '@/utils/phoneUtils';
+import { users, type UserRole } from '@/schema/schema';
+import { isAdminEmail } from '@/lib/admin';
 
 export interface ContactSearchResult {
   id: string;
@@ -20,6 +22,21 @@ export interface ContactActionResult<T = unknown> {
   success: boolean;
   data?: T;
   error?: string;
+}
+
+async function resolveContactAccess() {
+  const session = await auth();
+  if (!session?.user?.id) return null;
+
+  const [dbUser] = await db
+    .select({ id: users.id, role: users.role, ward: users.ward, email: users.email })
+    .from(users)
+    .where(eq(users.id, session.user.id))
+    .limit(1);
+
+  if (!dbUser) return null;
+  const role: UserRole = isAdminEmail(dbUser.email) ? 'admin' : ((dbUser.role ?? 'ward_user') as UserRole);
+  return { userId: dbUser.id, role, ward: dbUser.ward };
 }
 
 function scoreNameMatch(contactName: string, rawQuery: string): number {
@@ -53,8 +70,8 @@ export async function updateContact(input: {
   phone?: string | null;
 }): Promise<ContactActionResult<Contact>> {
   try {
-    const session = await auth();
-    if (!session?.user?.id) {
+    const access = await resolveContactAccess();
+    if (!access) {
       return { success: false, error: 'Not authenticated.' };
     }
 
@@ -67,6 +84,27 @@ export async function updateContact(input: {
 
     if (!emailValue && !phoneValue) {
       return { success: false, error: 'At least one contact method is required (email or phone).' };
+    }
+
+    if ((access.role === 'ward_manager' || access.role === 'ward_user') && input.ward !== access.ward) {
+      return { success: false, error: 'You can only update contacts in your ward.' };
+    }
+
+    const [existing] = await db
+      .select({ ward: contacts.ward })
+      .from(contacts)
+      .where(eq(contacts.id, input.id))
+      .limit(1);
+
+    if (!existing) {
+      return { success: false, error: 'Contact not found.' };
+    }
+
+    if (
+      (access.role === 'ward_manager' || access.role === 'ward_user') &&
+      existing.ward !== access.ward
+    ) {
+      return { success: false, error: 'You can only update contacts in your ward.' };
     }
 
     const [updated] = await db
@@ -97,14 +135,15 @@ export async function searchContacts(input: {
   ward?: Ward;
 }): Promise<ContactActionResult<ContactSearchResult[]>> {
   try {
-    const session = await auth();
-    if (!session?.user?.id) {
+    const access = await resolveContactAccess();
+    if (!access) {
       return { success: false, error: 'Not authenticated.', data: [] };
     }
 
     const normalized = (input.query ?? '').trim();
     const limit = Math.max(1, Math.min(input.limit ?? 8, 25));
-    const wardFilter = input.ward;
+    const wardFilter =
+      access.role === 'ward_manager' || access.role === 'ward_user' ? access.ward : input.ward;
 
     if (!normalized) {
       return { success: true, data: [] };

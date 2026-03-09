@@ -9,7 +9,7 @@ Kindoo is a private event management dashboard used to track building events and
 Core goals:
 
 - Keep event and contact data organized by ward/building.
-- Support role-based access for normal users, managers, and admins.
+- Support role-based access with ward-aware permissions.
 - Queue and process license automation work asynchronously via a worker.
 
 ## 2. Tech Stack
@@ -39,7 +39,8 @@ Core goals:
 Defined in `src/schema/schema.ts`.
 
 - `user`
-  - Identity + role (`admin`, `manager`, `user`)
+  - Identity + role (`admin`, `stake_manager`, `ward_manager`, `ward_user`)
+  - Required profile fields: `ward`, `phone`
   - Preferences such as `defaultBuilding`
 - `contact`
   - Name, ward, email/phone (at least one contact method required)
@@ -60,6 +61,11 @@ Auth is implemented in `src/lib/auth.ts`.
 - Role handling:
   - User role is loaded from DB into session
   - `ADMIN_EMAILS` and admin bootstrap env can elevate/create admin users
+- Role model and access rules:
+  - `Admin`: full access to all events and all user administration
+  - `Stake Manager`: view/manage events across all wards; can create ward managers/users
+  - `Ward Manager`: view/manage events only for their ward; can create events for their ward; can create/manage ward users in their own ward
+  - `Ward User`: view only their own events for their ward; can create events for their ward
 - Route protection:
   - Dashboard routes require authenticated sessions
 - Resource protection:

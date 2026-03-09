@@ -56,12 +56,19 @@ export function DashboardClient({
   initialDefaultBuilding = 'Stake Center',
   initialTab,
   messageTemplates,
+  currentUserWard,
+  canSelectAnyWard,
+  fixedBuildingForWardUsers,
 }: DashboardClientProps) {
+  const fixedTabForWardUsers = fixedBuildingForWardUsers
+    ? buildingToTab(fixedBuildingForWardUsers)
+    : null;
+  const canToggleBuildings = fixedTabForWardUsers === null;
   const [dialogOpen, setDialogOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [defaultBuilding, setDefaultBuilding] = useState<Building>(initialDefaultBuilding);
   const [activeTab, setActiveTab] = useState<DashboardTab>(
-    initialTab ?? buildingToTab(initialDefaultBuilding)
+    fixedTabForWardUsers ?? initialTab ?? buildingToTab(initialDefaultBuilding)
   );
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedStakeIds, setSelectedStakeIds] = useState<string[]>([]);
@@ -150,6 +157,11 @@ export function DashboardClient({
   }, [maplesUpcoming]);
 
   useEffect(() => {
+    if (fixedTabForWardUsers && activeTab !== fixedTabForWardUsers) {
+      setActiveTab(fixedTabForWardUsers);
+      return;
+    }
+
     const url = new URL(window.location.href);
     const rawBuilding = url.searchParams.get('building');
     const hasValidBuilding = rawBuilding === 'stake-center' || rawBuilding === 'maples-building';
@@ -164,7 +176,7 @@ export function DashboardClient({
       );
     }
     setDefaultBuilding(tabToBuilding(activeTab));
-  }, [activeTab]);
+  }, [activeTab, fixedTabForWardUsers]);
 
   const openDialogFor = (building: Building) => {
     setDefaultBuilding(building);
@@ -196,7 +208,10 @@ export function DashboardClient({
     <PageContainer width="full" className="space-y-6">
       <Tabs
         value={activeTab}
-        onValueChange={(value) => setActiveTab(normalizeTab(value))}
+        onValueChange={(value) => {
+          if (!canToggleBuildings) return;
+          setActiveTab(normalizeTab(value));
+        }}
         className="space-y-4"
       >
         <DashboardTabsHeader
@@ -204,6 +219,8 @@ export function DashboardClient({
           maplesCount={maplesUpcoming.length}
           searchValue={searchQuery}
           onSearchChangeAction={setSearchQuery}
+          canToggleBuildings={canToggleBuildings}
+          fixedBuildingLabel={fixedBuildingForWardUsers}
         />
 
         <DashboardEventsHeader
@@ -274,6 +291,8 @@ export function DashboardClient({
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         defaultBuilding={defaultBuilding}
+        fixedBuilding={fixedBuildingForWardUsers}
+        fixedWard={canSelectAnyWard ? undefined : currentUserWard}
       />
 
       <CsvImportDialog open={importOpen} onOpenChange={setImportOpen} />

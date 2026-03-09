@@ -69,6 +69,8 @@ interface AddEventDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   defaultBuilding?: Building;
+  fixedBuilding?: Building;
+  fixedWard?: Ward;
 }
 
 interface FormState {
@@ -118,6 +120,8 @@ export function AddEventDialog({
   open,
   onOpenChange,
   defaultBuilding = 'Stake Center',
+  fixedBuilding,
+  fixedWard,
 }: AddEventDialogProps) {
   type Snapshot = Record<string, string>;
   const formRef = useRef<HTMLFormElement>(null);
@@ -133,8 +137,10 @@ export function AddEventDialog({
   const nameMatchRef = useRef<HTMLDivElement>(null);
   const phoneMatchRef = useRef<HTMLDivElement>(null);
   const emailMatchRef = useRef<HTMLDivElement>(null);
-  const [selectedBuilding, setSelectedBuilding] = useState<Building>(defaultBuilding);
-  const [selectedWard, setSelectedWard] = useState<Ward | ''>('');
+  const [selectedBuilding, setSelectedBuilding] = useState<Building>(
+    fixedBuilding ?? defaultBuilding
+  );
+  const [selectedWard, setSelectedWard] = useState<Ward | ''>(fixedWard ?? '');
   const [selectedEventDate, setSelectedEventDate] = useState('');
   const [selectedStartTime, setSelectedStartTime] = useState('');
   const [selectedEndTime, setSelectedEndTime] = useState('');
@@ -247,7 +253,7 @@ export function AddEventDialog({
     setTypedEmail(contact.email ?? '');
     setTypedPhone(formatPhone(contact.phone ?? ''));
     if (nameRef.current) nameRef.current.value = contact.name;
-    setSelectedWard(contact.ward);
+    setSelectedWard(fixedWard ?? contact.ward);
     if (phoneRef.current) phoneRef.current.value = formatPhone(contact.phone ?? '');
     if (emailRef.current) emailRef.current.value = contact.email ?? '';
   };
@@ -287,17 +293,23 @@ export function AddEventDialog({
     setTypedName('');
     setTypedEmail('');
     setTypedPhone('');
-    setSelectedWard('');
+    setSelectedWard(fixedWard ?? '');
     if (nameRef.current) nameRef.current.value = '';
     if (phoneRef.current) phoneRef.current.value = '';
     if (emailRef.current) emailRef.current.value = '';
   };
 
   useEffect(() => {
+    if (fixedWard) {
+      setSelectedWard(fixedWard);
+    }
+  }, [fixedWard]);
+
+  useEffect(() => {
     if (open && !wasOpenRef.current) {
       initialSnapshotRef.current = getCurrentSnapshot({
-        building: defaultBuilding,
-        ward: (state.values?.ward as Ward | undefined) ?? '',
+        building: fixedBuilding ?? defaultBuilding,
+        ward: fixedWard ?? (state.values?.ward as Ward | undefined) ?? '',
       });
       justSubmittedRef.current = false;
     }
@@ -327,7 +339,10 @@ export function AddEventDialog({
 
     setMatchCandidate(match);
   }, [
+    defaultBuilding,
     dismissedMatchId,
+    fixedBuilding,
+    fixedWard,
     matchingContacts,
     open,
     selectedContactId,
@@ -375,9 +390,13 @@ export function AddEventDialog({
       // Validate
       if (!building || !BUILDINGS.includes(building)) {
         errors.building = 'Please select a building.';
+      } else if (fixedBuilding && building !== fixedBuilding) {
+        errors.building = 'You can only create events in your assigned building.';
       }
       if (!ward || !WARDS.includes(ward)) {
         errors.ward = 'Please select a ward.';
+      } else if (fixedWard && ward !== fixedWard) {
+        errors.ward = 'You can only create events for your assigned ward.';
       }
       if (!name?.trim()) {
         errors.name = 'Name is required.';
@@ -511,7 +530,7 @@ export function AddEventDialog({
         });
 
         formRef.current?.reset();
-        setSelectedWard('');
+        setSelectedWard(fixedWard ?? '');
         setTypedName('');
         setTypedEmail('');
         setTypedPhone('');
@@ -544,7 +563,8 @@ export function AddEventDialog({
   useEffect(() => {
     if (!open) {
       formRef.current?.reset();
-      setSelectedWard('');
+      setSelectedBuilding(fixedBuilding ?? defaultBuilding);
+      setSelectedWard(fixedWard ?? '');
       setTypedName('');
       setTypedEmail('');
       setTypedPhone('');
@@ -557,7 +577,7 @@ export function AddEventDialog({
       setSelectedStartTime('');
       setSelectedEndTime('');
     }
-  }, [open]);
+  }, [defaultBuilding, fixedBuilding, fixedWard, open]);
 
   useEffect(() => {
     if (!open) return;
@@ -567,10 +587,10 @@ export function AddEventDialog({
 
   useEffect(() => {
     if (open) {
-      setSelectedBuilding(defaultBuilding);
-      setSelectedWard((state.values?.ward as Ward | undefined) ?? '');
+      setSelectedBuilding(fixedBuilding ?? defaultBuilding);
+      setSelectedWard(fixedWard ?? (state.values?.ward as Ward | undefined) ?? '');
     }
-  }, [defaultBuilding, open, state.values?.ward]);
+  }, [defaultBuilding, fixedBuilding, fixedWard, open, state.values?.ward]);
 
   useEffect(() => {
     if (!open) return;
@@ -640,11 +660,15 @@ export function AddEventDialog({
             <Select
               name="building"
               value={selectedBuilding}
-              onValueChange={(value) => setSelectedBuilding(value as Building)}
+              onValueChange={(value) => {
+                if (fixedBuilding) return;
+                setSelectedBuilding(value as Building);
+              }}
             >
               <SelectTrigger
                 id="building"
                 className={state.errors?.building ? 'border-destructive' : ''}
+                disabled={!!fixedBuilding}
               >
                 <SelectValue placeholder="Select a building…" />
               </SelectTrigger>
@@ -658,6 +682,11 @@ export function AddEventDialog({
             </Select>
             {state.errors?.building && (
               <p className="text-xs text-destructive">{state.errors.building}</p>
+            )}
+            {fixedBuilding && (
+              <p className="text-xs text-muted-foreground">
+                Building is assigned by your ward.
+              </p>
             )}
           </div>
 
@@ -894,12 +923,16 @@ export function AddEventDialog({
             <Select
               name="ward"
               value={selectedWard}
-              onValueChange={(value) => setSelectedWard(value as Ward)}
+              onValueChange={(value) => {
+                if (fixedWard) return;
+                setSelectedWard(value as Ward);
+              }}
             >
               <SelectTrigger
                 id="ward"
                 ref={wardTriggerRef}
                 className={`relative ${state.errors?.ward ? 'border-destructive' : ''}`}
+                disabled={!!fixedWard}
               >
                 <SelectValue placeholder="Select a ward…" />
                 {showLinkedState && (
@@ -926,6 +959,9 @@ export function AddEventDialog({
                 ))}
               </SelectContent>
             </Select>
+            {fixedWard && (
+              <p className="text-xs text-muted-foreground">Ward is assigned by your account role.</p>
+            )}
             {state.errors?.ward && <p className="text-xs text-destructive">{state.errors.ward}</p>}
           </div>
 

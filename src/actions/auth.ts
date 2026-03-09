@@ -2,12 +2,14 @@
 
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
-import { users, USER_ROLES, type UserRole } from '@/schema/schema';
-import { BUILDINGS, type Building } from '@/schema/schema';
+import { users, USER_ROLES, WARDS, type UserRole } from '@/schema/schema';
+import { BUILDINGS, type Building, type Ward } from '@/schema/schema';
 import { eq } from 'drizzle-orm';
 import { getAdminEmails, isAdminEmail } from '@/lib/admin';
 import { hashPassword, verifyPassword } from '@/lib/password';
 import { put } from '@vercel/blob';
+import { normalizePhoneForStorage } from '@/utils/phoneUtils';
+import { canAccessUserAdmin, canAssignRole, canManageUserInWard } from '@/lib/permissions';
 
 export interface ActionResult<T = unknown> {
   success: boolean;
@@ -53,20 +55,55 @@ async function requireAdmin() {
   return { ok: true, email, userId } as const;
 }
 
+async function requireUserAdmin() {
+  const session = await auth();
+  const email = session?.user?.email ?? null;
+  const userId = session?.user?.id ?? null;
+
+  if (!email || !userId) {
+    return { ok: false, error: 'Not authorized.' } as const;
+  }
+
+  const [dbUser] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+  const role: UserRole = isAdminEmail(email) ? 'admin' : ((dbUser?.role ?? 'ward_user') as UserRole);
+
+  if (!dbUser || !canAccessUserAdmin(role)) {
+    return { ok: false, error: 'Not authorized.' } as const;
+  }
+
+  return {
+    ok: true,
+    email,
+    userId,
+    role,
+    ward: dbUser.ward,
+  } as const;
+}
+
 export async function createUser(input: {
   email: string;
   name?: string;
   password: string;
   role?: UserRole;
+  ward?: Ward;
+  phone: string;
 }): Promise<ActionResult> {
-  const admin = await requireAdmin();
+  const admin = await requireUserAdmin();
   if (!admin.ok) return { success: false, error: admin.error };
 
   const email = input.email.trim().toLowerCase();
   const name = input.name?.trim() || null;
   const password = input.password;
+  const ward = input.ward;
+  const phone = normalizePhoneForStorage(input.phone);
 
   if (!isValidEmail(email)) return { success: false, error: 'Valid email is required.' };
+  if (!ward || !WARDS.includes(ward)) {
+    return { success: false, error: 'Ward is required.' };
+  }
+  if (!phone || !/^[\d\s\-+().]{7,20}$/.test(phone)) {
+    return { success: false, error: 'Valid phone number is required.' };
+  }
   if (!password || password.length < PASSWORD_MIN_LENGTH) {
     return {
       success: false,
@@ -77,32 +114,46 @@ export async function createUser(input: {
   const existing = await db.select().from(users).where(eq(users.email, email)).limit(1);
   if (existing[0]) return { success: false, error: 'User already exists.' };
 
-  const roleInput: UserRole = USER_ROLES.includes(input.role ?? 'user')
-    ? (input.role ?? 'user')
-    : 'user';
+  const roleInput: UserRole = USER_ROLES.includes(input.role ?? 'ward_user')
+    ? (input.role ?? 'ward_user')
+    : 'ward_user';
+  if (!canAssignRole(admin.role, roleInput)) {
+    return { success: false, error: 'You are not allowed to assign that role.' };
+  }
+  if (admin.role === 'ward_manager' && ward !== admin.ward) {
+    return { success: false, error: 'You can only create users in your ward.' };
+  }
   const role: UserRole = isAdminEmail(email) ? 'admin' : roleInput;
 
   const passwordHash = await hashPassword(password);
-  await db.insert(users).values({ email, name, passwordHash, role });
+  await db.insert(users).values({ email, name, passwordHash, role, ward, phone });
 
   return { success: true };
 }
 
 export async function listUsers(): Promise<
-  ActionResult<{ id: string; email: string; name: string | null; role: UserRole }[]>
+  ActionResult<
+    { id: string; email: string; name: string | null; role: UserRole; ward: Ward; phone: string }[]
+  >
 > {
-  const admin = await requireAdmin();
+  const admin = await requireUserAdmin();
   if (!admin.ok) return { success: false, error: admin.error };
 
   const allUsers = await db.select().from(users);
+  const visibleUsers =
+    admin.role === 'ward_manager'
+      ? allUsers.filter((user) => user.ward === admin.ward && user.role === 'ward_user')
+      : allUsers;
   return {
     success: true,
-    data: allUsers
+    data: visibleUsers
       .map((user) => ({
         id: user.id,
         email: user.email,
         name: user.name ?? null,
-        role: (user.role ?? 'user') as UserRole,
+        role: (user.role ?? 'ward_user') as UserRole,
+        ward: user.ward,
+        phone: user.phone,
       }))
       .sort((a, b) => {
         if (a.id === admin.userId && b.id !== admin.userId) return -1;
@@ -116,17 +167,32 @@ export async function adminSetUserRole(input: {
   userId: string;
   role: UserRole;
 }): Promise<ActionResult> {
-  const admin = await requireAdmin();
+  const admin = await requireUserAdmin();
   if (!admin.ok) return { success: false, error: admin.error };
 
   const userId = input.userId.trim();
   if (!userId) return { success: false, error: 'Invalid user id.' };
 
-  const role: UserRole = USER_ROLES.includes(input.role) ? input.role : 'user';
+  const role: UserRole = USER_ROLES.includes(input.role) ? input.role : 'ward_user';
 
   const existing = await db.select().from(users).where(eq(users.id, userId)).limit(1);
   const user = existing[0];
   if (!user) return { success: false, error: 'User not found.' };
+  const targetRole = (user.role ?? 'ward_user') as UserRole;
+
+  if (
+    !canManageUserInWard({
+      actorRole: admin.role,
+      actorWard: admin.ward,
+      targetRole,
+      targetWard: user.ward,
+    })
+  ) {
+    return { success: false, error: 'You are not allowed to change this user.' };
+  }
+  if (!canAssignRole(admin.role, role)) {
+    return { success: false, error: 'You are not allowed to assign that role.' };
+  }
 
   const resolvedRole = isAdminEmail(user.email) ? 'admin' : role;
   await db.update(users).set({ role: resolvedRole }).where(eq(users.id, userId));
@@ -139,7 +205,7 @@ export async function adminSetUserPassword(input: {
   password: string;
   confirmPassword: string;
 }): Promise<ActionResult> {
-  const admin = await requireAdmin();
+  const admin = await requireUserAdmin();
   if (!admin.ok) return { success: false, error: admin.error };
 
   const userId = input.userId.trim();
@@ -155,6 +221,21 @@ export async function adminSetUserPassword(input: {
   }
   if (password !== confirmPassword) return { success: false, error: 'Passwords do not match.' };
 
+  const existing = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+  const user = existing[0];
+  if (!user) return { success: false, error: 'User not found.' };
+
+  if (
+    !canManageUserInWard({
+      actorRole: admin.role,
+      actorWard: admin.ward,
+      targetRole: (user.role ?? 'ward_user') as UserRole,
+      targetWard: user.ward,
+    })
+  ) {
+    return { success: false, error: 'You are not allowed to change this user.' };
+  }
+
   const passwordHash = await hashPassword(password);
   await db.update(users).set({ passwordHash }).where(eq(users.id, userId));
 
@@ -162,7 +243,7 @@ export async function adminSetUserPassword(input: {
 }
 
 export async function adminDeleteUser(input: { userId: string }): Promise<ActionResult> {
-  const admin = await requireAdmin();
+  const admin = await requireUserAdmin();
   if (!admin.ok) return { success: false, error: admin.error };
 
   const userId = input.userId.trim();
@@ -178,6 +259,17 @@ export async function adminDeleteUser(input: { userId: string }): Promise<Action
 
   if (isAdminEmail(user.email)) {
     return { success: false, error: 'Cannot delete another admin account.' };
+  }
+
+  if (
+    !canManageUserInWard({
+      actorRole: admin.role,
+      actorWard: admin.ward,
+      targetRole: (user.role ?? 'ward_user') as UserRole,
+      targetWard: user.ward,
+    })
+  ) {
+    return { success: false, error: 'You are not allowed to delete this user.' };
   }
 
   await db.delete(users).where(eq(users.id, userId));
@@ -219,17 +311,24 @@ export async function changePassword(input: {
   return { success: true };
 }
 
-export async function changeProfile(input: { name: string }): Promise<ActionResult> {
+export async function changeProfile(input: {
+  name: string;
+  phone: string;
+}): Promise<ActionResult> {
   const session = await auth();
   const userId = session?.user?.id ?? null;
 
   if (!userId) return { success: false, error: 'Not authenticated.' };
 
   const name = input.name.trim();
+  const phone = normalizePhoneForStorage(input.phone);
   if (!name) return { success: false, error: 'Name is required.' };
   if (name.length > 80) return { success: false, error: 'Name must be 80 characters or less.' };
+  if (!phone || !/^[\d\s\-+().]{7,20}$/.test(phone)) {
+    return { success: false, error: 'Valid phone number is required.' };
+  }
 
-  await db.update(users).set({ name }).where(eq(users.id, userId));
+  await db.update(users).set({ name, phone }).where(eq(users.id, userId));
   return { success: true };
 }
 
@@ -275,6 +374,22 @@ export async function updateDefaultBuilding(input: {
   const defaultBuilding = input.defaultBuilding;
   if (!BUILDINGS.includes(defaultBuilding)) {
     return { success: false, error: 'Invalid building selection.' };
+  }
+
+  const [dbUser] = await db
+    .select({ role: users.role, email: users.email })
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
+
+  if (!dbUser) return { success: false, error: 'Not authenticated.' };
+
+  const role: UserRole = isAdminEmail(dbUser.email)
+    ? 'admin'
+    : ((dbUser.role ?? 'ward_user') as UserRole);
+
+  if (role !== 'stake_manager') {
+    return { success: false, error: 'Only stake managers can change the default building.' };
   }
 
   await db.update(users).set({ defaultBuilding }).where(eq(users.id, userId));

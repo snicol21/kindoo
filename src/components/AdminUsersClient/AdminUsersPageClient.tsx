@@ -8,7 +8,12 @@ import { SearchInput } from '@/components/SearchInput';
 import { AdminUsersClient } from '@/components/AdminUsersClient';
 import type { AdminUsersClientProps } from '@/components/AdminUsersClient/types';
 
-export function AdminUsersPageClient({ users, currentUserId }: AdminUsersClientProps) {
+export function AdminUsersPageClient({
+  users,
+  currentUserId,
+  currentUserRole,
+  currentUserWard,
+}: AdminUsersClientProps) {
   const [searchQuery, setSearchQuery] = useState('');
 
   return (
@@ -28,7 +33,13 @@ export function AdminUsersPageClient({ users, currentUserId }: AdminUsersClientP
         />
       </div>
 
-      <AdminUsersClient users={users} currentUserId={currentUserId} searchQuery={searchQuery} />
+      <AdminUsersClient
+        users={users}
+        currentUserId={currentUserId}
+        currentUserRole={currentUserRole}
+        currentUserWard={currentUserWard}
+        searchQuery={searchQuery}
+      />
     </div>
   );
 }

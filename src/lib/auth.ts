@@ -36,7 +36,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             user = (
               await db
                 .insert(users)
-                .values({ email, name: 'Admin', passwordHash, role: 'admin' })
+                .values({
+                  email,
+                  name: 'Admin',
+                  passwordHash,
+                  role: 'admin',
+                  ward: '1st Ward',
+                  phone: '0000000000',
+                })
                 .returning()
             )[0];
           }
@@ -96,7 +103,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           if (currentUser) {
             session.user.name = currentUser.name ?? null;
             session.user.email = currentUser.email;
-            session.user.role = (currentUser.role ?? 'user') as UserRole;
+            session.user.role = (currentUser.role ?? 'ward_user') as UserRole;
+            session.user.ward = currentUser.ward;
+            session.user.phone = currentUser.phone;
             session.user.image = currentUser.image ?? null;
 
             if (isAdminEmail(currentUser.email) && currentUser.role !== 'admin') {
@@ -121,6 +130,8 @@ declare module 'next-auth' {
       email?: string | null;
       image?: string | null;
       role?: UserRole;
+      ward?: string;
+      phone?: string;
     };
   }
 }

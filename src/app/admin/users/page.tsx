@@ -8,6 +8,8 @@ import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 import { AdminUsersPageClient } from '@/components/AdminUsersClient/AdminUsersPageClient';
 import { PageContainer } from '@/components/PageContainer';
+import type { UserRole } from '@/schema/schema';
+import { canAccessUserAdmin } from '@/lib/permissions';
 
 export const metadata: Metadata = {
   title: 'User Admin',
@@ -17,9 +19,10 @@ export default async function AdminUsersPage() {
   const session = await auth();
   const email = session?.user?.email ?? null;
   const currentUserId = session?.user?.id ?? null;
+  const currentUserWard = session?.user?.ward ?? '1st Ward';
+  const currentUserRole: UserRole = isAdminEmail(email) ? 'admin' : ((session?.user?.role ?? 'ward_user') as UserRole);
 
-  const isAdmin = session?.user?.role === 'admin' || isAdminEmail(email);
-  if (!email || !isAdmin) {
+  if (!email || !canAccessUserAdmin(currentUserRole)) {
     redirect('/auth/signin');
   }
 
@@ -28,7 +31,12 @@ export default async function AdminUsersPage() {
 
   return (
     <PageContainer width="narrow" className="space-y-6">
-      <AdminUsersPageClient users={managedUsers} currentUserId={currentUserId ?? ''} />
+      <AdminUsersPageClient
+        users={managedUsers}
+        currentUserId={currentUserId ?? ''}
+        currentUserRole={currentUserRole}
+        currentUserWard={currentUserWard}
+      />
       <div>
         <Button asChild variant="ghost" size="sm" className="gap-2">
           <Link href="/dashboard">

@@ -28,8 +28,8 @@ export async function GET(_request: Request, context: { params: Promise<{ eventI
     return NextResponse.json({ error: 'Event not found.' }, { status: 404 });
   }
 
-  const sessionRole = sessionUser?.role ?? 'user';
-  const canAccess = sessionRole !== 'user' || eventRecord.userId === userId;
+  const sessionRole = sessionUser?.role ?? 'ward_user';
+  const canAccess = sessionRole !== 'ward_user' || eventRecord.userId === userId;
   if (!canAccess) {
     return NextResponse.json({ error: 'Not authorized for this event.' }, { status: 403 });
   }

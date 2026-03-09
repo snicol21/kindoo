@@ -20,6 +20,7 @@ import { normalizePhoneForStorage } from '@/utils/phoneUtils';
 import { normalizeEmail } from '@/utils/stringUtils';
 import { parseTimeToMinutes } from '@/utils/timeUtils';
 import { DESCRIPTION_MAX_LENGTH } from '@/utils/eventConstants';
+import { canCreateEventInBuildingForWard, canMutateEvent } from '@/lib/permissions';
 
 const EVENT_TIMEZONE = 'America/Denver';
 
@@ -72,9 +73,36 @@ export interface ActionResult<T = unknown> {
   error?: string;
 }
 
-function resolveRole(session: { user?: { role?: UserRole; email?: string | null } }): UserRole {
-  if (isAdminEmail(session.user?.email ?? null)) return 'admin';
-  return (session.user?.role ?? 'user') as UserRole;
+interface AccessContext {
+  userId: string;
+  role: UserRole;
+  ward: Ward;
+}
+
+async function resolveAccessContext(): Promise<ActionResult<AccessContext>> {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { success: false, error: 'Not authenticated.' };
+  }
+
+  const [dbUser] = await db
+    .select({ id: users.id, role: users.role, ward: users.ward, email: users.email })
+    .from(users)
+    .where(eq(users.id, session.user.id))
+    .limit(1);
+
+  if (!dbUser) {
+    return { success: false, error: 'Not authenticated.' };
+  }
+
+  return {
+    success: true,
+    data: {
+      userId: dbUser.id,
+      role: isAdminEmail(dbUser.email) ? 'admin' : ((dbUser.role ?? 'ward_user') as UserRole),
+      ward: dbUser.ward,
+    },
+  };
 }
 
 // ─── Validation Helper ────────────────────────────────────────────────────────
@@ -276,16 +304,22 @@ async function cleanupOrphanContacts(contactIds: string[]) {
 
 export async function addEvent(input: AddEventInput): Promise<ActionResult<Event>> {
   try {
-    const session = await auth();
-
-    if (!session?.user?.id) {
-      return { success: false, error: 'Not authenticated.' };
-    }
+    const access = await resolveAccessContext();
+    if (!access.success || !access.data) return { success: false, error: access.error };
+    const { userId, role, ward } = access.data;
 
     const normalizedInput = normalizeEventInput(input);
     const validationError = validateEventInput(normalizedInput);
     if (validationError) {
       return { success: false, error: validationError };
+    }
+
+    if (!canCreateEventInBuildingForWard(role, ward, normalizedInput.ward, normalizedInput.building)) {
+      return {
+        success: false,
+        error:
+          'You can only create events for your assigned ward and its designated building.',
+      };
     }
 
     const newEvent = await db.transaction(async (tx) => {
@@ -313,7 +347,7 @@ export async function addEvent(input: AddEventInput): Promise<ActionResult<Event
           contactId,
           description: normalizedInput.description,
           kindooLicenseCreated: false,
-          userId: session.user.id,
+          userId,
         })
         .returning();
 
@@ -325,8 +359,8 @@ export async function addEvent(input: AddEventInput): Promise<ActionResult<Event
     });
 
     // Invalidate cache tags for this user's events
-    revalidateTag(`events-${session.user.id}`, 'max');
-    revalidateTag(`events-${session.user.id}-${normalizedInput.building}`, 'max');
+    revalidateTag(`events-${userId}`, 'max');
+    revalidateTag(`events-${userId}-${normalizedInput.building}`, 'max');
 
     return { success: true, data: newEvent };
   } catch (error) {
@@ -342,13 +376,11 @@ export async function getEventsByBuilding(
   building: Building
 ): Promise<ActionResult<EventWithCreator[]>> {
   try {
-    const session = await auth();
-
-    if (!session?.user?.id) {
-      return { success: false, error: 'Not authenticated.', data: [] };
+    const access = await resolveAccessContext();
+    if (!access.success || !access.data) {
+      return { success: false, error: access.error ?? 'Not authenticated.', data: [] };
     }
-
-    const role = resolveRole(session);
+    const { userId, role, ward } = access.data;
 
     const userEvents = await db
       .select({
@@ -373,9 +405,11 @@ export async function getEventsByBuilding(
       .innerJoin(users, eq(events.userId, users.id))
       .innerJoin(contacts, eq(events.contactId, contacts.id))
       .where(
-        role === 'user'
-          ? and(eq(events.building, building), eq(events.userId, session.user.id))
-          : eq(events.building, building)
+        role === 'admin' || role === 'stake_manager'
+          ? eq(events.building, building)
+          : role === 'ward_manager'
+            ? and(eq(events.building, building), eq(contacts.ward, ward))
+            : and(eq(events.building, building), eq(events.userId, userId), eq(contacts.ward, ward))
       )
       .orderBy(events.createdAt);
 
@@ -388,32 +422,32 @@ export async function getEventsByBuilding(
 
 export async function deleteEvent(eventId: string): Promise<ActionResult<void>> {
   try {
-    const session = await auth();
-
-    if (!session?.user?.id) {
-      return { success: false, error: 'Not authenticated.' };
-    }
-
-    const role = resolveRole(session);
+    const access = await resolveAccessContext();
+    if (!access.success || !access.data) return { success: false, error: access.error };
+    const { userId, role, ward } = access.data;
 
     const deletableRows = await db
-      .select({ id: events.id, contactId: events.contactId })
+      .select({ id: events.id, contactId: events.contactId, eventUserId: events.userId, eventWard: contacts.ward })
       .from(events)
-      .where(
-        role === 'user'
-          ? and(eq(events.id, eventId), eq(events.userId, session.user.id))
-          : eq(events.id, eventId)
-      )
+      .innerJoin(contacts, eq(events.contactId, contacts.id))
+      .where(eq(events.id, eventId))
       .limit(1);
 
     if (deletableRows.length === 0) {
       return { success: false, error: 'Event not found or not authorized.' };
     }
 
-    await db.delete(events).where(eq(events.id, deletableRows[0].id));
-    await cleanupOrphanContacts([deletableRows[0].contactId]);
+    const row = deletableRows[0];
+    if (
+      !canMutateEvent({ role, userId, userWard: ward, eventUserId: row.eventUserId, eventWard: row.eventWard })
+    ) {
+      return { success: false, error: 'Event not found or not authorized.' };
+    }
 
-    revalidateTag(`events-${session.user.id}`, 'max');
+    await db.delete(events).where(eq(events.id, row.id));
+    await cleanupOrphanContacts([row.contactId]);
+
+    revalidateTag(`events-${userId}`, 'max');
 
     return { success: true };
   } catch (error) {
@@ -424,13 +458,9 @@ export async function deleteEvent(eventId: string): Promise<ActionResult<void>> 
 
 export async function deleteEvents(eventIds: string[]): Promise<ActionResult<{ deleted: number }>> {
   try {
-    const session = await auth();
-
-    if (!session?.user?.id) {
-      return { success: false, error: 'Not authenticated.' };
-    }
-
-    const role = resolveRole(session);
+    const access = await resolveAccessContext();
+    if (!access.success || !access.data) return { success: false, error: access.error };
+    const { userId, role, ward } = access.data;
 
     const ids = eventIds.map((id) => id.trim()).filter(Boolean);
     if (ids.length === 0) {
@@ -438,29 +468,35 @@ export async function deleteEvents(eventIds: string[]): Promise<ActionResult<{ d
     }
 
     const deletableRows = await db
-      .select({ id: events.id, contactId: events.contactId })
+      .select({
+        id: events.id,
+        contactId: events.contactId,
+        eventUserId: events.userId,
+        eventWard: contacts.ward,
+      })
       .from(events)
-      .where(
-        role === 'user'
-          ? and(inArray(events.id, ids), eq(events.userId, session.user.id))
-          : inArray(events.id, ids)
-      );
+      .innerJoin(contacts, eq(events.contactId, contacts.id))
+      .where(inArray(events.id, ids));
 
-    if (deletableRows.length === 0) {
+    const allowedRows = deletableRows.filter((row) =>
+      canMutateEvent({ role, userId, userWard: ward, eventUserId: row.eventUserId, eventWard: row.eventWard })
+    );
+
+    if (allowedRows.length === 0) {
       return { success: false, error: 'No events found or not authorized.' };
     }
 
     await db.delete(events).where(
       inArray(
         events.id,
-        deletableRows.map((row) => row.id)
+        allowedRows.map((row) => row.id)
       )
     );
-    await cleanupOrphanContacts(deletableRows.map((row) => row.contactId));
+    await cleanupOrphanContacts(allowedRows.map((row) => row.contactId));
 
-    revalidateTag(`events-${session.user.id}`, 'max');
+    revalidateTag(`events-${userId}`, 'max');
 
-    return { success: true, data: { deleted: deletableRows.length } };
+    return { success: true, data: { deleted: allowedRows.length } };
   } catch (error) {
     console.error('[deleteEvents] Error:', error);
     return { success: false, error: 'Failed to delete events.' };
@@ -469,29 +505,34 @@ export async function deleteEvents(eventIds: string[]): Promise<ActionResult<{ d
 
 export async function updateEvent(input: UpdateEventInput): Promise<ActionResult<Event>> {
   try {
-    const session = await auth();
-
-    if (!session?.user?.id) {
-      return { success: false, error: 'Not authenticated.' };
-    }
-
-    const role = resolveRole(session);
+    const access = await resolveAccessContext();
+    if (!access.success || !access.data) return { success: false, error: access.error };
+    const { userId, role, ward } = access.data;
 
     if (!input.id?.trim()) {
       return { success: false, error: 'Invalid event id.' };
     }
 
     const [existingEvent] = await db
-      .select({ userId: events.userId, contactId: events.contactId })
+      .select({ userId: events.userId, contactId: events.contactId, eventWard: contacts.ward })
       .from(events)
-      .where(
-        role === 'user'
-          ? and(eq(events.id, input.id), eq(events.userId, session.user.id))
-          : eq(events.id, input.id)
-      )
+      .innerJoin(contacts, eq(events.contactId, contacts.id))
+      .where(eq(events.id, input.id))
       .limit(1);
 
     if (!existingEvent) {
+      return { success: false, error: 'Event not found.' };
+    }
+
+    if (
+      !canMutateEvent({
+        role,
+        userId,
+        userWard: ward,
+        eventUserId: existingEvent.userId,
+        eventWard: existingEvent.eventWard,
+      })
+    ) {
       return { success: false, error: 'Event not found.' };
     }
 
@@ -499,6 +540,13 @@ export async function updateEvent(input: UpdateEventInput): Promise<ActionResult
     const validationError = validateEventInput(normalizedInput);
     if (validationError) {
       return { success: false, error: validationError };
+    }
+
+    if (!canCreateEventInBuildingForWard(role, ward, normalizedInput.ward, normalizedInput.building)) {
+      return {
+        success: false,
+        error: 'You can only save events for your assigned ward and its designated building.',
+      };
     }
 
     const contactId = await getOrCreateContactId({
@@ -529,8 +577,8 @@ export async function updateEvent(input: UpdateEventInput): Promise<ActionResult
       await cleanupOrphanContacts([existingEvent.contactId]);
     }
 
-    revalidateTag(`events-${session.user.id}`, 'max');
-    revalidateTag(`events-${session.user.id}-${normalizedInput.building}`, 'max');
+    revalidateTag(`events-${userId}`, 'max');
+    revalidateTag(`events-${userId}-${normalizedInput.building}`, 'max');
 
     return { success: true, data: updatedEvent };
   } catch (error) {
@@ -543,11 +591,9 @@ export async function importEvents(input: {
   events: AddEventInput[];
 }): Promise<ActionResult<ImportEventsResult>> {
   try {
-    const session = await auth();
-
-    if (!session?.user?.id) {
-      return { success: false, error: 'Not authenticated.' };
-    }
+    const access = await resolveAccessContext();
+    if (!access.success || !access.data) return { success: false, error: access.error };
+    const { userId, role, ward } = access.data;
 
     const rowErrors: { row: number; message: string }[] = [];
     const validRows: AddEventInput[] = [];
@@ -555,7 +601,15 @@ export async function importEvents(input: {
     input.events.forEach((event, index) => {
       const normalizedEvent = clampImportTimes(normalizeEventInput(event));
       const error = validateEventInput(normalizedEvent);
-      if (error) {
+      if (
+        !error &&
+        !canCreateEventInBuildingForWard(role, ward, normalizedEvent.ward, normalizedEvent.building)
+      ) {
+        rowErrors.push({
+          row: index + 2,
+          message: 'You can only import events for your ward and its designated building.',
+        });
+      } else if (error) {
         rowErrors.push({ row: index + 2, message: error });
       } else {
         validRows.push(normalizedEvent);
@@ -588,13 +642,13 @@ export async function importEvents(input: {
         contactId,
         description: event.description,
         kindooLicenseCreated: false,
-        userId: session.user.id,
+        userId,
       });
     }
 
     await db.insert(events).values(insertValues);
 
-    revalidateTag(`events-${session.user.id}`, 'max');
+    revalidateTag(`events-${userId}`, 'max');
 
     return {
       success: true,
@@ -615,35 +669,47 @@ export async function setKindooLicenseCreated(input: {
   kindooLicenseCreated: boolean;
 }): Promise<ActionResult<Event>> {
   try {
-    const session = await auth();
-
-    if (!session?.user?.id) {
-      return { success: false, error: 'Not authenticated.' };
-    }
-
-    const role = resolveRole(session);
+    const access = await resolveAccessContext();
+    if (!access.success || !access.data) return { success: false, error: access.error };
+    const { userId, role, ward } = access.data;
 
     const eventId = input.eventId?.trim();
     if (!eventId) {
       return { success: false, error: 'Invalid event id.' };
     }
 
+    const [existingEvent] = await db
+      .select({ id: events.id, eventUserId: events.userId, eventWard: contacts.ward })
+      .from(events)
+      .innerJoin(contacts, eq(events.contactId, contacts.id))
+      .where(eq(events.id, eventId))
+      .limit(1);
+
+    if (
+      !existingEvent ||
+      !canMutateEvent({
+        role,
+        userId,
+        userWard: ward,
+        eventUserId: existingEvent.eventUserId,
+        eventWard: existingEvent.eventWard,
+      })
+    ) {
+      return { success: false, error: 'Event not found.' };
+    }
+
     const [updatedEvent] = await db
       .update(events)
       .set({ kindooLicenseCreated: input.kindooLicenseCreated })
-      .where(
-        role === 'user'
-          ? and(eq(events.id, eventId), eq(events.userId, session.user.id))
-          : eq(events.id, eventId)
-      )
+      .where(eq(events.id, eventId))
       .returning();
 
     if (!updatedEvent) {
       return { success: false, error: 'Event not found.' };
     }
 
-    revalidateTag(`events-${session.user.id}`, 'max');
-    revalidateTag(`events-${session.user.id}-${updatedEvent.building}`, 'max');
+    revalidateTag(`events-${userId}`, 'max');
+    revalidateTag(`events-${userId}-${updatedEvent.building}`, 'max');
 
     return { success: true, data: updatedEvent };
   } catch (error) {

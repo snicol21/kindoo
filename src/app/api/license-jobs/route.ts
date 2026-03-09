@@ -131,8 +131,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Event not found.' }, { status: 404 });
   }
 
-  const sessionRole = sessionUser?.role ?? 'user';
-  const canManageEvent = sessionRole !== 'user' || eventRecord.userId === userId;
+  const sessionRole = sessionUser?.role ?? 'ward_user';
+  const canManageEvent = sessionRole !== 'ward_user' || eventRecord.userId === userId;
   if (!canManageEvent) {
     return NextResponse.json({ error: 'Not authorized for this event.' }, { status: 403 });
   }

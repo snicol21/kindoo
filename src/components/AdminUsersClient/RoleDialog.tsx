@@ -17,13 +17,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/_ui/select';
-import { USER_ROLES, type UserRole } from '@/schema/schema';
+import type { UserRole } from '@/schema/schema';
 import type { ManagedUser } from '@/components/AdminUsersClient/types';
+import { ROLE_LABELS } from '@/lib/permissions';
 
 type RoleDialogProps = {
   open: boolean;
   roleUser: ManagedUser | null;
   nextRole: UserRole;
+  allowedRoles: UserRole[];
   rolePending: boolean;
   onOpenChangeAction: (open: boolean) => void;
   onNextRoleAction: (value: UserRole) => void;
@@ -34,6 +36,7 @@ export function RoleDialog({
   open,
   roleUser,
   nextRole,
+  allowedRoles,
   rolePending,
   onOpenChangeAction,
   onNextRoleAction,
@@ -55,9 +58,9 @@ export function RoleDialog({
               <SelectValue placeholder="Select role" />
             </SelectTrigger>
             <SelectContent>
-              {USER_ROLES.map((role) => (
+              {allowedRoles.map((role) => (
                 <SelectItem key={role} value={role}>
-                  {role}
+                  {ROLE_LABELS[role]}
                 </SelectItem>
               ))}
             </SelectContent>

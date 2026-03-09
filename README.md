@@ -12,12 +12,22 @@ A production-ready, private event tracking dashboard for **Stake Center** and **
 ## ✨ Features
 
 - 🔐 Google OAuth authentication (Auth.js v5)
+- 🧭 Role-based access: Admin, Stake Manager, Ward Manager, Ward User
+- 🏷️ Ward-scoped event visibility and creation rules
+- 📇 Required user profile fields: ward + phone
 - 🏢 Separate event lists per building (Stake Center / Maples Building)
 - ⚡ Optimistic UI updates with instant feedback
 - 🌙 Dark mode via next-themes
 - 📱 Fully responsive design
 - 🔄 Real-time cache invalidation with TanStack Query
 - 🎯 Type-safe end-to-end (Drizzle → Server Actions → React)
+
+## 🔐 Role Behavior
+
+- `Admin`: full access across all wards and all user management actions.
+- `Stake Manager`: can see/manage all events; can create and manage `Ward Manager` and `Ward User` accounts.
+- `Ward Manager`: can see/manage events in their own ward; can create and manage `Ward User` accounts in their own ward.
+- `Ward User`: can see only events they created in their own ward; can create events for their own ward.
 
 ---
 

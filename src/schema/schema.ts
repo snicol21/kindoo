@@ -16,7 +16,17 @@ export const WARDS = [
 ] as const;
 export type Ward = (typeof WARDS)[number];
 
-export const USER_ROLES = ['admin', 'manager', 'user'] as const;
+export const WARD_BUILDING: Record<Ward, Building> = {
+  '1st Ward': 'Maples Building',
+  '2nd Ward': 'Maples Building',
+  '3rd Ward': 'Stake Center',
+  '4th Ward': 'Stake Center',
+  '5th Ward': 'Maples Building',
+  '6th Ward': 'Stake Center',
+  'Park Ridge Ward': 'Maples Building',
+};
+
+export const USER_ROLES = ['admin', 'stake_manager', 'ward_manager', 'ward_user'] as const;
 export type UserRole = (typeof USER_ROLES)[number];
 
 // ─── Auth.js Required Tables ──────────────────────────────────────────────────
@@ -28,7 +38,9 @@ export const users = sqliteTable('user', {
   name: text('name'),
   email: text('email').unique().notNull(),
   passwordHash: text('password_hash'),
-  role: text('role', { enum: USER_ROLES }).notNull().$type<UserRole>().default('user'),
+  role: text('role', { enum: USER_ROLES }).notNull().$type<UserRole>().default('ward_user'),
+  ward: text('ward', { enum: WARDS }).notNull().$type<Ward>().default('1st Ward'),
+  phone: text('phone').notNull().default('0000000000'),
   emailVerified: integer('emailVerified', { mode: 'timestamp_ms' }),
   image: text('image'),
   defaultBuilding: text('default_building', {

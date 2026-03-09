@@ -10,11 +10,15 @@ import { DefaultBuildingSetting } from '@/components/DefaultBuildingSetting';
 import { changeProfile, changePassword } from '@/actions/auth';
 import { db } from '@/lib/db';
 import { users } from '@/schema/schema';
+import type { UserRole } from '@/schema/schema';
 import { eq } from 'drizzle-orm';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 import { PageContainer } from '@/components/PageContainer';
 import { ProfileImageUploader } from '@/components/ProfileImageUploader';
+import { PhoneInput } from '@/components/PhoneInput';
+import { ROLE_LABELS } from '@/lib/permissions';
+import { isAdminEmail } from '@/lib/admin';
 
 export const metadata: Metadata = {
   title: 'Account Settings',
@@ -40,11 +44,19 @@ export default async function AccountPage({ searchParams }: AccountPageProps) {
   const userRecord = await db
     .select({
       defaultBuilding: users.defaultBuilding,
+      ward: users.ward,
+      phone: users.phone,
     })
     .from(users)
     .where(eq(users.id, session.user.id))
     .limit(1);
   const defaultBuilding = userRecord[0]?.defaultBuilding ?? 'Stake Center';
+  const ward = userRecord[0]?.ward ?? '1st Ward';
+  const phone = userRecord[0]?.phone ?? '';
+  const canUpdateDefaultBuilding = session.user.role === 'stake_manager';
+  const role: UserRole = isAdminEmail(session.user.email ?? null)
+    ? 'admin'
+    : ((session.user.role ?? 'ward_user') as UserRole);
 
   const message = params.error
     ? decodeURIComponent(params.error)
@@ -83,7 +95,7 @@ export default async function AccountPage({ searchParams }: AccountPageProps) {
         <Card>
           <CardHeader>
             <CardTitle>Profile</CardTitle>
-            <CardDescription>Update how your name appears in the app.</CardDescription>
+            <CardDescription>Update your profile details. Ward is managed by user admins.</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-6">
@@ -92,6 +104,7 @@ export default async function AccountPage({ searchParams }: AccountPageProps) {
                   'use server';
                   const result = await changeProfile({
                     name: String(formData.get('name') ?? ''),
+                    phone: String(formData.get('phone') ?? ''),
                   });
 
                   if (!result.success) {
@@ -113,9 +126,21 @@ export default async function AccountPage({ searchParams }: AccountPageProps) {
                     defaultValue={session.user.name ?? ''}
                   />
                 </div>
+                <div className="space-y-3">
+                  <Label htmlFor="role">Role</Label>
+                  <Input id="role" value={ROLE_LABELS[role]} readOnly disabled />
+                </div>
+                <div className="space-y-3">
+                  <Label htmlFor="ward">Ward</Label>
+                  <Input id="ward" value={ward} readOnly disabled />
+                </div>
+                <div className="space-y-3">
+                  <Label htmlFor="phone">Phone</Label>
+                  <PhoneInput id="phone" name="phone" defaultValue={phone} />
+                </div>
                 <div className="flex justify-end">
                   <Button type="submit" variant="secondary">
-                    Update profile name
+                    Update profile
                   </Button>
                 </div>
               </form>
@@ -174,17 +199,19 @@ export default async function AccountPage({ searchParams }: AccountPageProps) {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Dashboard</CardTitle>
-            <CardDescription>
-              Choose your default building for dashboard and new events.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <DefaultBuildingSetting initialDefaultBuilding={defaultBuilding} />
-          </CardContent>
-        </Card>
+        {canUpdateDefaultBuilding && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Dashboard</CardTitle>
+              <CardDescription>
+                Choose your default building for dashboard and new events.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <DefaultBuildingSetting initialDefaultBuilding={defaultBuilding} />
+            </CardContent>
+          </Card>
+        )}
       </div>
       <div className="mt-8">
         <Button asChild variant="ghost" size="sm" className="gap-2">

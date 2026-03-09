@@ -19,7 +19,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/_ui/select';
-import { USER_ROLES, type UserRole } from '@/schema/schema';
+import type { UserRole, Ward } from '@/schema/schema';
+import { ROLE_LABELS } from '@/lib/permissions';
+import { PhoneInput } from '@/components/PhoneInput';
 
 type CreateUserDialogProps = {
   open: boolean;
@@ -28,11 +30,18 @@ type CreateUserDialogProps = {
   createName: string;
   createPassword: string;
   createRole: UserRole;
+  createWard: Ward;
+  createPhone: string;
+  wardOptions: readonly Ward[];
+  allowedRoles: UserRole[];
+  fixedWard?: Ward;
   createPending: boolean;
   onCreateEmailAction: (value: string) => void;
   onCreateNameAction: (value: string) => void;
   onCreatePasswordAction: (value: string) => void;
   onCreateRoleAction: (value: UserRole) => void;
+  onCreateWardAction: (value: Ward) => void;
+  onCreatePhoneAction: (value: string) => void;
   onSubmitAction: () => void;
 };
 
@@ -43,11 +52,18 @@ export function CreateUserDialog({
   createName,
   createPassword,
   createRole,
+  createWard,
+  createPhone,
+  wardOptions,
+  allowedRoles,
+  fixedWard,
   createPending,
   onCreateEmailAction,
   onCreateNameAction,
   onCreatePasswordAction,
   onCreateRoleAction,
+  onCreateWardAction,
+  onCreatePhoneAction,
   onSubmitAction,
 }: CreateUserDialogProps) {
   return (
@@ -91,6 +107,40 @@ export function CreateUserDialog({
             </div>
           </div>
           <div>
+            <Label htmlFor="create-phone">Phone</Label>
+            <PhoneInput
+              id="create-phone"
+              placeholder="(555) 000-0000"
+              required
+              value={createPhone}
+              onValueChange={onCreatePhoneAction}
+            />
+          </div>
+          <div>
+            <Label htmlFor="create-ward">Ward</Label>
+            <Select
+              value={createWard}
+              onValueChange={(value) => {
+                if (fixedWard) return;
+                onCreateWardAction(value as Ward);
+              }}
+            >
+              <SelectTrigger id="create-ward" disabled={!!fixedWard}>
+                <SelectValue placeholder="Select ward" />
+              </SelectTrigger>
+              <SelectContent>
+                {wardOptions.map((ward) => (
+                  <SelectItem key={ward} value={ward}>
+                    {ward}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {fixedWard && (
+              <p className="mt-1 text-xs text-muted-foreground">Ward is assigned from your account.</p>
+            )}
+          </div>
+          <div>
             <Label htmlFor="create-role">Role</Label>
             <Select
               value={createRole}
@@ -100,9 +150,9 @@ export function CreateUserDialog({
                 <SelectValue placeholder="Select role" />
               </SelectTrigger>
               <SelectContent>
-                {USER_ROLES.map((role) => (
+                {allowedRoles.map((role) => (
                   <SelectItem key={role} value={role}>
-                    {role}
+                    {ROLE_LABELS[role]}
                   </SelectItem>
                 ))}
               </SelectContent>

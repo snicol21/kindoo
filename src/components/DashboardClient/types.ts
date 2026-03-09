@@ -1,4 +1,4 @@
-import type { Building } from '@/schema/schema';
+import type { Building, UserRole, Ward } from '@/schema/schema';
 import type { EventWithCreator } from '@/actions/events';
 import type { MessageTemplateMap } from '@/lib/message-templates';
 
@@ -10,6 +10,10 @@ export interface DashboardClientProps {
   initialDefaultBuilding?: Building;
   initialTab?: DashboardTab;
   messageTemplates: MessageTemplateMap;
+  currentUserRole: UserRole;
+  currentUserWard: Ward;
+  canSelectAnyWard: boolean;
+  fixedBuildingForWardUsers?: Building;
 }
 
 export type DashboardCounts = {

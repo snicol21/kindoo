@@ -10,7 +10,8 @@ import {
   adminSetUserRole,
   createUser,
 } from '@/actions/auth';
-import type { UserRole } from '@/schema/schema';
+import type { UserRole, Ward } from '@/schema/schema';
+import { WARDS } from '@/schema/schema';
 import { AdminUsersHeader } from '@/components/AdminUsersClient/AdminUsersHeader';
 import { CreateUserDialog } from '@/components/AdminUsersClient/CreateUserDialog';
 import { DeleteUserDialog } from '@/components/AdminUsersClient/DeleteUserDialog';
@@ -18,13 +19,16 @@ import { PasswordDialog } from '@/components/AdminUsersClient/PasswordDialog';
 import { RoleDialog } from '@/components/AdminUsersClient/RoleDialog';
 import { UsersTable } from '@/components/AdminUsersClient/UsersTable';
 import type { AdminUsersClientProps, ManagedUser } from './types';
+import { canAssignRole, canManageUser } from '@/lib/permissions';
 
 const buildUserSearchHaystack = (user: ManagedUser) =>
-  [user.name, user.email, user.role].filter(Boolean).join(' ').toLowerCase();
+  [user.name, user.email, user.role, user.ward, user.phone].filter(Boolean).join(' ').toLowerCase();
 
 export function AdminUsersClient({
   users,
   currentUserId,
+  currentUserRole,
+  currentUserWard,
   searchQuery = '',
 }: AdminUsersClientProps) {
   const router = useRouter();
@@ -40,12 +44,14 @@ export function AdminUsersClient({
   const [createEmail, setCreateEmail] = useState('');
   const [createName, setCreateName] = useState('');
   const [createPassword, setCreatePassword] = useState('');
-  const [createRole, setCreateRole] = useState<UserRole>('user');
+  const [createRole, setCreateRole] = useState<UserRole>('ward_user');
+  const [createWard, setCreateWard] = useState<Ward>(currentUserWard as Ward);
+  const [createPhone, setCreatePhone] = useState('');
 
   const [roleOpen, setRoleOpen] = useState(false);
   const [rolePending, setRolePending] = useState(false);
   const [roleUser, setRoleUser] = useState<ManagedUser | null>(null);
-  const [nextRole, setNextRole] = useState<UserRole>('user');
+  const [nextRole, setNextRole] = useState<UserRole>('ward_user');
 
   const [passwordOpen, setPasswordOpen] = useState(false);
   const [passwordPending, setPasswordPending] = useState(false);
@@ -61,16 +67,34 @@ export function AdminUsersClient({
     setCreateEmail('');
     setCreateName('');
     setCreatePassword('');
-    setCreateRole('user');
+    setCreateRole('ward_user');
+    setCreateWard(currentUserWard as Ward);
+    setCreatePhone('');
+  };
+
+  const canManageTargetUser = (user: ManagedUser) => {
+    if (!canManageUser(currentUserRole, user.role)) return false;
+    if (currentUserRole === 'ward_manager') {
+      return user.ward === currentUserWard;
+    }
+    return true;
   };
 
   const openRoleDialog = (user: ManagedUser) => {
+    if (!canManageTargetUser(user)) {
+      toast.error('You cannot change this user.');
+      return;
+    }
     setRoleUser(user);
     setNextRole(user.role);
     setRoleOpen(true);
   };
 
   const openPasswordDialog = (user: ManagedUser) => {
+    if (!canManageTargetUser(user)) {
+      toast.error('You cannot change this user.');
+      return;
+    }
     setPasswordUser(user);
     setNewPassword('');
     setConfirmPassword('');
@@ -78,9 +102,21 @@ export function AdminUsersClient({
   };
 
   const openDeleteDialog = (user: ManagedUser) => {
+    if (!canManageTargetUser(user)) {
+      toast.error('You cannot delete this user.');
+      return;
+    }
     setDeleteUser(user);
     setDeleteOpen(true);
   };
+
+  const assignableRoles = useMemo(
+    () =>
+      (['admin', 'stake_manager', 'ward_manager', 'ward_user'] as UserRole[]).filter((role) =>
+        canAssignRole(currentUserRole, role)
+      ),
+    [currentUserRole]
+  );
 
   const handleCreateUser = async () => {
     setCreatePending(true);
@@ -90,6 +126,8 @@ export function AdminUsersClient({
         name: createName,
         password: createPassword,
         role: createRole,
+        ward: createWard,
+        phone: createPhone,
       });
 
       if (!result.success) {
@@ -177,6 +215,8 @@ export function AdminUsersClient({
           <UsersTable
             users={filteredUsers}
             currentUserId={currentUserId}
+            currentUserRole={currentUserRole}
+            currentUserWard={currentUserWard}
             onOpenRoleAction={openRoleDialog}
             onOpenPasswordAction={openPasswordDialog}
             onOpenDeleteAction={openDeleteDialog}
@@ -191,11 +231,18 @@ export function AdminUsersClient({
         createName={createName}
         createPassword={createPassword}
         createRole={createRole}
+        createWard={createWard}
+        createPhone={createPhone}
+        wardOptions={WARDS}
+        allowedRoles={assignableRoles}
+        fixedWard={currentUserRole === 'ward_manager' ? (currentUserWard as Ward) : undefined}
         createPending={createPending}
         onCreateEmailAction={setCreateEmail}
         onCreateNameAction={setCreateName}
         onCreatePasswordAction={setCreatePassword}
         onCreateRoleAction={setCreateRole}
+        onCreateWardAction={setCreateWard}
+        onCreatePhoneAction={setCreatePhone}
         onSubmitAction={handleCreateUser}
       />
 
@@ -204,6 +251,7 @@ export function AdminUsersClient({
         roleUser={roleUser}
         nextRole={nextRole}
         rolePending={rolePending}
+        allowedRoles={roleUser && !canManageTargetUser(roleUser) ? [] : assignableRoles}
         onOpenChangeAction={setRoleOpen}
         onNextRoleAction={setNextRole}
         onSubmitAction={handleUpdateRole}
