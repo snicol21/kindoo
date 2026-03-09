@@ -725,21 +725,21 @@ export function KindooLicenseDialog({
               <div className="rounded-md border border-border px-3 py-2 text-sm">
                 <p className="font-medium text-foreground">Event details</p>
                 <div className="mt-1.5 grid gap-2">
-                  <div className="flex items-center justify-between gap-4">
+                  <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
                     <span className="text-muted-foreground">Email</span>
-                    <span className="font-medium text-foreground">
+                    <span className="font-medium text-foreground sm:text-right break-words">
                       {licenseEvent.contactEmail || 'Missing email'}
                     </span>
                   </div>
-                  <div className="flex items-center justify-between gap-4">
+                  <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
                     <span className="text-muted-foreground">Description</span>
-                    <span className="font-medium text-foreground">
+                    <span className="font-medium text-foreground sm:text-right break-words">
                       {buildDescription(licenseEvent)}
                     </span>
                   </div>
-                  <div className="flex items-center justify-between gap-4">
+                  <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
                     <span className="text-muted-foreground">Access rule</span>
-                    <span className="font-medium text-foreground">
+                    <span className="font-medium text-foreground sm:text-right break-words">
                       {getAccessRule(licenseEvent.building) ?? 'Unknown'}
                     </span>
                   </div>
@@ -808,50 +808,50 @@ export function KindooLicenseDialog({
                   ) : (
                     <>
                       <div className="mt-1.5 grid gap-3 text-xs sm:grid-cols-2">
-                        <p className="flex items-center gap-2">
+                        <p className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
                           <span className="text-muted-foreground">Status:</span>
                           <span
-                            className={`inline-flex items-center gap-1 font-medium ${latestStatusVisual?.textClassName ?? 'text-foreground'}`}
+                            className={`inline-flex items-center gap-1 font-medium sm:text-right ${latestStatusVisual?.textClassName ?? 'text-foreground'}`}
                           >
                             {latestStatusVisual?.icon}
                             {latestStatusVisual?.label}
                           </span>
                         </p>
-                        <p>
-                          <span className="text-muted-foreground">Outcome:</span>{' '}
-                          <span className="font-medium text-foreground">
+                        <p className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                          <span className="text-muted-foreground">Outcome:</span>
+                          <span className="font-medium text-foreground sm:text-right">
                             {completionLabel ?? '—'}
                           </span>
                         </p>
-                        <p>
-                          <span className="text-muted-foreground">Duration:</span>{' '}
-                          <span className="font-medium text-foreground">
+                        <p className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                          <span className="text-muted-foreground">Duration:</span>
+                          <span className="font-medium text-foreground sm:text-right">
                             {latestDurationSec !== null ? `${latestDurationSec}s` : '—'}
                           </span>
                         </p>
-                        <p>
-                          <span className="text-muted-foreground">Attempts:</span>{' '}
-                          <span className="font-medium text-foreground">
+                        <p className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                          <span className="text-muted-foreground">Attempts:</span>
+                          <span className="font-medium text-foreground sm:text-right">
                             {latestJob?.attempts ?? '—'}
                           </span>
                         </p>
-                        <p>
-                          <span className="text-muted-foreground">Updated:</span>{' '}
-                          <span className="font-medium text-foreground">
+                        <p className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                          <span className="text-muted-foreground">Updated:</span>
+                          <span className="font-medium text-foreground sm:text-right">
                             {latestJob?.updatedAt
                               ? formatDateTimeNoSeconds(new Date(latestJob.updatedAt))
                               : '—'}
                           </span>
                         </p>
-                        <p>
-                          <span className="text-muted-foreground">Ran at:</span>{' '}
-                          <span className="font-medium text-foreground">
+                        <p className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                          <span className="text-muted-foreground">Ran at:</span>
+                          <span className="font-medium text-foreground sm:text-right">
                             {latestRunDate ? formatDateTimeNoSeconds(latestRunDate) : '—'}
                           </span>
                         </p>
-                        <p>
-                          <span className="text-muted-foreground">Timing delta:</span>{' '}
-                          <span className="font-medium text-foreground">
+                        <p className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                          <span className="text-muted-foreground">Timing delta:</span>
+                          <span className="font-medium text-foreground sm:text-right">
                             {runDeltaMinutes !== null ? formatDeltaMinutes(runDeltaMinutes) : '—'}
                           </span>
                         </p>
@@ -944,13 +944,14 @@ export function KindooLicenseDialog({
               Loading latest status...
             </p>
           )}
-          <Button variant="ghost" onClick={onCloseAction}>
+          <Button variant="outline" className="w-full sm:w-auto" onClick={onCloseAction}>
             Cancel
           </Button>
           {showActionButtons &&
           ((queuedJobId && jobStatus === 'failed') ||
             (!queuedJobId && latestJob?.status === 'failed')) ? (
             <Button
+              className="w-full sm:w-auto"
               disabled={isRetrying}
               onClick={async () => {
                 const retryJobId = queuedJobId ?? latestJob?.id;
@@ -998,14 +999,19 @@ export function KindooLicenseDialog({
             </Button>
           ) : null}
           {showActionButtons && isLicenseCompleted && !queuedJobId && !isPollingStatus && (
-            <Button variant="outline" disabled={isSubmitting} onClick={queueLicenseRequest}>
+            <Button
+              variant="outline"
+              className="w-full sm:w-auto"
+              disabled={isSubmitting}
+              onClick={queueLicenseRequest}
+            >
               {isSubmitting ? 'Queueing...' : 'Retry anyway'}
             </Button>
           )}
           {showActionButtons && !isLicenseCompleted && (
             <Button
               variant="outline"
-              className="border-amber-400 bg-amber-100 text-amber-900 hover:border-amber-500 hover:bg-amber-200 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-100 dark:hover:border-amber-500 dark:hover:bg-amber-900/60"
+              className="w-full border-amber-400 bg-amber-100 text-amber-900 hover:border-amber-500 hover:bg-amber-200 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-100 dark:hover:border-amber-500 dark:hover:bg-amber-900/60 sm:w-auto"
               disabled={!licenseEvent || isSubmitting || !!queuedJobId}
               onClick={queueLicenseRequest}
             >
@@ -1020,7 +1026,7 @@ export function KindooLicenseDialog({
             </Button>
           )}
           {!showActionButtons && (
-            <Button variant="outline" disabled>
+            <Button variant="outline" className="w-full sm:w-auto" disabled>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               Loading status...
             </Button>
