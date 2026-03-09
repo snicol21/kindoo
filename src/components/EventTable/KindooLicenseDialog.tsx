@@ -207,7 +207,6 @@ export function KindooLicenseDialog({
   const [isRetrying, setIsRetrying] = useState(false);
   const [hasAppliedCompletion, setHasAppliedCompletion] = useState(false);
   const [workerHealth, setWorkerHealth] = useState<WorkerHealthSummary | null>(null);
-  const [isInitializingStatus, setIsInitializingStatus] = useState(false);
   const [nowMs, setNowMs] = useState(() => Date.now());
 
   useEffect(() => {
@@ -228,7 +227,6 @@ export function KindooLicenseDialog({
       setIsRetrying(false);
       setHasAppliedCompletion(false);
       setWorkerHealth(null);
-      setIsInitializingStatus(false);
     }
   }, [licenseEvent]);
 
@@ -244,7 +242,9 @@ export function KindooLicenseDialog({
         if (!res.ok || cancelled) return;
         const health = data?.health as WorkerHealthSummary | undefined;
         if (health) setWorkerHealth(health);
-      } catch {}
+      } catch {
+        // Ignore worker health fetch errors.
+      }
     };
 
     void loadWorkerHealth();
@@ -262,8 +262,6 @@ export function KindooLicenseDialog({
   useEffect(() => {
     if (!licenseEvent) return;
     let cancelled = false;
-    setIsInitializingStatus(true);
-
     const loadLatestJob = async () => {
       try {
         const res = await fetch(`/api/license-jobs/event/${licenseEvent.id}/latest`, {
@@ -303,8 +301,7 @@ export function KindooLicenseDialog({
           }
         }
       } catch {
-      } finally {
-        if (!cancelled) setIsInitializingStatus(false);
+        // Ignore latest job fetch errors during dialog initialization.
       }
     };
 
@@ -441,7 +438,9 @@ export function KindooLicenseDialog({
         try {
           const parsed = JSON.parse((rawEvent as MessageEvent).data ?? '{}') as { jobId?: string };
           if (parsed.jobId === queuedJobId) void pollStatus();
-        } catch {}
+        } catch {
+          // Ignore malformed stream payloads and rely on polling fallback.
+        }
       });
       eventSource.addEventListener('error', () => {
         eventSource?.close();
