@@ -88,23 +88,21 @@ Useful modes:
 - `pnpm run worker:drain`: process until queue is empty and exit.
 - `pnpm run worker:watch`: keep polling in a loop.
 
-### 4) Run automatically on macOS without a permanent process
+### 4) Run automatically on macOS
 
-Use a LaunchAgent that wakes every few minutes, runs `worker --once`, and exits. See:
+Use a LaunchAgent that runs the worker in `--watch` mode and keeps the Mac awake while it is running.
+See:
 
 - `automation-service/macos/com.kindoo.license-worker.plist.example`
 
-Install it by copying to `~/Library/LaunchAgents/com.kindoo.license-worker.plist`, then run:
-
-```bash
-launchctl unload ~/Library/LaunchAgents/com.kindoo.license-worker.plist 2>/dev/null || true
-launchctl load ~/Library/LaunchAgents/com.kindoo.license-worker.plist
-```
-
 Recommended: use the installer script so the LaunchAgent is generated with a stable Node binary path
-(`/opt/homebrew/bin/node` or `/usr/local/bin/node`) instead of ephemeral shell paths:
+(`/opt/homebrew/bin/node` or `/usr/local/bin/node`) and the caffeinate wrapper:
 
 ```bash
 cd automation-service
 pnpm run worker:launchd:install
 ```
+
+Note: the worker will not run if the Mac is asleep or powered off. On macOS, enable
+"Prevent automatic sleeping when the display is off" while on power, and keep the lid
+open (or use clamshell mode with an external display).

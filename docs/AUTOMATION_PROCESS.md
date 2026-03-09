@@ -134,6 +134,11 @@ pnpm run worker:launchd:logs
 
 The installer script builds `dist/`, creates `~/Library/LaunchAgents/com.kindoo.license-worker.plist`, and starts it.
 
+Note: the launchd script uses `macos/run-license-worker.sh`, which wraps the worker with
+`caffeinate` to prevent automatic sleep while it runs. This only works while the Mac is on
+and awake. For reliable operation, enable "Prevent automatic sleeping when the display is off"
+in Battery settings while on power, and avoid closing the lid unless using clamshell mode.
+
 ## 7. Monitoring and Health
 
 ### Worker heartbeat
