@@ -113,7 +113,7 @@ function getLicenseOutcomeVisual(outcome: string) {
     };
   }
 
-  if (outcome === 'Will auto-schedule') {
+  if (outcome === 'Auto-schedule pending') {
     return {
       textClassName: 'text-slate-600 hover:text-slate-700',
       icon: <Clock className="h-3.5 w-3.5" />,
@@ -273,7 +273,7 @@ export function EventTable({
                     : shouldShowScheduled
                       ? 'Scheduled for license'
                       : shouldShowAutoSchedule
-                        ? 'Will auto-schedule'
+                        ? 'Auto-schedule pending'
                         : null,
                 ] as const;
               }
@@ -306,7 +306,7 @@ export function EventTable({
                   : shouldShowScheduled
                     ? 'Scheduled for license'
                     : shouldShowAutoSchedule
-                      ? 'Will auto-schedule'
+                      ? 'Auto-schedule pending'
                       : null,
               ] as const;
             } catch {
@@ -317,7 +317,7 @@ export function EventTable({
                   : shouldShowScheduled
                     ? 'Scheduled for license'
                     : shouldShowAutoSchedule
-                      ? 'Will auto-schedule'
+                      ? 'Auto-schedule pending'
                       : null,
               ] as const;
             }

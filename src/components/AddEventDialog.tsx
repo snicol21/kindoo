@@ -369,8 +369,6 @@ export function AddEventDialog({
       }
       if (!eventDate?.trim()) {
         errors.eventDate = 'Event date is required.';
-      } else if (eventDate < minEventDate) {
-        errors.eventDate = 'Please select today or a future date.';
       }
       if (!startTime?.trim()) {
         errors.startTime = 'Start time is required.';
@@ -394,6 +392,11 @@ export function AddEventDialog({
           errors.endTime = 'End time must be no later than 11:00 PM.';
         } else if (startMinutes !== null && endMinutes <= startMinutes) {
           errors.endTime = 'End time must be after start time.';
+        } else if (eventDate?.trim()) {
+          const eventEnd = new Date(`${eventDate}T${endTime}:00`);
+          if (Number.isFinite(eventEnd.getTime()) && eventEnd.getTime() < Date.now()) {
+            errors.eventDate = 'Event must end in the future.';
+          }
         }
       }
       if (email?.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {

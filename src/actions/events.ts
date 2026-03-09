@@ -16,11 +16,12 @@ import {
 import { and, eq, inArray, or } from 'drizzle-orm';
 import { revalidateTag } from 'next/cache';
 import { isAdminEmail } from '@/lib/admin';
-import { isFutureDate } from '@/utils/dateUtils';
 import { normalizePhoneForStorage } from '@/utils/phoneUtils';
 import { normalizeEmail } from '@/utils/stringUtils';
 import { parseTimeToMinutes } from '@/utils/timeUtils';
 import { DESCRIPTION_MAX_LENGTH } from '@/utils/eventConstants';
+
+const EVENT_TIMEZONE = 'America/Denver';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -116,6 +117,37 @@ function normalizeEventInput(input: AddEventInput): AddEventInput {
   };
 }
 
+function getCurrentYmdHmInTimeZone(timeZone: string) {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(new Date());
+
+  const byType = new Map(parts.map((part) => [part.type, part.value]));
+  const year = byType.get('year') ?? '';
+  const month = byType.get('month') ?? '';
+  const day = byType.get('day') ?? '';
+  const hour = byType.get('hour') ?? '00';
+  const minute = byType.get('minute') ?? '00';
+
+  return {
+    ymd: `${year}-${month}-${day}`,
+    hm: `${hour}:${minute}`,
+  };
+}
+
+function eventEndsInFuture(eventDate: string, endTime: string, timeZone: string) {
+  const now = getCurrentYmdHmInTimeZone(timeZone);
+  if (eventDate > now.ymd) return true;
+  if (eventDate < now.ymd) return false;
+  return endTime >= now.hm;
+}
+
 function validateEventInput(input: AddEventInput): string | null {
   if (!input.building || !BUILDINGS.includes(input.building)) {
     return 'Invalid building selection.';
@@ -126,9 +158,6 @@ function validateEventInput(input: AddEventInput): string | null {
     return 'Please enter both first and last name.';
   }
   if (!input.eventDate?.trim()) return 'Event date is required.';
-  if (!isFutureDate(input.eventDate.trim())) {
-    return 'Event date must be today or in the future.';
-  }
   if (!input.startTime?.trim()) return 'Start time is required.';
   if (!input.endTime?.trim()) return 'End time is required.';
   const startMinutes = parseTimeToMinutes(input.startTime);
@@ -145,6 +174,9 @@ function validateEventInput(input: AddEventInput): string | null {
   }
   if (endMinutes <= startMinutes) {
     return 'End time must be after start time.';
+  }
+  if (!eventEndsInFuture(input.eventDate.trim(), input.endTime.trim(), EVENT_TIMEZONE)) {
+    return 'Event must end in the future.';
   }
   if (input.email?.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.email)) {
     return 'Email must be valid if provided.';
