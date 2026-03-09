@@ -102,6 +102,77 @@ function getJobStatusVisual(status: LicenseJobStatus) {
   }
 }
 
+function getOutcomeStatusVisual(outcome: string) {
+  if (outcome.startsWith('License schedules in ')) {
+    return {
+      label: outcome,
+      textClassName: 'text-blue-700 dark:text-blue-300',
+      badgeClassName:
+        'border border-blue-200 bg-blue-100/80 dark:border-blue-700/60 dark:bg-blue-900/30',
+      icon: <Clock className="h-3.5 w-3.5" />,
+    };
+  }
+
+  if (outcome === 'Request in progress' || outcome === 'Retry in progress') {
+    return {
+      label: outcome,
+      textClassName: 'text-blue-700 dark:text-blue-300',
+      badgeClassName:
+        'border border-blue-200 bg-blue-100/80 dark:border-blue-700/60 dark:bg-blue-900/30',
+      icon: <Loader2 className="h-3.5 w-3.5 animate-spin" />,
+    };
+  }
+
+  if (
+    outcome === 'Request queued' ||
+    outcome === 'Retry queued' ||
+    outcome === 'Auto-schedule pending' ||
+    outcome === 'Scheduled for license' ||
+    outcome === 'Automation queued'
+  ) {
+    return {
+      label: outcome,
+      textClassName: 'text-blue-700 dark:text-blue-300',
+      badgeClassName:
+        'border border-blue-200 bg-blue-100/80 dark:border-blue-700/60 dark:bg-blue-900/30',
+      icon: <Clock className="h-3.5 w-3.5" />,
+    };
+  }
+
+  if (outcome === 'Request failed' || outcome === 'Retry failed') {
+    return {
+      label: outcome,
+      textClassName: 'text-red-700 dark:text-red-300',
+      badgeClassName:
+        'border border-red-300 bg-red-100/80 dark:border-red-700/60 dark:bg-red-900/30',
+      icon: <AlertTriangle className="h-3.5 w-3.5" />,
+    };
+  }
+
+  if (
+    outcome === 'Temporary license created' ||
+    outcome === 'Active license already existed' ||
+    outcome === 'License created' ||
+    outcome === 'Existing active license'
+  ) {
+    return {
+      label: outcome,
+      textClassName: 'text-emerald-700 dark:text-emerald-300',
+      badgeClassName:
+        'border border-emerald-300 bg-emerald-100/80 dark:border-emerald-700/60 dark:bg-emerald-900/30',
+      icon: <CheckCircle2 className="h-3.5 w-3.5" />,
+    };
+  }
+
+  return {
+    label: 'Not started',
+    textClassName: 'text-slate-700 dark:text-slate-300',
+    badgeClassName:
+      'border border-slate-300 bg-slate-100/80 dark:border-slate-700/60 dark:bg-slate-900/30',
+    icon: <Clock className="h-3.5 w-3.5" />,
+  };
+}
+
 const EARLIEST_MINUTES = 5 * 60;
 
 function formatLocalYmd(date: Date) {
@@ -436,15 +507,13 @@ export function KindooLicenseDialog({
 
   const completionLabel =
     latestJob?.completionType === 'existing-active-license'
-      ? 'Existing active license'
+      ? 'Active license already existed'
       : latestJob?.completionType === 'temporary-license-created'
         ? 'Temporary license created'
         : null;
 
   const latestDurationSec =
     typeof latestJob?.durationMs === 'number' ? Math.round(latestJob.durationMs / 1000) : null;
-
-  const latestStatusVisual = latestJob ? getJobStatusVisual(latestJob.status) : null;
 
   const latestRunTimestamp = latestJob?.claimedAt ?? latestJob?.createdAt ?? latestJob?.completedAt ?? null;
   const latestRunDate = latestRunTimestamp ? new Date(latestRunTimestamp) : null;
@@ -462,6 +531,31 @@ export function KindooLicenseDialog({
   const countdownToScheduledMs = scheduledDateTime ? scheduledDateTime.getTime() - nowMs : null;
   const countdownLabel = countdownToScheduledMs !== null ? formatCountdownMs(countdownToScheduledMs) : null;
   const isScheduledPast = countdownToScheduledMs !== null && countdownToScheduledMs <= 0;
+
+  const shouldShowAutomationQueued =
+    !latestJob &&
+    isScheduledPast &&
+    (initialLicenseOutcome === 'Auto-schedule pending' ||
+      initialLicenseOutcome === 'Scheduled for license');
+
+  const shouldUseScheduleCountdownLabel =
+    !latestJob &&
+    !isScheduledPast &&
+    !!countdownLabel &&
+    (initialLicenseOutcome === 'Auto-schedule pending' ||
+      initialLicenseOutcome === 'Scheduled for license');
+
+  const effectiveOutcome = shouldUseScheduleCountdownLabel
+    ? `License schedules in ${countdownLabel}`
+    : shouldShowAutomationQueued
+      ? 'Automation queued'
+      : (completionLabel ?? initialLicenseOutcome ?? null);
+
+  const latestStatusVisual = effectiveOutcome
+    ? getOutcomeStatusVisual(effectiveOutcome)
+    : latestJob
+      ? getJobStatusVisual(latestJob.status)
+      : getOutcomeStatusVisual('');
 
   const canRetryFailedJob =
     (!!queuedJobId && jobStatus === 'failed') || (!queuedJobId && latestJob?.status === 'failed');
@@ -574,13 +668,18 @@ export function KindooLicenseDialog({
                         <div className="flex items-center justify-end gap-2">
                           {latestJob ? (
                             <span
-                              className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-semibold ${latestStatusVisual?.textClassName} ${latestStatusVisual?.badgeClassName}`}
+                              className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-semibold ${latestStatusVisual.textClassName} ${latestStatusVisual.badgeClassName}`}
                             >
-                              {latestStatusVisual?.icon}
-                              {latestStatusVisual?.label}
+                              {latestStatusVisual.icon}
+                              {latestStatusVisual.label}
                             </span>
                           ) : (
-                            <span className="text-muted-foreground">Not started</span>
+                            <span
+                              className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-semibold ${latestStatusVisual.textClassName} ${latestStatusVisual.badgeClassName}`}
+                            >
+                              {latestStatusVisual.icon}
+                              {latestStatusVisual.label}
+                            </span>
                           )}
                           {canRetryFailedJob ? (
                             <Tooltip>
@@ -619,7 +718,7 @@ export function KindooLicenseDialog({
                         )
                       }
                     />
-                    <MetaRow label="Outcome" value={completionLabel ?? initialLicenseOutcome ?? '—'} />
+                    <MetaRow label="Outcome" value={effectiveOutcome ?? '—'} />
                     <MetaRow label="Duration" value={latestDurationSec !== null ? `${latestDurationSec}s` : '—'} />
                     <MetaRow label="Timing delta" value={runDeltaMinutes !== null ? formatDeltaMinutes(runDeltaMinutes) : '—'} />
                     <MetaRow label="Ran at" value={latestRunDate ? formatDateTimeNoSeconds(latestRunDate) : '—'} />

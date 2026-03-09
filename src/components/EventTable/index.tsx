@@ -85,66 +85,67 @@ const PERSIST_PENDING_OUTCOMES = new Set([
 ]);
 
 function getLicenseOutcomeVisual(outcome: string) {
+  const queuedBadge = {
+    textClassName: 'text-blue-700 dark:text-blue-300',
+    badgeClassName:
+      'border border-blue-200 bg-blue-100/80 dark:border-blue-700/60 dark:bg-blue-900/30',
+    icon: <Clock className="h-3.5 w-3.5" />,
+  };
+
+  const inProgressBadge = {
+    textClassName: 'text-blue-700 dark:text-blue-300',
+    badgeClassName:
+      'border border-blue-200 bg-blue-100/80 dark:border-blue-700/60 dark:bg-blue-900/30',
+    icon: <Loader2 className="h-3.5 w-3.5 animate-spin" />,
+  };
+
+  const failedBadge = {
+    textClassName: 'text-red-700 dark:text-red-300',
+    badgeClassName:
+      'border border-red-300 bg-red-100/80 dark:border-red-700/60 dark:bg-red-900/30',
+    icon: <AlertTriangle className="h-3.5 w-3.5" />,
+  };
+
+  const completedBadge = {
+    textClassName: 'text-emerald-700 dark:text-emerald-300',
+    badgeClassName:
+      'border border-emerald-300 bg-emerald-100/80 dark:border-emerald-700/60 dark:bg-emerald-900/30',
+    icon: <CheckCircle2 className="h-3.5 w-3.5" />,
+  };
+
   if (outcome === 'Retry in progress') {
-    return {
-      textClassName: 'text-blue-600 hover:text-blue-700 dark:text-blue-300 dark:hover:text-blue-200',
-      icon: <Loader2 className="h-3.5 w-3.5 animate-spin" />,
-    };
+    return inProgressBadge;
   }
 
   if (outcome === 'Retry queued') {
-    return {
-      textClassName: 'text-blue-600 hover:text-blue-700 dark:text-blue-300 dark:hover:text-blue-200',
-      icon: <Clock className="h-3.5 w-3.5" />,
-    };
+    return queuedBadge;
   }
 
   if (outcome === 'Retry failed') {
-    return {
-      textClassName: 'text-red-700 hover:text-red-800',
-      icon: <AlertTriangle className="h-3.5 w-3.5" />,
-    };
+    return failedBadge;
   }
 
   if (outcome === 'Request in progress') {
-    return {
-      textClassName: 'text-blue-600 hover:text-blue-700 dark:text-blue-300 dark:hover:text-blue-200',
-      icon: <Loader2 className="h-3.5 w-3.5 animate-spin" />,
-    };
+    return inProgressBadge;
   }
 
   if (outcome === 'Request queued') {
-    return {
-      textClassName: 'text-blue-600 hover:text-blue-700 dark:text-blue-300 dark:hover:text-blue-200',
-      icon: <Clock className="h-3.5 w-3.5" />,
-    };
+    return queuedBadge;
   }
 
   if (outcome === 'Request failed') {
-    return {
-      textClassName: 'text-red-700 hover:text-red-800',
-      icon: <AlertTriangle className="h-3.5 w-3.5" />,
-    };
+    return failedBadge;
   }
 
   if (outcome === 'Scheduled for license') {
-    return {
-      textClassName: 'text-slate-700 hover:text-slate-800',
-      icon: <Clock className="h-3.5 w-3.5" />,
-    };
+    return queuedBadge;
   }
 
   if (outcome === 'Auto-schedule pending') {
-    return {
-      textClassName: 'text-slate-600 hover:text-slate-700 dark:text-slate-300 dark:hover:text-slate-200',
-      icon: <Clock className="h-3.5 w-3.5" />,
-    };
+    return queuedBadge;
   }
 
-  return {
-    textClassName: 'text-emerald-700 hover:text-emerald-800',
-    icon: <CheckCircle2 className="h-3.5 w-3.5" />,
-  };
+  return completedBadge;
 }
 
 function parseTimeToMinutes(time: string) {
@@ -1155,10 +1156,13 @@ export function EventTable({
               const licenseOutcomeLabel = shouldUseCountdownAsOutcomeLabel
                 ? msUntilDue !== null && msUntilDue > 0
                   ? `License schedules in ${formatCountdownMs(msUntilDue)}`
-                  : 'License schedule time reached'
+                  : 'Automation queued'
                 : licenseOutcome;
               const scheduleTimeReached =
                 shouldUseCountdownAsOutcomeLabel && (msUntilDue === null || msUntilDue <= 0);
+              const licenseOutcomeVisual = getLicenseOutcomeVisual(
+                scheduleTimeReached ? 'Request queued' : licenseOutcome ?? ''
+              );
               return (
                 <TableRow
                   key={event.id}
@@ -1212,21 +1216,15 @@ export function EventTable({
                             {hasLicenseStatus ? (
                               <button
                                 type="button"
-                                className={`inline-flex w-fit cursor-pointer items-center gap-1.5 text-xs font-medium disabled:cursor-not-allowed ${getLicenseOutcomeVisual(licenseOutcome).textClassName} ${
-                                  scheduleTimeReached
-                                    ? 'text-blue-700 hover:text-blue-800 dark:text-blue-200 dark:hover:text-blue-100'
-                                    : ''
-                                }`}
+                                className={`inline-flex w-fit cursor-pointer items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-semibold transition-colors hover:opacity-90 disabled:cursor-not-allowed ${licenseOutcomeVisual.textClassName} ${licenseOutcomeVisual.badgeClassName}`}
                                 onClick={() => {
                                   setLicenseEvent(event);
                                   setLicenseOutcomePreview(licenseOutcome);
                                 }}
                                 disabled={!onSetKindooLicenseCreated || isSavingLicenseStatus}
                               >
-                                {getLicenseOutcomeVisual(licenseOutcome).icon}
-                                <span className="underline underline-offset-2">
-                                  {licenseOutcomeLabel}
-                                </span>
+                                {licenseOutcomeVisual.icon}
+                                <span>{licenseOutcomeLabel}</span>
                               </button>
                             ) : (
                               <div
@@ -1372,21 +1370,15 @@ export function EventTable({
                             {hasLicenseStatus ? (
                               <button
                                 type="button"
-                                className={`inline-flex w-fit cursor-pointer items-center gap-1.5 text-xs font-medium disabled:cursor-not-allowed ${getLicenseOutcomeVisual(licenseOutcome).textClassName} ${
-                                  scheduleTimeReached
-                                    ? 'text-blue-700 hover:text-blue-800 dark:text-blue-200 dark:hover:text-blue-100'
-                                    : ''
-                                }`}
+                                className={`inline-flex w-fit cursor-pointer items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-semibold transition-colors hover:opacity-90 disabled:cursor-not-allowed ${licenseOutcomeVisual.textClassName} ${licenseOutcomeVisual.badgeClassName}`}
                                 onClick={() => {
                                   setLicenseEvent(event);
                                   setLicenseOutcomePreview(licenseOutcome);
                                 }}
                                 disabled={!onSetKindooLicenseCreated || isSavingLicenseStatus}
                               >
-                                {getLicenseOutcomeVisual(licenseOutcome).icon}
-                                <span className="underline underline-offset-2">
-                                  {licenseOutcome}
-                                </span>
+                                {licenseOutcomeVisual.icon}
+                                <span>{licenseOutcomeLabel}</span>
                               </button>
                             ) : (
                               <div
