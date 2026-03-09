@@ -126,6 +126,17 @@ function getLicenseOutcomeVisual(outcome: string) {
   };
 }
 
+function getBaseLicenseOutcome(event: EventWithCreator, effectiveLeadDays: number) {
+  if (event.kindooLicenseCreated) return 'License created';
+  const daysValue = getDaysUntilValue(event.eventDate);
+  const isFutureOrToday = Number.isFinite(daysValue) && daysValue >= 0;
+  const withinWindow = isFutureOrToday && daysValue <= effectiveLeadDays;
+  const hasContactEmail = !!event.contactEmail?.trim();
+  if (withinWindow && hasContactEmail) return 'Scheduled for license';
+  if (isFutureOrToday && hasContactEmail && !withinWindow) return 'Auto-schedule pending';
+  return null;
+}
+
 export function EventTable({
   events,
   isLoading,
@@ -224,6 +235,9 @@ export function EventTable({
   const [isMobileView, setIsMobileView] = useState(false);
   const [isSingleColumnView, setIsSingleColumnView] = useState(false);
   const [licenseOutcomeByEvent, setLicenseOutcomeByEvent] = useState<Record<string, string>>({});
+  const [licenseOutcomeLoadedByEvent, setLicenseOutcomeLoadedByEvent] = useState<
+    Record<string, boolean>
+  >({});
   const [workerHealth, setWorkerHealth] = useState<WorkerHealthSummary | null>(null);
 
   const editLookupQuery = editEmail.trim() || editPhone.trim() || editName.trim();
@@ -249,6 +263,7 @@ export function EventTable({
       });
     if (trackedEvents.length === 0) {
       setLicenseOutcomeByEvent({});
+      setLicenseOutcomeLoadedByEvent({});
       return;
     }
 
@@ -332,7 +347,12 @@ export function EventTable({
           nextOutcomes[eventId] = outcome;
         }
       }
+      const nextLoaded: Record<string, boolean> = {};
+      for (const trackedEvent of trackedEvents) {
+        nextLoaded[trackedEvent.id] = true;
+      }
       setLicenseOutcomeByEvent(nextOutcomes);
+      setLicenseOutcomeLoadedByEvent(nextLoaded);
     };
 
     void loadOutcomes();
@@ -1055,6 +1075,12 @@ export function EventTable({
               const isOptimistic = event.id.startsWith('optimistic-');
               const licenseOutcome = licenseOutcomeByEvent[event.id] ?? null;
               const hasLicenseStatus = !!licenseOutcome;
+              const baseLicenseOutcome = getBaseLicenseOutcome(event, effectiveLeadDays);
+              const isLicenseOutcomeLoading =
+                !isOptimistic && !licenseOutcomeLoadedByEvent[event.id];
+              const shouldShowLicensePlaceholder =
+                !isOptimistic &&
+                (hasLicenseStatus || isLicenseOutcomeLoading || !!baseLicenseOutcome);
               return (
                 <TableRow
                   key={event.id}
@@ -1103,16 +1129,27 @@ export function EventTable({
                           <FileText className="h-3.5 w-3.5 shrink-0" />
                           <span className="min-w-0">{event.description}</span>
                         </p>
-                        {!isSingleColumnView && !isOptimistic && hasLicenseStatus && (
-                          <button
-                            type="button"
-                            className={`mt-1.5 inline-flex w-fit cursor-pointer items-center gap-1.5 text-xs font-medium disabled:cursor-not-allowed ${getLicenseOutcomeVisual(licenseOutcome).textClassName}`}
-                            onClick={() => setLicenseEvent(event)}
-                            disabled={!onSetKindooLicenseCreated || isSavingLicenseStatus}
-                          >
-                            {getLicenseOutcomeVisual(licenseOutcome).icon}
-                            <span className="underline underline-offset-2">{licenseOutcome}</span>
-                          </button>
+                        {!isSingleColumnView && shouldShowLicensePlaceholder && (
+                          <div className="mt-1.5 min-h-[18px]">
+                            {hasLicenseStatus ? (
+                              <button
+                                type="button"
+                                className={`inline-flex w-fit cursor-pointer items-center gap-1.5 text-xs font-medium disabled:cursor-not-allowed ${getLicenseOutcomeVisual(licenseOutcome).textClassName}`}
+                                onClick={() => setLicenseEvent(event)}
+                                disabled={!onSetKindooLicenseCreated || isSavingLicenseStatus}
+                              >
+                                {getLicenseOutcomeVisual(licenseOutcome).icon}
+                                <span className="underline underline-offset-2">
+                                  {licenseOutcome}
+                                </span>
+                              </button>
+                            ) : (
+                              <div
+                                className="h-4 w-36 rounded-full bg-muted/60 animate-pulse"
+                                aria-hidden="true"
+                              />
+                            )}
+                          </div>
                         )}
                       </div>
                       {isSingleColumnView && (
@@ -1245,16 +1282,27 @@ export function EventTable({
                             <span className="text-muted-foreground/50">—</span>
                           )}
                         </div>
-                        {!isOptimistic && hasLicenseStatus && (
-                          <button
-                            type="button"
-                            className={`inline-flex w-fit cursor-pointer items-center gap-1.5 text-xs font-medium disabled:cursor-not-allowed ${getLicenseOutcomeVisual(licenseOutcome).textClassName}`}
-                            onClick={() => setLicenseEvent(event)}
-                            disabled={!onSetKindooLicenseCreated || isSavingLicenseStatus}
-                          >
-                            {getLicenseOutcomeVisual(licenseOutcome).icon}
-                            <span className="underline underline-offset-2">{licenseOutcome}</span>
-                          </button>
+                        {shouldShowLicensePlaceholder && (
+                          <div className="min-h-[18px]">
+                            {hasLicenseStatus ? (
+                              <button
+                                type="button"
+                                className={`inline-flex w-fit cursor-pointer items-center gap-1.5 text-xs font-medium disabled:cursor-not-allowed ${getLicenseOutcomeVisual(licenseOutcome).textClassName}`}
+                                onClick={() => setLicenseEvent(event)}
+                                disabled={!onSetKindooLicenseCreated || isSavingLicenseStatus}
+                              >
+                                {getLicenseOutcomeVisual(licenseOutcome).icon}
+                                <span className="underline underline-offset-2">
+                                  {licenseOutcome}
+                                </span>
+                              </button>
+                            ) : (
+                              <div
+                                className="h-4 w-36 rounded-full bg-muted/60 animate-pulse"
+                                aria-hidden="true"
+                              />
+                            )}
+                          </div>
                         )}
                       </div>
                     )}
