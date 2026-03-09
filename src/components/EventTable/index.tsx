@@ -167,6 +167,7 @@ export function EventTable({
   const [pendingDeleteEvent, setPendingDeleteEvent] = useState<EventWithCreator | null>(null);
   const [editingEvent, setEditingEvent] = useState<EventWithCreator | null>(null);
   const [licenseEvent, setLicenseEvent] = useState<EventWithCreator | null>(null);
+  const [licenseOutcomePreview, setLicenseOutcomePreview] = useState<string | null>(null);
   const [isSavingLicenseStatus, setIsSavingLicenseStatus] = useState(false);
   const submitKindooLicenseStatus = async (event: EventWithCreator, nextValue: boolean) => {
     if (!onSetKindooLicenseCreated || isSavingLicenseStatus) return;
@@ -1081,6 +1082,7 @@ export function EventTable({
               const shouldShowLicensePlaceholder =
                 !isOptimistic &&
                 (hasLicenseStatus || isLicenseOutcomeLoading || !!baseLicenseOutcome);
+              const showLicensePreview = isLicenseOutcomeLoading && !!baseLicenseOutcome;
               return (
                 <TableRow
                   key={event.id}
@@ -1135,7 +1137,10 @@ export function EventTable({
                               <button
                                 type="button"
                                 className={`inline-flex w-fit cursor-pointer items-center gap-1.5 text-xs font-medium disabled:cursor-not-allowed ${getLicenseOutcomeVisual(licenseOutcome).textClassName}`}
-                                onClick={() => setLicenseEvent(event)}
+                                onClick={() => {
+                                  setLicenseEvent(event);
+                                  setLicenseOutcomePreview(licenseOutcome ?? baseLicenseOutcome);
+                                }}
                                 disabled={!onSetKindooLicenseCreated || isSavingLicenseStatus}
                               >
                                 {getLicenseOutcomeVisual(licenseOutcome).icon}
@@ -1143,6 +1148,11 @@ export function EventTable({
                                   {licenseOutcome}
                                 </span>
                               </button>
+                            ) : showLicensePreview ? (
+                              <div className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                                {getLicenseOutcomeVisual(baseLicenseOutcome).icon}
+                                <span>{baseLicenseOutcome}</span>
+                              </div>
                             ) : (
                               <div
                                 className="h-4 w-36 rounded-full bg-muted/60 animate-pulse"
@@ -1288,7 +1298,10 @@ export function EventTable({
                               <button
                                 type="button"
                                 className={`inline-flex w-fit cursor-pointer items-center gap-1.5 text-xs font-medium disabled:cursor-not-allowed ${getLicenseOutcomeVisual(licenseOutcome).textClassName}`}
-                                onClick={() => setLicenseEvent(event)}
+                                onClick={() => {
+                                  setLicenseEvent(event);
+                                  setLicenseOutcomePreview(licenseOutcome ?? baseLicenseOutcome);
+                                }}
                                 disabled={!onSetKindooLicenseCreated || isSavingLicenseStatus}
                               >
                                 {getLicenseOutcomeVisual(licenseOutcome).icon}
@@ -1296,6 +1309,11 @@ export function EventTable({
                                   {licenseOutcome}
                                 </span>
                               </button>
+                            ) : showLicensePreview ? (
+                              <div className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                                {getLicenseOutcomeVisual(baseLicenseOutcome).icon}
+                                <span>{baseLicenseOutcome}</span>
+                              </div>
                             ) : (
                               <div
                                 className="h-4 w-36 rounded-full bg-muted/60 animate-pulse"
@@ -1813,8 +1831,12 @@ export function EventTable({
 
       <KindooLicenseDialog
         licenseEvent={licenseEvent}
+        initialLicenseOutcome={licenseOutcomePreview}
         messageTemplates={messageTemplates}
-        onCloseAction={() => setLicenseEvent(null)}
+        onCloseAction={() => {
+          setLicenseEvent(null);
+          setLicenseOutcomePreview(null);
+        }}
         onLicenseOutcomeChangeAction={(eventId, outcome) => {
           setLicenseOutcomeByEvent((prev) => {
             if (!outcome) {
