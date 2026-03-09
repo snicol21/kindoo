@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Building, Ward } from '@/schema/schema';
 import { BUILDINGS, WARDS } from '@/schema/schema';
 import { Button } from '@/components/_ui/button';
@@ -30,6 +30,14 @@ import {
 import { MatchedContactBadge } from '@/components/MatchedContactBadge';
 import { UnsavedChangesDialog } from '@/components/UnsavedChangesDialog';
 import { DESCRIPTION_MAX_LENGTH } from '@/utils/eventConstants';
+import { getTodayYmd } from '@/utils/dateUtils';
+import {
+  buildTimeOptions,
+  EARLIEST_EVENT_MINUTES,
+  formatTime,
+  LATEST_EVENT_MINUTES,
+  TIME_SLOT_INTERVAL_MINUTES,
+} from '@/utils/timeUtils';
 import type { ContactChangeState, LinkedContactSnapshot } from '@/lib/contact-linking';
 
 type CloneEventDialogProps = {
@@ -127,6 +135,19 @@ export function CloneEventDialog({
   const phoneMatchRef = useRef<HTMLDivElement>(null);
   const emailMatchRef = useRef<HTMLDivElement>(null);
 
+  const timeOptions = useMemo(() => {
+    const todayYmd = getTodayYmd();
+    const isToday = cloneEventDate === todayYmd;
+    const now = new Date();
+    const startMinutes = isToday
+      ? Math.max(
+          EARLIEST_EVENT_MINUTES,
+          Math.min(LATEST_EVENT_MINUTES, now.getHours() * 60)
+        )
+      : EARLIEST_EVENT_MINUTES;
+    return buildTimeOptions(startMinutes, LATEST_EVENT_MINUTES, TIME_SLOT_INTERVAL_MINUTES);
+  }, [cloneEventDate]);
+
   const focusNextAfterMatch = (contact: ContactMatch) => {
     const focusOrder =
       contactFocusField === 'phone'
@@ -217,6 +238,20 @@ export function CloneEventDialog({
     cloneEmail,
     cloneDescription,
   ]);
+
+  useEffect(() => {
+    if (!open || timeOptions.length === 0) return;
+    const startIndex = timeOptions.indexOf(cloneStartTime);
+    const endIndex = timeOptions.indexOf(cloneEndTime);
+    if (startIndex === -1) {
+      setCloneStartTimeAction(timeOptions[0]);
+      return;
+    }
+    if (endIndex === -1 || endIndex <= startIndex) {
+      const nextIndex = Math.min(timeOptions.length - 1, startIndex + 1);
+      setCloneEndTimeAction(timeOptions[nextIndex]);
+    }
+  }, [cloneEndTime, cloneStartTime, open, setCloneEndTimeAction, setCloneStartTimeAction, timeOptions]);
 
   return (
     <Dialog open={open} onOpenChange={(nextOpen) => !nextOpen && handleRequestClose()}>
@@ -474,29 +509,33 @@ export function CloneEventDialog({
             </div>
             <div className="space-y-1.5 min-w-0">
               <Label htmlFor="clone-start-time">Start</Label>
-              <Input
-                id="clone-start-time"
-                type="time"
-                min="05:00"
-                max="23:00"
-                step={900}
-                autoComplete="off"
-                value={cloneStartTime}
-                onChange={(e) => setCloneStartTimeAction(e.target.value)}
-              />
+              <Select value={cloneStartTime} onValueChange={setCloneStartTimeAction}>
+                <SelectTrigger id="clone-start-time">
+                  <SelectValue placeholder="Select start time" />
+                </SelectTrigger>
+                <SelectContent>
+                  {timeOptions.map((time) => (
+                    <SelectItem key={time} value={time}>
+                      {formatTime(time)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-1.5 min-w-0">
               <Label htmlFor="clone-end-time">End</Label>
-              <Input
-                id="clone-end-time"
-                type="time"
-                min="05:00"
-                max="23:00"
-                step={900}
-                autoComplete="off"
-                value={cloneEndTime}
-                onChange={(e) => setCloneEndTimeAction(e.target.value)}
-              />
+              <Select value={cloneEndTime} onValueChange={setCloneEndTimeAction}>
+                <SelectTrigger id="clone-end-time">
+                  <SelectValue placeholder="Select end time" />
+                </SelectTrigger>
+                <SelectContent>
+                  {timeOptions.map((time) => (
+                    <SelectItem key={time} value={time}>
+                      {formatTime(time)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
           <div className="space-y-1.5">

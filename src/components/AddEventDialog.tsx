@@ -33,7 +33,14 @@ import type { Building, Ward } from '@/schema/schema';
 import { BUILDINGS, WARDS } from '@/schema/schema';
 import { formatPhone } from '@/utils/phoneUtils';
 import { getTodayYmd } from '@/utils/dateUtils';
-import { parseTimeToMinutes } from '@/utils/timeUtils';
+import {
+  buildTimeOptions,
+  EARLIEST_EVENT_MINUTES,
+  formatTime,
+  LATEST_EVENT_MINUTES,
+  parseTimeToMinutes,
+  TIME_SLOT_INTERVAL_MINUTES,
+} from '@/utils/timeUtils';
 import { DESCRIPTION_MAX_LENGTH } from '@/utils/eventConstants';
 import { getContactChangeState } from '@/lib/contact-linking';
 import { useContactChangeState } from '@/hooks/useContactChangeState';
@@ -128,6 +135,9 @@ export function AddEventDialog({
   const emailMatchRef = useRef<HTMLDivElement>(null);
   const [selectedBuilding, setSelectedBuilding] = useState<Building>(defaultBuilding);
   const [selectedWard, setSelectedWard] = useState<Ward | ''>('');
+  const [selectedEventDate, setSelectedEventDate] = useState('');
+  const [selectedStartTime, setSelectedStartTime] = useState('');
+  const [selectedEndTime, setSelectedEndTime] = useState('');
   const [typedName, setTypedName] = useState('');
   const [typedEmail, setTypedEmail] = useState('');
   const [typedPhone, setTypedPhone] = useState('');
@@ -154,13 +164,20 @@ export function AddEventDialog({
     () => getDefaultTimeWindow(),
     []
   );
+  const timeOptions = useMemo(() => {
+    const todayYmd = getTodayYmd();
+    const isToday = selectedEventDate === todayYmd;
+    const now = new Date();
+    const startMinutes = isToday
+      ? Math.max(
+          EARLIEST_EVENT_MINUTES,
+          Math.min(LATEST_EVENT_MINUTES, now.getHours() * 60)
+        )
+      : EARLIEST_EVENT_MINUTES;
+    return buildTimeOptions(startMinutes, LATEST_EVENT_MINUTES, TIME_SLOT_INTERVAL_MINUTES);
+  }, [selectedEventDate]);
 
   const getCurrentSnapshot = (overrides: Partial<Snapshot> = {}): Snapshot => {
-    const form = formRef.current;
-    const formData = form ? new FormData(form) : new FormData();
-    const eventDateValue = String(formData.get('eventDate') ?? '') || minEventDate;
-    const startTimeValue = String(formData.get('startTime') ?? '') || defaultStartTime;
-    const endTimeValue = String(formData.get('endTime') ?? '') || defaultEndTime;
     return {
       building: overrides.building ?? String(selectedBuilding),
       ward: overrides.ward ?? String(selectedWard),
@@ -168,9 +185,9 @@ export function AddEventDialog({
       email: overrides.email ?? typedEmail.trim(),
       phone: overrides.phone ?? typedPhone.trim(),
       description: overrides.description ?? descriptionValue.trim(),
-      eventDate: overrides.eventDate ?? eventDateValue,
-      startTime: overrides.startTime ?? startTimeValue,
-      endTime: overrides.endTime ?? endTimeValue,
+      eventDate: overrides.eventDate ?? (selectedEventDate || minEventDate),
+      startTime: overrides.startTime ?? (selectedStartTime || defaultStartTime),
+      endTime: overrides.endTime ?? (selectedEndTime || defaultEndTime),
     };
   };
 
@@ -536,13 +553,17 @@ export function AddEventDialog({
       setDismissedMatchId(null);
       setDescriptionValue('');
       setContactFocusField(null);
+      setSelectedEventDate('');
+      setSelectedStartTime('');
+      setSelectedEndTime('');
     }
   }, [open]);
 
   useEffect(() => {
     if (!open) return;
+    setSelectedEventDate(state.values?.eventDate ?? minEventDate);
     setDescriptionValue(state.values?.description ?? '');
-  }, [open, state.values?.description]);
+  }, [minEventDate, open, state.values?.description, state.values?.eventDate]);
 
   useEffect(() => {
     if (open) {
@@ -550,6 +571,26 @@ export function AddEventDialog({
       setSelectedWard((state.values?.ward as Ward | undefined) ?? '');
     }
   }, [defaultBuilding, open, state.values?.ward]);
+
+  useEffect(() => {
+    if (!open) return;
+    setSelectedStartTime(state.values?.startTime ?? defaultStartTime);
+    setSelectedEndTime(state.values?.endTime ?? defaultEndTime);
+  }, [defaultEndTime, defaultStartTime, open, state.values?.endTime, state.values?.startTime]);
+
+  useEffect(() => {
+    if (!open || timeOptions.length === 0) return;
+    const startIndex = timeOptions.indexOf(selectedStartTime);
+    const endIndex = timeOptions.indexOf(selectedEndTime);
+    if (startIndex === -1) {
+      setSelectedStartTime(timeOptions[0]);
+      return;
+    }
+    if (endIndex === -1 || endIndex <= startIndex) {
+      const nextIndex = Math.min(timeOptions.length - 1, startIndex + 1);
+      setSelectedEndTime(timeOptions[nextIndex]);
+    }
+  }, [open, selectedEndTime, selectedStartTime, timeOptions]);
 
   const contactChangeState = useContactChangeState(selectedContact, {
     name: typedName,
@@ -937,10 +978,11 @@ export function AddEventDialog({
                 id="eventDate"
                 name="eventDate"
                 type="date"
-                defaultValue={state.values?.eventDate ?? minEventDate}
+                value={selectedEventDate}
                 min={minEventDate}
                 autoComplete="off"
                 className={state.errors?.eventDate ? 'border-destructive' : ''}
+                onChange={(event) => setSelectedEventDate(event.target.value)}
               />
               {state.errors?.eventDate && (
                 <p className="text-xs text-destructive">{state.errors.eventDate}</p>
@@ -950,17 +992,25 @@ export function AddEventDialog({
               <Label htmlFor="startTime">
                 Start <span className="text-destructive">*</span>
               </Label>
-              <Input
-                id="startTime"
+              <Select
                 name="startTime"
-                type="time"
-                min="05:00"
-                max="23:00"
-                step={900}
-                autoComplete="off"
-                defaultValue={state.values?.startTime ?? defaultStartTime}
-                className={state.errors?.startTime ? 'border-destructive' : ''}
-              />
+                value={selectedStartTime}
+                onValueChange={setSelectedStartTime}
+              >
+                <SelectTrigger
+                  id="startTime"
+                  className={state.errors?.startTime ? 'border-destructive' : ''}
+                >
+                  <SelectValue placeholder="Select start time" />
+                </SelectTrigger>
+                <SelectContent>
+                  {timeOptions.map((time) => (
+                    <SelectItem key={time} value={time}>
+                      {formatTime(time)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               {state.errors?.startTime && (
                 <p className="text-xs text-destructive">{state.errors.startTime}</p>
               )}
@@ -969,17 +1019,25 @@ export function AddEventDialog({
               <Label htmlFor="endTime">
                 End <span className="text-destructive">*</span>
               </Label>
-              <Input
-                id="endTime"
+              <Select
                 name="endTime"
-                type="time"
-                min="05:00"
-                max="23:00"
-                step={900}
-                autoComplete="off"
-                defaultValue={state.values?.endTime ?? defaultEndTime}
-                className={state.errors?.endTime ? 'border-destructive' : ''}
-              />
+                value={selectedEndTime}
+                onValueChange={setSelectedEndTime}
+              >
+                <SelectTrigger
+                  id="endTime"
+                  className={state.errors?.endTime ? 'border-destructive' : ''}
+                >
+                  <SelectValue placeholder="Select end time" />
+                </SelectTrigger>
+                <SelectContent>
+                  {timeOptions.map((time) => (
+                    <SelectItem key={time} value={time}>
+                      {formatTime(time)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               {state.errors?.endTime && (
                 <p className="text-xs text-destructive">{state.errors.endTime}</p>
               )}

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Building, Ward } from '@/schema/schema';
 import { BUILDINGS, WARDS } from '@/schema/schema';
 import { Button } from '@/components/_ui/button';
@@ -30,6 +30,14 @@ import {
 import { MatchedContactBadge } from '@/components/MatchedContactBadge';
 import { UnsavedChangesDialog } from '@/components/UnsavedChangesDialog';
 import { DESCRIPTION_MAX_LENGTH } from '@/utils/eventConstants';
+import { getTodayYmd } from '@/utils/dateUtils';
+import {
+  buildTimeOptions,
+  EARLIEST_EVENT_MINUTES,
+  formatTime,
+  LATEST_EVENT_MINUTES,
+  TIME_SLOT_INTERVAL_MINUTES,
+} from '@/utils/timeUtils';
 import type { ContactChangeState, LinkedContactSnapshot } from '@/lib/contact-linking';
 
 type EditEventDialogProps = {
@@ -127,6 +135,19 @@ export function EditEventDialog({
   const phoneMatchRef = useRef<HTMLDivElement>(null);
   const emailMatchRef = useRef<HTMLDivElement>(null);
 
+  const timeOptions = useMemo(() => {
+    const todayYmd = getTodayYmd();
+    const isToday = editEventDate === todayYmd;
+    const now = new Date();
+    const startMinutes = isToday
+      ? Math.max(
+          EARLIEST_EVENT_MINUTES,
+          Math.min(LATEST_EVENT_MINUTES, now.getHours() * 60)
+        )
+      : EARLIEST_EVENT_MINUTES;
+    return buildTimeOptions(startMinutes, LATEST_EVENT_MINUTES, TIME_SLOT_INTERVAL_MINUTES);
+  }, [editEventDate]);
+
   const focusNextAfterMatch = (contact: ContactMatch) => {
     const focusOrder =
       contactFocusField === 'phone'
@@ -217,6 +238,20 @@ export function EditEventDialog({
     editEmail,
     editDescription,
   ]);
+
+  useEffect(() => {
+    if (!open || timeOptions.length === 0) return;
+    const startIndex = timeOptions.indexOf(editStartTime);
+    const endIndex = timeOptions.indexOf(editEndTime);
+    if (startIndex === -1) {
+      setEditStartTimeAction(timeOptions[0]);
+      return;
+    }
+    if (endIndex === -1 || endIndex <= startIndex) {
+      const nextIndex = Math.min(timeOptions.length - 1, startIndex + 1);
+      setEditEndTimeAction(timeOptions[nextIndex]);
+    }
+  }, [editEndTime, editStartTime, open, setEditEndTimeAction, setEditStartTimeAction, timeOptions]);
 
   return (
     <Dialog open={open} onOpenChange={(nextOpen) => !nextOpen && handleRequestClose()}>
@@ -471,29 +506,33 @@ export function EditEventDialog({
             </div>
             <div className="space-y-1.5 min-w-0">
               <Label htmlFor="edit-start-time">Start</Label>
-              <Input
-                id="edit-start-time"
-                type="time"
-                min="05:00"
-                max="23:00"
-                step={900}
-                autoComplete="off"
-                value={editStartTime}
-                onChange={(e) => setEditStartTimeAction(e.target.value)}
-              />
+              <Select value={editStartTime} onValueChange={setEditStartTimeAction}>
+                <SelectTrigger id="edit-start-time">
+                  <SelectValue placeholder="Select start time" />
+                </SelectTrigger>
+                <SelectContent>
+                  {timeOptions.map((time) => (
+                    <SelectItem key={time} value={time}>
+                      {formatTime(time)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-1.5 min-w-0">
               <Label htmlFor="edit-end-time">End</Label>
-              <Input
-                id="edit-end-time"
-                type="time"
-                min="05:00"
-                max="23:00"
-                step={900}
-                autoComplete="off"
-                value={editEndTime}
-                onChange={(e) => setEditEndTimeAction(e.target.value)}
-              />
+              <Select value={editEndTime} onValueChange={setEditEndTimeAction}>
+                <SelectTrigger id="edit-end-time">
+                  <SelectValue placeholder="Select end time" />
+                </SelectTrigger>
+                <SelectContent>
+                  {timeOptions.map((time) => (
+                    <SelectItem key={time} value={time}>
+                      {formatTime(time)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
           <div className="space-y-1.5">

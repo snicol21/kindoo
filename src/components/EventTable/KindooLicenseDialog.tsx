@@ -620,14 +620,9 @@ export function KindooLicenseDialog({
                       }
                     />
                     <MetaRow label="Outcome" value={completionLabel ?? initialLicenseOutcome ?? '—'} />
-                    <MetaRow label="Attempts" value={latestJob?.attempts ?? '—'} />
                     <MetaRow label="Duration" value={latestDurationSec !== null ? `${latestDurationSec}s` : '—'} />
                     <MetaRow label="Timing delta" value={runDeltaMinutes !== null ? formatDeltaMinutes(runDeltaMinutes) : '—'} />
                     <MetaRow label="Ran at" value={latestRunDate ? formatDateTimeNoSeconds(latestRunDate) : '—'} />
-                    <MetaRow
-                      label="Last updated"
-                      value={latestJob?.updatedAt ? formatDateTimeNoSeconds(new Date(latestJob.updatedAt)) : '—'}
-                    />
                   </div>
 
                   <div className="border-t border-border/60 px-4 py-3 text-xs text-muted-foreground">

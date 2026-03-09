@@ -8,6 +8,30 @@ export function parseTimeToMinutes(value: string) {
   return hours * 60 + minutes;
 }
 
+export const TIME_SLOT_INTERVAL_MINUTES = 15;
+export const EARLIEST_EVENT_MINUTES = 5 * 60;
+export const LATEST_EVENT_MINUTES = 23 * 60;
+
+export function minutesToTime(minutes: number) {
+  const normalized = Math.min(Math.max(minutes, 0), 23 * 60 + 59);
+  const hours = Math.floor(normalized / 60);
+  const mins = normalized % 60;
+  return `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
+}
+
+export function buildTimeOptions(
+  startMinutes: number,
+  endMinutes: number = LATEST_EVENT_MINUTES,
+  intervalMinutes: number = TIME_SLOT_INTERVAL_MINUTES
+) {
+  const options: string[] = [];
+  const normalizedStart = Math.max(0, Math.min(startMinutes, endMinutes));
+  for (let minutes = normalizedStart; minutes <= endMinutes; minutes += intervalMinutes) {
+    options.push(minutesToTime(minutes));
+  }
+  return options;
+}
+
 export function validateTimeWindow(startTime: string, endTime: string) {
   const startMinutes = parseTimeToMinutes(startTime);
   const endMinutes = parseTimeToMinutes(endTime);

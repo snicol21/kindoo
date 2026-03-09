@@ -80,6 +80,8 @@ const PERSIST_PENDING_OUTCOMES = new Set([
   'Request in progress',
   'Retry queued',
   'Retry in progress',
+  'Auto-schedule pending',
+  'Scheduled for license',
 ]);
 
 function getLicenseOutcomeVisual(outcome: string) {
@@ -1204,7 +1206,7 @@ export function EventTable({
                           <span className="min-w-0">{event.description}</span>
                         </p>
                         {!isSingleColumnView && shouldShowLicensePlaceholder && (
-                          <div className="mt-1.5 min-h-[18px]">
+                          <div className="mt-1.5 min-h-[20px]">
                             {hasLicenseStatus ? (
                               <button
                                 type="button"
@@ -1222,7 +1224,7 @@ export function EventTable({
                               </button>
                             ) : (
                               <div
-                                className="h-4 w-36 rounded-full bg-muted/60 animate-pulse"
+                                className="h-5 w-36 rounded-full bg-muted/60 animate-pulse"
                                 aria-hidden="true"
                               />
                             )}
@@ -1370,7 +1372,7 @@ export function EventTable({
                           )}
                         </div>
                         {shouldShowLicensePlaceholder && (
-                          <div className="min-h-[18px]">
+                          <div className="min-h-[20px]">
                             {hasLicenseStatus ? (
                               <button
                                 type="button"
@@ -1388,7 +1390,7 @@ export function EventTable({
                               </button>
                             ) : (
                               <div
-                                className="h-4 w-36 rounded-full bg-muted/60 animate-pulse"
+                                className="h-5 w-36 rounded-full bg-muted/60 animate-pulse"
                                 aria-hidden="true"
                               />
                             )}
