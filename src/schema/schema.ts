@@ -199,6 +199,21 @@ export const kindooLicenseJobs = sqliteTable(
   })
 );
 
+export const licenseWorkerHeartbeats = sqliteTable(
+  'license_worker_heartbeat',
+  {
+    workerId: text('worker_id').primaryKey(),
+    host: text('host'),
+    mode: text('mode'),
+    lastSeenAt: integer('last_seen_at', { mode: 'timestamp_ms' })
+      .notNull()
+      .default(sql`(unixepoch() * 1000)`),
+  },
+  (table) => ({
+    lastSeenIdx: index('license_worker_heartbeat_last_seen_idx').on(table.lastSeenAt),
+  })
+);
+
 // ─── Inferred Types ───────────────────────────────────────────────────────────
 
 export type User = typeof users.$inferSelect;
@@ -218,3 +233,6 @@ export type NewMessageTemplateDefault = typeof messageTemplateDefaults.$inferIns
 
 export type KindooLicenseJob = typeof kindooLicenseJobs.$inferSelect;
 export type NewKindooLicenseJob = typeof kindooLicenseJobs.$inferInsert;
+
+export type LicenseWorkerHeartbeat = typeof licenseWorkerHeartbeats.$inferSelect;
+export type NewLicenseWorkerHeartbeat = typeof licenseWorkerHeartbeats.$inferInsert;

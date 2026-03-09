@@ -43,7 +43,7 @@ export async function POST(request: Request) {
   const host = typeof body.host === 'string' ? body.host.trim() : undefined;
   const mode = typeof body.mode === 'string' ? body.mode.trim() : undefined;
 
-  recordWorkerHeartbeat({ workerId, host, mode });
+  await recordWorkerHeartbeat({ workerId, host, mode });
 
   return NextResponse.json({ ok: true, workerId, recordedAt: new Date().toISOString() });
 }

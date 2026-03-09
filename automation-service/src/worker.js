@@ -28,15 +28,27 @@ function sleep(ms) {
 }
 
 async function requestJson(path, method = 'POST', body = undefined) {
-  const response = await globalThis.fetch(`${APP_URL}${path}`, {
-    method,
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Worker-Token': WORKER_TOKEN,
-      'X-Worker-Id': WORKER_ID,
-    },
-    ...(body ? { body: JSON.stringify(body) } : {}),
-  });
+  const url = `${APP_URL}${path}`;
+  let response;
+  try {
+    response = await globalThis.fetch(url, {
+      method,
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Worker-Token': WORKER_TOKEN,
+        'X-Worker-Id': WORKER_ID,
+      },
+      ...(body ? { body: JSON.stringify(body) } : {}),
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown fetch failure.';
+    console.error(`[worker:${WORKER_ID}] fetch failed`, {
+      url,
+      method,
+      message,
+    });
+    throw error;
+  }
 
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {

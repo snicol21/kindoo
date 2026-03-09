@@ -17,7 +17,7 @@ export async function GET() {
   }
 
   const workerPollIntervalMs = getWorkerPollIntervalMs();
-  const health = getWorkerHealth(workerPollIntervalMs);
+  const health = await getWorkerHealth(workerPollIntervalMs);
 
   return NextResponse.json({
     ok: true,
