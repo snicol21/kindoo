@@ -108,8 +108,15 @@ function formatDeltaMinutes(deltaMinutes: number) {
   const rounded = Math.round(deltaMinutes);
   if (rounded === 0) return 'on time';
   const absMinutes = Math.abs(rounded);
+  const days = Math.floor(absMinutes / 1440);
+  const hours = Math.floor((absMinutes % 1440) / 60);
+  const minutes = absMinutes % 60;
+  const parts: string[] = [];
+  if (days > 0) parts.push(`${days}d`);
+  if (hours > 0) parts.push(`${hours}h`);
+  if (minutes > 0 || parts.length === 0) parts.push(`${minutes}m`);
   const suffix = rounded < 0 ? 'early' : 'late';
-  return `${absMinutes} min ${suffix}`;
+  return `${parts.join(' ')} ${suffix}`;
 }
 
 function formatDateTimeNoSeconds(date: Date) {
@@ -165,6 +172,7 @@ export function KindooLicenseDialog({
   const [isRetrying, setIsRetrying] = useState(false);
   const [hasAppliedCompletion, setHasAppliedCompletion] = useState(false);
   const [workerHealth, setWorkerHealth] = useState<WorkerHealthSummary | null>(null);
+  const [isInitializingStatus, setIsInitializingStatus] = useState(false);
 
   useEffect(() => {
     submitKindooLicenseStatusRef.current = submitKindooLicenseStatusAction;
@@ -183,6 +191,7 @@ export function KindooLicenseDialog({
       setIsRetrying(false);
       setHasAppliedCompletion(false);
       setWorkerHealth(null);
+      setIsInitializingStatus(false);
     }
   }, [licenseEvent]);
 
@@ -221,6 +230,7 @@ export function KindooLicenseDialog({
     if (!licenseEvent) return;
 
     let cancelled = false;
+    setIsInitializingStatus(true);
 
     const loadLatestJob = async () => {
       try {
@@ -262,6 +272,10 @@ export function KindooLicenseDialog({
         }
       } catch {
         // Ignore details fetch errors in dialog init.
+      } finally {
+        if (!cancelled) {
+          setIsInitializingStatus(false);
+        }
       }
     };
 
@@ -521,6 +535,7 @@ export function KindooLicenseDialog({
   const licenseCreatedMessage = licenseEvent
     ? renderMessageTemplate(licenseEvent, 'license_created', messageTemplates)
     : '';
+  const showActionButtons = !isInitializingStatus;
 
   const queueLicenseRequest = async () => {
     if (!licenseEvent || !requestPayload) {
@@ -629,6 +644,12 @@ export function KindooLicenseDialog({
                 {formatTimeRangeAction(licenseEvent.startTime, licenseEvent.endTime)}
               </p>
             </div>
+            {isInitializingStatus && (
+              <div className="flex items-center gap-2 rounded-md border border-border bg-background/60 px-3 py-2 text-xs text-muted-foreground">
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                Loading license status...
+              </div>
+            )}
             <div className="space-y-2">
               <div className="rounded-md border border-border bg-background/60 px-3 py-2 text-sm">
                 <p className="font-medium text-foreground">Timing overview</p>
@@ -726,77 +747,100 @@ export function KindooLicenseDialog({
                   </div>
                 )}
             </div>
-            {latestJob && (
-              <div className="rounded-md border border-border bg-background/60 px-3 py-2 text-sm">
+            {(latestJob || isInitializingStatus) && (
+              <div className="min-h-[164px] rounded-md border border-border bg-background/60 px-3 py-2 text-sm">
                 <p className="font-medium text-foreground">Scheduled creation status</p>
-                <div className="mt-1.5 grid gap-3 text-xs sm:grid-cols-2">
-                  <p className="flex items-center gap-2">
-                    <span className="text-muted-foreground">Status:</span>
-                    <span
-                      className={`inline-flex items-center gap-1 font-medium ${latestStatusVisual?.textClassName ?? 'text-foreground'}`}
-                    >
-                      {latestStatusVisual?.icon}
-                      {latestStatusVisual?.label}
-                    </span>
-                  </p>
-                  <p>
-                    <span className="text-muted-foreground">Outcome:</span>{' '}
-                    <span className="font-medium text-foreground">{completionLabel ?? '—'}</span>
-                  </p>
-                  <p>
-                    <span className="text-muted-foreground">Duration:</span>{' '}
-                    <span className="font-medium text-foreground">
-                      {latestDurationSec !== null ? `${latestDurationSec}s` : '—'}
-                    </span>
-                  </p>
-                  <p>
-                    <span className="text-muted-foreground">Attempts:</span>{' '}
-                    <span className="font-medium text-foreground">{latestJob.attempts}</span>
-                  </p>
-                  <p>
-                    <span className="text-muted-foreground">Updated:</span>{' '}
-                    <span className="font-medium text-foreground">
-                      {latestJob.updatedAt
-                        ? formatDateTimeNoSeconds(new Date(latestJob.updatedAt))
-                        : '—'}
-                    </span>
-                  </p>
-                  <p>
-                    <span className="text-muted-foreground">Ran at:</span>{' '}
-                    <span className="font-medium text-foreground">
-                      {latestRunDate ? formatDateTimeNoSeconds(latestRunDate) : '—'}
-                    </span>
-                  </p>
-                  <p>
-                    <span className="text-muted-foreground">Timing delta:</span>{' '}
-                    <span className="font-medium text-foreground">
-                      {runDeltaMinutes !== null ? formatDeltaMinutes(runDeltaMinutes) : '—'}
-                    </span>
-                  </p>
-                </div>
-                {latestJob.status === 'failed' &&
-                  (latestJob.statusDetails || latestJob.lastError) && (
-                    <p className="mt-1.5 text-xs text-muted-foreground">
-                      {latestJob.statusDetails || latestJob.lastError}
+                {isInitializingStatus && !latestJob ? (
+                  <div className="mt-1.5 grid gap-3 text-xs sm:grid-cols-2">
+                    <p className="flex items-center gap-2 text-muted-foreground">
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      Loading status details...
                     </p>
-                  )}
-                {statusType !== 'idle' && (
-                  <div
-                    className={`mt-2 rounded-md border-t px-3 py-2 text-sm ${
-                      statusType === 'loading'
-                        ? 'border-blue-100 bg-blue-50 text-blue-900 dark:border-blue-800/40 dark:bg-blue-950/40 dark:text-blue-100'
-                        : statusType === 'success'
-                          ? 'border-emerald-100 bg-emerald-50 text-emerald-900 dark:border-emerald-800/40 dark:bg-emerald-950/40 dark:text-emerald-100'
-                          : 'border-red-100 bg-red-50 text-red-900 dark:border-red-800/40 dark:bg-red-950/40 dark:text-red-100'
-                    }`}
-                  >
-                    <p className={`font-medium ${statusType === 'loading' ? 'animate-pulse' : ''}`}>
-                      {statusMessage}
-                    </p>
-                    {statusDetails && (
-                      <p className="mt-1 wrap-break-word text-xs opacity-90">{statusDetails}</p>
-                    )}
+                    <p className="text-muted-foreground">Outcome: —</p>
+                    <p className="text-muted-foreground">Duration: —</p>
+                    <p className="text-muted-foreground">Attempts: —</p>
+                    <p className="text-muted-foreground">Updated: —</p>
+                    <p className="text-muted-foreground">Ran at: —</p>
+                    <p className="text-muted-foreground">Timing delta: —</p>
                   </div>
+                ) : (
+                  <>
+                    <div className="mt-1.5 grid gap-3 text-xs sm:grid-cols-2">
+                      <p className="flex items-center gap-2">
+                        <span className="text-muted-foreground">Status:</span>
+                        <span
+                          className={`inline-flex items-center gap-1 font-medium ${latestStatusVisual?.textClassName ?? 'text-foreground'}`}
+                        >
+                          {latestStatusVisual?.icon}
+                          {latestStatusVisual?.label}
+                        </span>
+                      </p>
+                      <p>
+                        <span className="text-muted-foreground">Outcome:</span>{' '}
+                        <span className="font-medium text-foreground">
+                          {completionLabel ?? '—'}
+                        </span>
+                      </p>
+                      <p>
+                        <span className="text-muted-foreground">Duration:</span>{' '}
+                        <span className="font-medium text-foreground">
+                          {latestDurationSec !== null ? `${latestDurationSec}s` : '—'}
+                        </span>
+                      </p>
+                      <p>
+                        <span className="text-muted-foreground">Attempts:</span>{' '}
+                        <span className="font-medium text-foreground">
+                          {latestJob?.attempts ?? '—'}
+                        </span>
+                      </p>
+                      <p>
+                        <span className="text-muted-foreground">Updated:</span>{' '}
+                        <span className="font-medium text-foreground">
+                          {latestJob?.updatedAt
+                            ? formatDateTimeNoSeconds(new Date(latestJob.updatedAt))
+                            : '—'}
+                        </span>
+                      </p>
+                      <p>
+                        <span className="text-muted-foreground">Ran at:</span>{' '}
+                        <span className="font-medium text-foreground">
+                          {latestRunDate ? formatDateTimeNoSeconds(latestRunDate) : '—'}
+                        </span>
+                      </p>
+                      <p>
+                        <span className="text-muted-foreground">Timing delta:</span>{' '}
+                        <span className="font-medium text-foreground">
+                          {runDeltaMinutes !== null ? formatDeltaMinutes(runDeltaMinutes) : '—'}
+                        </span>
+                      </p>
+                    </div>
+                    {latestJob?.status === 'failed' &&
+                      (latestJob.statusDetails || latestJob.lastError) && (
+                        <p className="mt-1.5 text-xs text-muted-foreground">
+                          {latestJob.statusDetails || latestJob.lastError}
+                        </p>
+                      )}
+                    {statusType !== 'idle' && (
+                      <div
+                        className={`mt-2 rounded-md border-t px-3 py-2 text-sm ${
+                          statusType === 'loading'
+                            ? 'border-blue-100 bg-blue-50 text-blue-900 dark:border-blue-800/40 dark:bg-blue-950/40 dark:text-blue-100'
+                            : statusType === 'success'
+                              ? 'border-emerald-100 bg-emerald-50 text-emerald-900 dark:border-emerald-800/40 dark:bg-emerald-950/40 dark:text-emerald-100'
+                              : 'border-red-100 bg-red-50 text-red-900 dark:border-red-800/40 dark:bg-red-950/40 dark:text-red-100'
+                        }`}
+                      >
+                        <p
+                          className={`font-medium ${statusType === 'loading' ? 'animate-pulse' : ''}`}
+                        >
+                          {statusMessage}
+                        </p>
+                        {statusDetails && (
+                          <p className="mt-1 wrap-break-word text-xs opacity-90">{statusDetails}</p>
+                        )}
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
             )}
@@ -824,23 +868,29 @@ export function KindooLicenseDialog({
           </div>
         )}
         <DialogFooter className="flex-col items-start gap-2 sm:flex-row sm:items-center">
-          {isLicenseCompleted && !queuedJobId && !isPollingStatus && (
+          {showActionButtons && isLicenseCompleted && !queuedJobId && !isPollingStatus && (
             <p className="w-full max-w-[28rem] text-xs text-muted-foreground sm:mr-auto sm:w-auto sm:max-w-none">
               This event already has a license.
               <br />
               Retry only after a Kindoo manager removes it.
             </p>
           )}
-          {!isLicenseCompleted && !queuedJobId && !isPollingStatus && (
+          {showActionButtons && !isLicenseCompleted && !queuedJobId && !isPollingStatus && (
             <p className="w-full max-w-[28rem] text-xs text-amber-700 dark:text-amber-300 sm:mr-auto sm:w-auto sm:max-w-none">
               Early override: creating now may consume a Kindoo license seat sooner than needed.
+            </p>
+          )}
+          {!showActionButtons && (
+            <p className="w-full max-w-[28rem] text-xs text-muted-foreground sm:mr-auto sm:w-auto sm:max-w-none">
+              Loading latest status...
             </p>
           )}
           <Button variant="ghost" onClick={onCloseAction}>
             Cancel
           </Button>
-          {(queuedJobId && jobStatus === 'failed') ||
-          (!queuedJobId && latestJob?.status === 'failed') ? (
+          {showActionButtons &&
+          ((queuedJobId && jobStatus === 'failed') ||
+            (!queuedJobId && latestJob?.status === 'failed')) ? (
             <Button
               disabled={isRetrying}
               onClick={async () => {
@@ -888,12 +938,12 @@ export function KindooLicenseDialog({
               {isRetrying ? 'Retrying...' : 'Retry'}
             </Button>
           ) : null}
-          {isLicenseCompleted && !queuedJobId && !isPollingStatus && (
+          {showActionButtons && isLicenseCompleted && !queuedJobId && !isPollingStatus && (
             <Button variant="outline" disabled={isSubmitting} onClick={queueLicenseRequest}>
               {isSubmitting ? 'Queueing...' : 'Retry anyway'}
             </Button>
           )}
-          {!isLicenseCompleted && (
+          {showActionButtons && !isLicenseCompleted && (
             <Button
               variant="outline"
               className="border-amber-400 bg-amber-100 text-amber-900 hover:border-amber-500 hover:bg-amber-200 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-100 dark:hover:border-amber-500 dark:hover:bg-amber-900/60"
@@ -908,6 +958,12 @@ export function KindooLicenseDialog({
                 : queuedJobId && isPollingStatus
                   ? 'Processing...'
                   : 'Create early license now'}
+            </Button>
+          )}
+          {!showActionButtons && (
+            <Button variant="outline" disabled>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Loading status...
             </Button>
           )}
         </DialogFooter>
