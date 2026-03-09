@@ -126,6 +126,37 @@ function getLicenseOutcomeVisual(outcome: string) {
   };
 }
 
+function parseTimeToMinutes(time: string) {
+  const parts = time.split(':');
+  if (parts.length !== 2) return null;
+  const hours = Number(parts[0]);
+  const minutes = Number(parts[1]);
+  if (!Number.isFinite(hours) || !Number.isFinite(minutes)) return null;
+  if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) return null;
+  return hours * 60 + minutes;
+}
+
+function getAutoScheduleDueTimestamp(eventDate: string, startTime: string) {
+  const startMinutes = parseTimeToMinutes(startTime);
+  if (startMinutes === null) return Number.NaN;
+  const licenseWindowStart = Math.max(5 * 60, startMinutes - 120);
+  const dueMinutes = Math.max(0, licenseWindowStart - 120);
+  const dueHours = Math.floor(dueMinutes / 60);
+  const dueRemainderMinutes = dueMinutes % 60;
+  return toLocalDateTime(
+    eventDate,
+    `${String(dueHours).padStart(2, '0')}:${String(dueRemainderMinutes).padStart(2, '0')}`
+  );
+}
+
+function isAutoScheduleDueNow(eventDate: string, startTime: string, endTime: string) {
+  const dueAt = getAutoScheduleDueTimestamp(eventDate, startTime);
+  const endAt = toLocalDateTime(eventDate, endTime);
+  if (!Number.isFinite(dueAt) || !Number.isFinite(endAt)) return false;
+  const now = Date.now();
+  return now >= dueAt && now <= endAt;
+}
+
 export function EventTable({
   events,
   isLoading,
@@ -138,16 +169,12 @@ export function EventTable({
   onEdit,
   onClone,
   onSetKindooLicenseCreated,
-  licenseLeadDays,
   selectedIds,
   onSelectionChange,
 }: EventTableProps) {
   // Adjust this value to control when the table collapses from Event+Contact to Event-only.
   const SINGLE_COLUMN_MAX_WIDTH = 639;
   const PAGE_SIZE = 10;
-  const effectiveLeadDays = Number.isFinite(licenseLeadDays)
-    ? Math.max(0, licenseLeadDays as number)
-    : 2;
 
   const [sortKey, setSortKey] = useState<SortKey>('eventDate');
   const [sortDir, setSortDir] = useState<SortDir>('asc');
@@ -237,17 +264,14 @@ export function EventTable({
     const trackedEvents = events
       .filter((event) => !event.id.startsWith('optimistic-'))
       .map((event) => {
-        const daysValue = getDaysUntilValue(event.eventDate);
-        const isFutureOrToday = Number.isFinite(daysValue) && daysValue >= 0;
-        const withinWindow = isFutureOrToday && daysValue <= effectiveLeadDays;
+        const isDueNow = isAutoScheduleDueNow(event.eventDate, event.startTime, event.endTime);
         const hasContactEmail = !!event.contactEmail?.trim();
-        const shouldShowAutoSchedule =
-          !event.kindooLicenseCreated && isFutureOrToday && hasContactEmail && !withinWindow;
+        const shouldShowAutoSchedule = !event.kindooLicenseCreated && hasContactEmail && !isDueNow;
 
         return {
           id: event.id,
           isCompleted: !!event.kindooLicenseCreated,
-          shouldShowScheduled: !event.kindooLicenseCreated && withinWindow && hasContactEmail,
+          shouldShowScheduled: !event.kindooLicenseCreated && hasContactEmail && isDueNow,
           shouldShowAutoSchedule,
         };
       });

@@ -131,10 +131,16 @@ function formatDateTimeNoSeconds(date: Date) {
 }
 
 function getScheduledProcessingDateTime(eventDate: string, startTime: string) {
-  const startDateTime = new Date(`${eventDate}T${startTime}:00`);
-  if (!Number.isFinite(startDateTime.getTime())) return null;
-  const scheduledDateTime = new Date(startDateTime.getTime() - 24 * 60 * 60 * 1000);
-  return scheduledDateTime;
+  const startMinutes = parseTimeToMinutes(startTime);
+  if (startMinutes === null) return null;
+  const windowStartMinutes = Math.max(EARLIEST_MINUTES, startMinutes - 120);
+  const dueMinutes = Math.max(0, windowStartMinutes - 120);
+  const scheduledHour = Math.floor(dueMinutes / 60);
+  const scheduledMinute = dueMinutes % 60;
+  const scheduledDateTime = new Date(
+    `${eventDate}T${String(scheduledHour).padStart(2, '0')}:${String(scheduledMinute).padStart(2, '0')}:00`
+  );
+  return Number.isFinite(scheduledDateTime.getTime()) ? scheduledDateTime : null;
 }
 
 function getAccessRule(building: EventWithCreator['building']) {

@@ -7,7 +7,6 @@ export type DashboardTab = 'stake-center' | 'maples-building';
 export interface DashboardClientProps {
   initialStakeCenterEvents: EventWithCreator[];
   initialMaplesEvents: EventWithCreator[];
-  initialLicenseLeadDays?: number | null;
   initialDefaultBuilding?: Building;
   initialTab?: DashboardTab;
   messageTemplates: MessageTemplateMap;

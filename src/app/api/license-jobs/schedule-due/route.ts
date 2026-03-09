@@ -83,34 +83,25 @@ function getCurrentYmdHmInTimeZone(timeZone: string) {
   };
 }
 
-function shiftYmdByDays(ymd: string, days: number) {
-  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(ymd.trim());
-  if (!match) return null;
-
-  const year = Number.parseInt(match[1], 10);
-  const month = Number.parseInt(match[2], 10);
-  const day = Number.parseInt(match[3], 10);
-  if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) return null;
-
-  const utc = new Date(Date.UTC(year, month - 1, day + days));
-  const shiftedYear = utc.getUTCFullYear();
-  const shiftedMonth = String(utc.getUTCMonth() + 1).padStart(2, '0');
-  const shiftedDay = String(utc.getUTCDate()).padStart(2, '0');
-
-  return `${shiftedYear}-${shiftedMonth}-${shiftedDay}`;
+function getLicenseWindowStartMinutes(startTime: string) {
+  const startMinutes = parseTimeToMinutes(startTime);
+  if (startMinutes === null) return null;
+  return Math.max(EARLIEST_MINUTES, startMinutes - 120);
 }
 
 function isDueForQueue(eventDate: string, startTime: string, endTime: string) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(eventDate)) return false;
   if (!/^\d{2}:\d{2}$/.test(startTime) || !/^\d{2}:\d{2}$/.test(endTime)) return false;
 
+  const windowStartMinutes = getLicenseWindowStartMinutes(startTime);
+  if (windowStartMinutes === null) return false;
+  const dueTime = minutesToTime(Math.max(0, windowStartMinutes - 120));
+
   // Evaluate all comparisons in the business timezone to avoid host timezone drift.
   const now = getCurrentYmdHmInTimeZone(DEFAULT_TIMEZONE);
-  const dueDate = shiftYmdByDays(eventDate, -1);
-  if (!dueDate) return false;
 
   const nowKey = `${now.ymd}T${now.hm}`;
-  const dueAtKey = `${dueDate}T${startTime}`;
+  const dueAtKey = `${eventDate}T${dueTime}`;
   const endKey = `${eventDate}T${endTime}`;
 
   // Catch-up behavior: if the event was created after dueAt but before event end,

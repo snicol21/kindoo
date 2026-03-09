@@ -20,11 +20,7 @@ import { DashboardStats } from '@/components/DashboardClient/DashboardStats';
 import { DashboardTabsHeader } from '@/components/DashboardClient/DashboardTabsHeader';
 import { EventsTabPanel } from '@/components/DashboardClient/EventsTabPanel';
 import { PageContainer } from '@/components/PageContainer';
-import {
-  DEFAULT_LICENSE_LEAD_DAYS,
-  LICENSE_LEAD_KEY,
-  WEEKDAY_LABELS,
-} from '@/components/DashboardClient/constants';
+import { WEEKDAY_LABELS } from '@/components/DashboardClient/constants';
 import {
   buildDashboardCounts,
   buildDotCalendarDays,
@@ -32,7 +28,6 @@ import {
   buildingToTab,
   getTodayYmd,
   isPastEvent,
-  normalizeLicenseLeadDays,
   normalizeTab,
   tabToBuilding,
 } from '@/components/DashboardClient/utils';
@@ -58,7 +53,6 @@ const buildEventSearchHaystack = (event: EventWithCreator) =>
 export function DashboardClient({
   initialStakeCenterEvents,
   initialMaplesEvents,
-  initialLicenseLeadDays,
   initialDefaultBuilding = 'Stake Center',
   initialTab,
   messageTemplates,
@@ -73,9 +67,6 @@ export function DashboardClient({
   const [selectedStakeIds, setSelectedStakeIds] = useState<string[]>([]);
   const [selectedMaplesIds, setSelectedMaplesIds] = useState<string[]>([]);
   const [bulkDeleteTarget, setBulkDeleteTarget] = useState<Building | null>(null);
-  const [licenseLeadDays, setLicenseLeadDays] = useState(() =>
-    normalizeLicenseLeadDays(initialLicenseLeadDays)
-  );
 
   const {
     data: stakeCenterEvents = [],
@@ -124,15 +115,8 @@ export function DashboardClient({
   }, [normalizedSearch, maplesUpcoming]);
 
   const dashboardCounts = useMemo(
-    () =>
-      buildDashboardCounts(
-        stakeCenterEvents,
-        maplesEvents,
-        stakeUpcoming,
-        maplesUpcoming,
-        licenseLeadDays
-      ),
-    [licenseLeadDays, maplesEvents, maplesUpcoming, stakeCenterEvents, stakeUpcoming]
+    () => buildDashboardCounts(stakeCenterEvents, maplesEvents, stakeUpcoming, maplesUpcoming),
+    [maplesEvents, maplesUpcoming, stakeCenterEvents, stakeUpcoming]
   );
 
   const activeBuildingKey = activeTab === 'maples-building' ? 'maples' : 'stake';
@@ -145,18 +129,15 @@ export function DashboardClient({
       : 'All upcoming events at Stake Center';
 
   const wardBreakdown = useMemo(
-    () => buildWardBreakdown(activeBuildingEvents, licenseLeadDays),
-    [activeBuildingEvents, licenseLeadDays]
+    () => buildWardBreakdown(activeBuildingEvents),
+    [activeBuildingEvents]
   );
   const wardBreakdownVisible = wardBreakdown.slice(0, 8);
   const wardBreakdownRemaining = Math.max(0, wardBreakdown.length - wardBreakdownVisible.length);
 
   const todayYmd = useMemo(() => getTodayYmd(), []);
 
-  const dotCalendarDays = useMemo(
-    () => buildDotCalendarDays(activeUpcoming, licenseLeadDays),
-    [activeUpcoming, licenseLeadDays]
-  );
+  const dotCalendarDays = useMemo(() => buildDotCalendarDays(activeUpcoming), [activeUpcoming]);
 
   useEffect(() => {
     const upcomingIds = new Set(stakeUpcoming.map((event) => event.id));
@@ -184,27 +165,6 @@ export function DashboardClient({
     }
     setDefaultBuilding(tabToBuilding(activeTab));
   }, [activeTab]);
-
-  useEffect(() => {
-    if (Number.isFinite(initialLicenseLeadDays)) {
-      const normalized = normalizeLicenseLeadDays(
-        initialLicenseLeadDays ?? DEFAULT_LICENSE_LEAD_DAYS
-      );
-      setLicenseLeadDays(normalized);
-      window.localStorage.setItem(LICENSE_LEAD_KEY, String(normalized));
-    } else {
-      const stored = window.localStorage.getItem(LICENSE_LEAD_KEY);
-      setLicenseLeadDays(normalizeLicenseLeadDays(stored));
-    }
-
-    const handleStorage = (event: StorageEvent) => {
-      if (event.key !== LICENSE_LEAD_KEY) return;
-      setLicenseLeadDays(normalizeLicenseLeadDays(event.newValue));
-    };
-
-    window.addEventListener('storage', handleStorage);
-    return () => window.removeEventListener('storage', handleStorage);
-  }, [initialLicenseLeadDays]);
 
   const openDialogFor = (building: Building) => {
     setDefaultBuilding(building);
@@ -281,7 +241,6 @@ export function DashboardClient({
             onSetKindooLicenseCreatedAction={(input) =>
               setKindooLicenseCreated.mutateAsync(input).then(() => undefined)
             }
-            licenseLeadDays={licenseLeadDays}
             bulkDeletePending={bulkDeleteStakeCenterEvents.isPending}
             onOpenBulkDeleteAction={() => setBulkDeleteTarget('Stake Center')}
           />
@@ -305,7 +264,6 @@ export function DashboardClient({
             onSetKindooLicenseCreatedAction={(input) =>
               setKindooLicenseCreated.mutateAsync(input).then(() => undefined)
             }
-            licenseLeadDays={licenseLeadDays}
             bulkDeletePending={bulkDeleteMaplesEvents.isPending}
             onOpenBulkDeleteAction={() => setBulkDeleteTarget('Maples Building')}
           />

@@ -16,8 +16,6 @@ export interface ActionResult<T = unknown> {
 }
 
 const PASSWORD_MIN_LENGTH = 12;
-const LICENSE_LEAD_MIN_DAYS = 0;
-const LICENSE_LEAD_MAX_DAYS = 14;
 const MAX_PROFILE_IMAGE_SIZE = 3 * 1024 * 1024;
 const ALLOWED_PROFILE_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
 
@@ -264,29 +262,6 @@ export async function updateProfileImage(input: {
 
   await db.update(users).set({ image: blob.url }).where(eq(users.id, userId));
   return { success: true, data: { imageUrl: blob.url } };
-}
-
-export async function updateLicenseLeadDays(input: {
-  leadDays: number;
-}): Promise<ActionResult<{ leadDays: number }>> {
-  const session = await auth();
-  const userId = session?.user?.id ?? null;
-
-  if (!userId) return { success: false, error: 'Not authenticated.' };
-
-  const leadDays = Math.round(input.leadDays);
-  if (!Number.isFinite(leadDays)) {
-    return { success: false, error: 'Lead time must be a number.' };
-  }
-  if (leadDays < LICENSE_LEAD_MIN_DAYS || leadDays > LICENSE_LEAD_MAX_DAYS) {
-    return {
-      success: false,
-      error: `Lead time must be between ${LICENSE_LEAD_MIN_DAYS} and ${LICENSE_LEAD_MAX_DAYS} days.`,
-    };
-  }
-
-  await db.update(users).set({ licenseLeadDays: leadDays }).where(eq(users.id, userId));
-  return { success: true, data: { leadDays } };
 }
 
 export async function updateDefaultBuilding(input: {

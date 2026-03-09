@@ -1,7 +1,6 @@
 import type { Building } from '@/schema/schema';
 import type { EventWithCreator } from '@/actions/events';
 import type { DashboardCounts, DashboardTab, DotCalendarDay, WardBreakdownRow } from './types';
-import { DEFAULT_LICENSE_LEAD_DAYS, MAX_LICENSE_LEAD_DAYS } from './constants';
 
 export function buildingToTab(building: Building): DashboardTab {
   return building === 'Maples Building' ? 'maples-building' : 'stake-center';
@@ -57,12 +56,34 @@ export function formatShortDate(dateStr: string) {
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
-export function normalizeLicenseLeadDays(value: string | number | null | undefined) {
-  const parsed = typeof value === 'number' ? value : Number(value);
-  if (!Number.isFinite(parsed)) return DEFAULT_LICENSE_LEAD_DAYS;
-  const normalized = Math.round(parsed);
-  if (normalized < 0 || normalized > MAX_LICENSE_LEAD_DAYS) return DEFAULT_LICENSE_LEAD_DAYS;
-  return normalized;
+function parseTimeToMinutes(time: string) {
+  const parts = time.split(':');
+  if (parts.length !== 2) return null;
+  const hours = Number(parts[0]);
+  const minutes = Number(parts[1]);
+  if (!Number.isFinite(hours) || !Number.isFinite(minutes)) return null;
+  if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) return null;
+  return hours * 60 + minutes;
+}
+
+function getDueTimestamp(eventDate: string, startTime: string) {
+  const startMinutes = parseTimeToMinutes(startTime);
+  if (startMinutes === null) return Number.NaN;
+  const licenseWindowStart = Math.max(5 * 60, startMinutes - 120);
+  const dueMinutes = Math.max(0, licenseWindowStart - 120);
+  const dueHours = Math.floor(dueMinutes / 60);
+  const dueRemainderMinutes = dueMinutes % 60;
+  const dueTime = `${String(dueHours).padStart(2, '0')}:${String(dueRemainderMinutes).padStart(2, '0')}`;
+  return new Date(`${eventDate}T${dueTime}:00`).getTime();
+}
+
+function isPendingAutomation(event: EventWithCreator) {
+  if (event.kindooLicenseCreated) return false;
+  const now = Date.now();
+  const dueTimestamp = getDueTimestamp(event.eventDate, event.startTime);
+  const eventEnd = new Date(`${event.eventDate}T${event.endTime}:00`).getTime();
+  if (!Number.isFinite(dueTimestamp) || !Number.isFinite(eventEnd)) return false;
+  return now >= dueTimestamp && now <= eventEnd;
 }
 
 export function getTodayYmd() {
@@ -76,24 +97,16 @@ export function buildDashboardCounts(
   stakeCenterEvents: EventWithCreator[],
   maplesEvents: EventWithCreator[],
   stakeUpcoming: EventWithCreator[],
-  maplesUpcoming: EventWithCreator[],
-  licenseLeadDays: number
+  maplesUpcoming: EventWithCreator[]
 ): DashboardCounts {
-  const withinLeadWindow = (event: EventWithCreator) => {
-    const daysUntil = getDaysUntilValue(event.eventDate);
-    return Number.isFinite(daysUntil) && daysUntil >= 0 && daysUntil <= licenseLeadDays;
-  };
-
-  const stakeWindowed = stakeUpcoming.filter(withinLeadWindow);
-  const maplesWindowed = maplesUpcoming.filter(withinLeadWindow);
-  const stakeOutsideWindow = stakeUpcoming.length - stakeWindowed.length;
-  const maplesOutsideWindow = maplesUpcoming.length - maplesWindowed.length;
+  const stakePending = stakeUpcoming.filter((event) => isPendingAutomation(event)).length;
+  const maplesPending = maplesUpcoming.filter((event) => isPendingAutomation(event)).length;
+  const stakeActive = stakeUpcoming.filter((event) => event.kindooLicenseCreated).length;
+  const maplesActive = maplesUpcoming.filter((event) => event.kindooLicenseCreated).length;
+  const stakeFuture = stakeUpcoming.length - stakePending - stakeActive;
+  const maplesFuture = maplesUpcoming.length - maplesPending - maplesActive;
   const stakePast = stakeCenterEvents.length - stakeUpcoming.length;
   const maplesPast = maplesEvents.length - maplesUpcoming.length;
-  const stakePending = stakeWindowed.filter((event) => !event.kindooLicenseCreated).length;
-  const maplesPending = maplesWindowed.filter((event) => !event.kindooLicenseCreated).length;
-  const stakeActive = stakeWindowed.length - stakePending;
-  const maplesActive = maplesWindowed.length - maplesPending;
 
   return {
     pendingLicense: {
@@ -107,9 +120,9 @@ export function buildDashboardCounts(
       total: stakeActive + maplesActive,
     },
     upcoming: {
-      stake: stakeOutsideWindow,
-      maples: maplesOutsideWindow,
-      total: stakeOutsideWindow + maplesOutsideWindow,
+      stake: stakeFuture,
+      maples: maplesFuture,
+      total: stakeFuture + maplesFuture,
     },
     past: {
       stake: stakePast,
@@ -119,10 +132,7 @@ export function buildDashboardCounts(
   };
 }
 
-export function buildWardBreakdown(
-  events: EventWithCreator[],
-  licenseLeadDays: number
-): WardBreakdownRow[] {
+export function buildWardBreakdown(events: EventWithCreator[]): WardBreakdownRow[] {
   const byWard = new Map<
     string,
     { pending: number; active: number; upcoming: number; past: number; total: number }
@@ -141,17 +151,12 @@ export function buildWardBreakdown(
     current.total += 1;
     if (isPastEvent(event.eventDate, event.endTime)) {
       current.past += 1;
+    } else if (event.kindooLicenseCreated) {
+      current.active += 1;
+    } else if (isPendingAutomation(event)) {
+      current.pending += 1;
     } else {
-      const daysUntil = getDaysUntilValue(event.eventDate);
-      const withinWindow =
-        Number.isFinite(daysUntil) && daysUntil >= 0 && daysUntil <= licenseLeadDays;
-      if (withinWindow && event.kindooLicenseCreated) {
-        current.active += 1;
-      } else if (withinWindow) {
-        current.pending += 1;
-      } else {
-        current.upcoming += 1;
-      }
+      current.upcoming += 1;
     }
 
     byWard.set(key, current);
@@ -163,10 +168,7 @@ export function buildWardBreakdown(
     .sort((a, b) => a.ward.localeCompare(b.ward));
 }
 
-export function buildDotCalendarDays(
-  activeUpcoming: EventWithCreator[],
-  licenseLeadDays: number
-): DotCalendarDay[] {
+export function buildDotCalendarDays(activeUpcoming: EventWithCreator[]): DotCalendarDay[] {
   const counts = new Map<
     string,
     { total: number; pending: number; active: number; upcoming: number }
@@ -180,12 +182,9 @@ export function buildDotCalendarDays(
     };
     current.total += 1;
 
-    const daysUntil = getDaysUntilValue(event.eventDate);
-    const withinWindow =
-      Number.isFinite(daysUntil) && daysUntil >= 0 && daysUntil <= licenseLeadDays;
-    if (withinWindow && event.kindooLicenseCreated) {
+    if (event.kindooLicenseCreated) {
       current.active += 1;
-    } else if (withinWindow) {
+    } else if (isPendingAutomation(event)) {
       current.pending += 1;
     } else {
       current.upcoming += 1;

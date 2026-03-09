@@ -31,7 +31,6 @@ export const users = sqliteTable('user', {
   role: text('role', { enum: USER_ROLES }).notNull().$type<UserRole>().default('user'),
   emailVerified: integer('emailVerified', { mode: 'timestamp_ms' }),
   image: text('image'),
-  licenseLeadDays: integer('license_lead_days').notNull().default(2),
   defaultBuilding: text('default_building', {
     enum: BUILDINGS,
   })

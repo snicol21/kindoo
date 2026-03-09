@@ -16,7 +16,6 @@ export interface EventTableProps {
     eventId: string;
     kindooLicenseCreated: boolean;
   }) => Promise<void>;
-  licenseLeadDays?: number;
   selectedIds?: string[];
   onSelectionChange?: (eventIds: string[]) => void;
 }

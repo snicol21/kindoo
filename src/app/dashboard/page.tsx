@@ -43,7 +43,6 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
 
   const userPreference = await db
     .select({
-      licenseLeadDays: users.licenseLeadDays,
       defaultBuilding: users.defaultBuilding,
     })
     .from(users)
@@ -145,7 +144,6 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
 
   return (
     <DashboardClient
-      initialLicenseLeadDays={userPreference[0]?.licenseLeadDays ?? null}
       initialDefaultBuilding={initialDefaultBuilding}
       initialTab={initialTab}
       initialStakeCenterEvents={stakeCenterEvents}

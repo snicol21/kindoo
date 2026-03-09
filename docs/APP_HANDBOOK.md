@@ -40,7 +40,7 @@ Defined in `src/schema/schema.ts`.
 
 - `user`
   - Identity + role (`admin`, `manager`, `user`)
-  - Preferences such as `licenseLeadDays` and `defaultBuilding`
+  - Preferences such as `defaultBuilding`
 - `contact`
   - Name, ward, email/phone (at least one contact method required)
 - `event`

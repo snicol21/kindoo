@@ -30,6 +30,10 @@ API behavior:
 - Finds candidate events where `kindooLicenseCreated = false`
 - Filters out events with missing email, unsupported building rule, or existing job
 - Queues jobs when event is within due window
+  - Due window starts on the event date at `2 hours before license window start`
+  - License window start is computed as `event start - 2 hours` (clamped to `05:00` local business time)
+  - Practical result: jobs are usually due at `event start - 4 hours` on the same day
+  - Catch-up still applies: if the event was created after due time but before event end, it is queued immediately
 
 Important:
 

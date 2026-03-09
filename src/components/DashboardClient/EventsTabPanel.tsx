@@ -23,7 +23,6 @@ type EventsTabPanelProps = {
     eventId: string;
     kindooLicenseCreated: boolean;
   }) => Promise<void>;
-  licenseLeadDays: number;
   bulkDeletePending: boolean;
   onOpenBulkDeleteAction: () => void;
 };
@@ -41,7 +40,6 @@ export function EventsTabPanel({
   onEditAction,
   onCloneAction,
   onSetKindooLicenseCreatedAction,
-  licenseLeadDays,
   bulkDeletePending,
   onOpenBulkDeleteAction,
 }: EventsTabPanelProps) {
@@ -80,7 +78,6 @@ export function EventsTabPanel({
             onEdit={onEditAction}
             onClone={onCloneAction}
             onSetKindooLicenseCreated={onSetKindooLicenseCreatedAction}
-            licenseLeadDays={licenseLeadDays}
           />
         </CardContent>
       </Card>

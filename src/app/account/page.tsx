@@ -6,7 +6,6 @@ import { Input } from '@/components/_ui/input';
 import { PasswordInput } from '@/components/_ui/password-input';
 import { Button } from '@/components/_ui/button';
 import { Label } from '@/components/_ui/label';
-import { LicenseLeadTimeSetting } from '@/components/LicenseLeadTimeSetting';
 import { DefaultBuildingSetting } from '@/components/DefaultBuildingSetting';
 import { changeProfile, changePassword } from '@/actions/auth';
 import { db } from '@/lib/db';
@@ -40,13 +39,11 @@ export default async function AccountPage({ searchParams }: AccountPageProps) {
 
   const userRecord = await db
     .select({
-      licenseLeadDays: users.licenseLeadDays,
       defaultBuilding: users.defaultBuilding,
     })
     .from(users)
     .where(eq(users.id, session.user.id))
     .limit(1);
-  const licenseLeadDays = userRecord[0]?.licenseLeadDays ?? null;
   const defaultBuilding = userRecord[0]?.defaultBuilding ?? 'Stake Center';
 
   const message = params.error
@@ -186,18 +183,6 @@ export default async function AccountPage({ searchParams }: AccountPageProps) {
           </CardHeader>
           <CardContent>
             <DefaultBuildingSetting initialDefaultBuilding={defaultBuilding} />
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Kindoo License</CardTitle>
-            <CardDescription>
-              Choose how many days before an event you want to enable license creation.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <LicenseLeadTimeSetting initialLeadDays={licenseLeadDays} />
           </CardContent>
         </Card>
       </div>
