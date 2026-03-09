@@ -4,6 +4,11 @@ A production-ready, private event tracking dashboard for **Stake Center** and **
 
 ---
 
+## 📚 Documentation
+
+- App overview and operations: [`docs/APP_HANDBOOK.md`](docs/APP_HANDBOOK.md)
+- Automation queue + worker runbook: [`docs/AUTOMATION_PROCESS.md`](docs/AUTOMATION_PROCESS.md)
+
 ## ✨ Features
 
 - 🔐 Google OAuth authentication (Auth.js v5)

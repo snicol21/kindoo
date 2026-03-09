@@ -1014,10 +1014,6 @@ export function EventTable({
           <TableBody>
             {pagedEvents.map((event) => {
               const isOptimistic = event.id.startsWith('optimistic-');
-              const daysValue = getDaysUntilValue(event.eventDate);
-              const withinWindow =
-                Number.isFinite(daysValue) && daysValue >= 0 && daysValue <= effectiveLeadDays;
-              const isCompleted = !!event.kindooLicenseCreated;
               const licenseOutcome = licenseOutcomeByEvent[event.id] ?? null;
               const hasLicenseStatus = !!licenseOutcome;
               return (
@@ -1068,21 +1064,6 @@ export function EventTable({
                           <FileText className="h-3.5 w-3.5 shrink-0" />
                           <span className="min-w-0">{event.description}</span>
                         </p>
-                        {!isSingleColumnView &&
-                          !isOptimistic &&
-                          withinWindow &&
-                          !isCompleted &&
-                          !hasLicenseStatus && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="mt-1.5 h-5 border-amber-400 bg-amber-100 px-1.5 text-[10px] text-amber-900 hover:border-amber-500 hover:bg-amber-200 sm:h-6 sm:px-2 sm:text-[11px]"
-                              onClick={() => setLicenseEvent(event)}
-                            >
-                              <AlertTriangle className="mr-1 h-3 w-3" />
-                              Create early license
-                            </Button>
-                          )}
                         {!isSingleColumnView && !isOptimistic && hasLicenseStatus && (
                           <button
                             type="button"
@@ -1225,17 +1206,6 @@ export function EventTable({
                             <span className="text-muted-foreground/50">—</span>
                           )}
                         </div>
-                        {!isOptimistic && withinWindow && !isCompleted && !hasLicenseStatus && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="h-5 border-amber-400 bg-amber-100 px-1.5 text-[10px] text-amber-900 hover:border-amber-500 hover:bg-amber-200"
-                            onClick={() => setLicenseEvent(event)}
-                          >
-                            <AlertTriangle className="mr-1 h-3 w-3" />
-                            Create early license
-                          </Button>
-                        )}
                         {!isOptimistic && hasLicenseStatus && (
                           <button
                             type="button"

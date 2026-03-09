@@ -59,13 +59,63 @@ function buildDescription(contactWard: string | null, contactName: string | null
   return `[${contactWard ?? ''}] - [Private Event] - [${contactName ?? ''}]`;
 }
 
-function isDueForQueue(eventDate: string, startTime: string, endTime: string, now: Date) {
-  const start = new Date(`${eventDate}T${startTime}:00`);
-  const end = new Date(`${eventDate}T${endTime}:00`);
-  if (!Number.isFinite(start.getTime()) || !Number.isFinite(end.getTime())) return false;
+function getCurrentYmdHmInTimeZone(timeZone: string) {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(new Date());
 
-  const dueAt = new Date(start.getTime() - 24 * 60 * 60 * 1000);
-  return now >= dueAt && now <= end;
+  const byType = new Map(parts.map((part) => [part.type, part.value]));
+  const year = byType.get('year') ?? '';
+  const month = byType.get('month') ?? '';
+  const day = byType.get('day') ?? '';
+  const hour = byType.get('hour') ?? '00';
+  const minute = byType.get('minute') ?? '00';
+
+  return {
+    ymd: `${year}-${month}-${day}`,
+    hm: `${hour}:${minute}`,
+  };
+}
+
+function shiftYmdByDays(ymd: string, days: number) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(ymd.trim());
+  if (!match) return null;
+
+  const year = Number.parseInt(match[1], 10);
+  const month = Number.parseInt(match[2], 10);
+  const day = Number.parseInt(match[3], 10);
+  if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) return null;
+
+  const utc = new Date(Date.UTC(year, month - 1, day + days));
+  const shiftedYear = utc.getUTCFullYear();
+  const shiftedMonth = String(utc.getUTCMonth() + 1).padStart(2, '0');
+  const shiftedDay = String(utc.getUTCDate()).padStart(2, '0');
+
+  return `${shiftedYear}-${shiftedMonth}-${shiftedDay}`;
+}
+
+function isDueForQueue(eventDate: string, startTime: string, endTime: string) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(eventDate)) return false;
+  if (!/^\d{2}:\d{2}$/.test(startTime) || !/^\d{2}:\d{2}$/.test(endTime)) return false;
+
+  // Evaluate all comparisons in the business timezone to avoid host timezone drift.
+  const now = getCurrentYmdHmInTimeZone(DEFAULT_TIMEZONE);
+  const dueDate = shiftYmdByDays(eventDate, -1);
+  if (!dueDate) return false;
+
+  const nowKey = `${now.ymd}T${now.hm}`;
+  const dueAtKey = `${dueDate}T${startTime}`;
+  const endKey = `${eventDate}T${endTime}`;
+
+  // Catch-up behavior: if the event was created after dueAt but before event end,
+  // it is considered due immediately and can be queued now.
+  return nowKey >= dueAtKey && nowKey <= endKey;
 }
 
 function getLicenseWindow(eventDate: string, startTime: string, endTime: string) {
@@ -89,8 +139,6 @@ export async function POST(request: Request) {
   if (!authResult.ok) {
     return authResult.response;
   }
-
-  const now = new Date();
 
   const candidates = await db
     .select({
@@ -124,7 +172,7 @@ export async function POST(request: Request) {
     if (hasExistingJob.has(candidate.eventId)) return false;
     if (!candidate.contactEmail || candidate.contactEmail.trim().length === 0) return false;
     if (!getAccessRule(candidate.building)) return false;
-    return isDueForQueue(candidate.eventDate, candidate.startTime, candidate.endTime, now);
+    return isDueForQueue(candidate.eventDate, candidate.startTime, candidate.endTime);
   });
 
   if (dueRows.length === 0) {
