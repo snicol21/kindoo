@@ -63,17 +63,29 @@ type WorkerHealthSummary = {
   lastSeenAt?: string;
 };
 
+const HIDE_SCHEDULE_COUNTDOWN_OUTCOMES = new Set([
+  'Request queued',
+  'Request in progress',
+  'Retry queued',
+  'Retry in progress',
+  'Request failed',
+  'Retry failed',
+  'Temporary license created',
+  'Active license already existed',
+  'License created',
+]);
+
 function getLicenseOutcomeVisual(outcome: string) {
   if (outcome === 'Retry in progress') {
     return {
-      textClassName: 'text-blue-700 hover:text-blue-800',
+      textClassName: 'text-amber-700 hover:text-amber-800',
       icon: <Loader2 className="h-3.5 w-3.5 animate-spin" />,
     };
   }
 
   if (outcome === 'Retry queued') {
     return {
-      textClassName: 'text-blue-700 hover:text-blue-800',
+      textClassName: 'text-amber-700 hover:text-amber-800',
       icon: <Clock className="h-3.5 w-3.5" />,
     };
   }
@@ -87,14 +99,14 @@ function getLicenseOutcomeVisual(outcome: string) {
 
   if (outcome === 'Request in progress') {
     return {
-      textClassName: 'text-blue-700 hover:text-blue-800',
+      textClassName: 'text-amber-700 hover:text-amber-800',
       icon: <Loader2 className="h-3.5 w-3.5 animate-spin" />,
     };
   }
 
   if (outcome === 'Request queued') {
     return {
-      textClassName: 'text-blue-700 hover:text-blue-800',
+      textClassName: 'text-amber-700 hover:text-amber-800',
       icon: <Clock className="h-3.5 w-3.5" />,
     };
   }
@@ -147,6 +159,14 @@ function getAutoScheduleDueTimestamp(eventDate: string, startTime: string) {
     eventDate,
     `${String(dueHours).padStart(2, '0')}:${String(dueRemainderMinutes).padStart(2, '0')}`
   );
+}
+
+function formatCountdownMs(ms: number) {
+  const totalSeconds = Math.max(0, Math.floor(ms / 1000));
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 }
 
 function isAutoScheduleDueNow(eventDate: string, startTime: string, endTime: string) {
@@ -256,9 +276,15 @@ export function EventTable({
     Record<string, boolean>
   >({});
   const [workerHealth, setWorkerHealth] = useState<WorkerHealthSummary | null>(null);
+  const [nowMs, setNowMs] = useState(() => Date.now());
 
   const editLookupQuery = editEmail.trim() || editPhone.trim() || editName.trim();
   const cloneLookupQuery = cloneEmail.trim() || clonePhone.trim() || cloneName.trim();
+
+  useEffect(() => {
+    const interval = globalThis.setInterval(() => setNowMs(Date.now()), 1000);
+    return () => globalThis.clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     const trackedEvents = events
@@ -1093,6 +1119,28 @@ export function EventTable({
                 !isOptimistic && !licenseOutcomeLoadedByEvent[event.id];
               const shouldShowLicensePlaceholder =
                 !isOptimistic && (hasLicenseStatus || isLicenseOutcomeLoading);
+              const isDayOfEvent = getDaysUntilValue(event.eventDate) === 0;
+              const dueAtMs = getAutoScheduleDueTimestamp(event.eventDate, event.startTime);
+              const hasValidDueAt = Number.isFinite(dueAtMs);
+              const msUntilDue = hasValidDueAt ? dueAtMs - nowMs : null;
+              const hasEmail = !!event.contactEmail?.trim();
+              const shouldShowScheduleCountdown =
+                !isOptimistic &&
+                !event.kindooLicenseCreated &&
+                hasEmail &&
+                isDayOfEvent &&
+                hasValidDueAt &&
+                (!licenseOutcome || !HIDE_SCHEDULE_COUNTDOWN_OUTCOMES.has(licenseOutcome));
+              const shouldUseCountdownAsOutcomeLabel =
+                shouldShowScheduleCountdown &&
+                !!licenseOutcome &&
+                (licenseOutcome === 'Auto-schedule pending' ||
+                  licenseOutcome === 'Scheduled for license');
+              const licenseOutcomeLabel = shouldUseCountdownAsOutcomeLabel
+                ? msUntilDue !== null && msUntilDue > 0
+                  ? `License schedules in ${formatCountdownMs(msUntilDue)}`
+                  : 'License schedule time reached'
+                : licenseOutcome;
               return (
                 <TableRow
                   key={event.id}
@@ -1155,7 +1203,7 @@ export function EventTable({
                               >
                                 {getLicenseOutcomeVisual(licenseOutcome).icon}
                                 <span className="underline underline-offset-2">
-                                  {licenseOutcome}
+                                  {licenseOutcomeLabel}
                                 </span>
                               </button>
                             ) : (
@@ -1164,6 +1212,16 @@ export function EventTable({
                                 aria-hidden="true"
                               />
                             )}
+                          </div>
+                        )}
+                        {shouldShowScheduleCountdown && !shouldUseCountdownAsOutcomeLabel && (
+                          <div className="mt-1 flex items-center gap-1.5 text-[11px] font-medium text-amber-700">
+                            <Clock className="h-3.5 w-3.5 shrink-0" />
+                            <span>
+                              {msUntilDue !== null && msUntilDue > 0
+                                ? `License schedules in ${formatCountdownMs(msUntilDue)}`
+                                : 'License schedule time reached'}
+                            </span>
                           </div>
                         )}
                       </div>
@@ -1832,7 +1890,6 @@ export function EventTable({
       <KindooLicenseDialog
         licenseEvent={licenseEvent}
         initialLicenseOutcome={licenseOutcomePreview}
-        messageTemplates={messageTemplates}
         onCloseAction={() => {
           setLicenseEvent(null);
           setLicenseOutcomePreview(null);
