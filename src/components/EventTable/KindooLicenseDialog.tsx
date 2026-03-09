@@ -546,6 +546,16 @@ export function KindooLicenseDialog({
     ? 'Scheduling queued'
     : (completionLabel ?? initialLicenseOutcome ?? null);
 
+  const displayOutcome =
+    effectiveOutcome === 'Temporary license created' ||
+    effectiveOutcome === 'Active license already existed' ||
+    effectiveOutcome === 'License created' ||
+    effectiveOutcome === 'Existing active license' ||
+    effectiveOutcome === 'Request failed' ||
+    effectiveOutcome === 'Retry failed'
+      ? effectiveOutcome
+      : null;
+
   const latestStatusVisual = effectiveOutcome
     ? getOutcomeStatusVisual(effectiveOutcome)
     : latestJob
@@ -713,7 +723,7 @@ export function KindooLicenseDialog({
                         )
                       }
                     />
-                    <MetaRow label="Outcome" value={effectiveOutcome ?? '—'} />
+                    <MetaRow label="Outcome" value={displayOutcome ?? '—'} />
                     <MetaRow label="Duration" value={latestDurationSec !== null ? `${latestDurationSec}s` : '—'} />
                     <MetaRow label="Timing delta" value={runDeltaMinutes !== null ? formatDeltaMinutes(runDeltaMinutes) : '—'} />
                     <MetaRow label="Ran at" value={latestRunDate ? formatDateTimeNoSeconds(latestRunDate) : '—'} />
