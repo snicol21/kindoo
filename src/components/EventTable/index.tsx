@@ -113,6 +113,13 @@ function getLicenseOutcomeVisual(outcome: string) {
     };
   }
 
+  if (outcome === 'Will auto-schedule') {
+    return {
+      textClassName: 'text-slate-600 hover:text-slate-700',
+      icon: <Clock className="h-3.5 w-3.5" />,
+    };
+  }
+
   return {
     textClassName: 'text-emerald-700 hover:text-emerald-800',
     icon: <CheckCircle2 className="h-3.5 w-3.5" />,
@@ -227,14 +234,17 @@ export function EventTable({
       .filter((event) => !event.id.startsWith('optimistic-'))
       .map((event) => {
         const daysValue = getDaysUntilValue(event.eventDate);
-        const withinWindow =
-          Number.isFinite(daysValue) && daysValue >= 0 && daysValue <= effectiveLeadDays;
+        const isFutureOrToday = Number.isFinite(daysValue) && daysValue >= 0;
+        const withinWindow = isFutureOrToday && daysValue <= effectiveLeadDays;
         const hasContactEmail = !!event.contactEmail?.trim();
+        const shouldShowAutoSchedule =
+          !event.kindooLicenseCreated && isFutureOrToday && hasContactEmail && !withinWindow;
 
         return {
           id: event.id,
           isCompleted: !!event.kindooLicenseCreated,
           shouldShowScheduled: !event.kindooLicenseCreated && withinWindow && hasContactEmail,
+          shouldShowAutoSchedule,
         };
       });
     if (trackedEvents.length === 0) {
@@ -248,60 +258,71 @@ export function EventTable({
 
     const loadOutcomes = async () => {
       const results = await Promise.all(
-        trackedEvents.map(async ({ id: eventId, isCompleted, shouldShowScheduled }) => {
-          try {
-            const response = await fetch(`/api/license-jobs/event/${eventId}/latest`, {
-              cache: 'no-store',
-            });
-            const data = await response.json().catch(() => ({}));
-            if (!response.ok) {
+        trackedEvents.map(
+          async ({ id: eventId, isCompleted, shouldShowScheduled, shouldShowAutoSchedule }) => {
+            try {
+              const response = await fetch(`/api/license-jobs/event/${eventId}/latest`, {
+                cache: 'no-store',
+              });
+              const data = await response.json().catch(() => ({}));
+              if (!response.ok) {
+                return [
+                  eventId,
+                  isCompleted
+                    ? 'License created'
+                    : shouldShowScheduled
+                      ? 'Scheduled for license'
+                      : shouldShowAutoSchedule
+                        ? 'Will auto-schedule'
+                        : null,
+                ] as const;
+              }
+
+              const jobStatus = data?.job?.status;
+              if (jobStatus === 'queued') {
+                return [eventId, isCompleted ? 'Retry queued' : 'Request queued'] as const;
+              }
+              if (jobStatus === 'processing') {
+                return [
+                  eventId,
+                  isCompleted ? 'Retry in progress' : 'Request in progress',
+                ] as const;
+              }
+              if (jobStatus === 'failed') {
+                return [eventId, isCompleted ? 'Retry failed' : 'Request failed'] as const;
+              }
+
+              const completionType = data?.job?.completionType;
+              if (completionType === 'existing-active-license') {
+                return [eventId, 'Active license already existed'] as const;
+              }
+              if (completionType === 'temporary-license-created') {
+                return [eventId, 'Temporary license created'] as const;
+              }
               return [
                 eventId,
                 isCompleted
                   ? 'License created'
                   : shouldShowScheduled
                     ? 'Scheduled for license'
-                    : null,
+                    : shouldShowAutoSchedule
+                      ? 'Will auto-schedule'
+                      : null,
+              ] as const;
+            } catch {
+              return [
+                eventId,
+                isCompleted
+                  ? 'License created'
+                  : shouldShowScheduled
+                    ? 'Scheduled for license'
+                    : shouldShowAutoSchedule
+                      ? 'Will auto-schedule'
+                      : null,
               ] as const;
             }
-
-            const jobStatus = data?.job?.status;
-            if (jobStatus === 'queued') {
-              return [eventId, isCompleted ? 'Retry queued' : 'Request queued'] as const;
-            }
-            if (jobStatus === 'processing') {
-              return [eventId, isCompleted ? 'Retry in progress' : 'Request in progress'] as const;
-            }
-            if (jobStatus === 'failed') {
-              return [eventId, isCompleted ? 'Retry failed' : 'Request failed'] as const;
-            }
-
-            const completionType = data?.job?.completionType;
-            if (completionType === 'existing-active-license') {
-              return [eventId, 'Active license already existed'] as const;
-            }
-            if (completionType === 'temporary-license-created') {
-              return [eventId, 'Temporary license created'] as const;
-            }
-            return [
-              eventId,
-              isCompleted
-                ? 'License created'
-                : shouldShowScheduled
-                  ? 'Scheduled for license'
-                  : null,
-            ] as const;
-          } catch {
-            return [
-              eventId,
-              isCompleted
-                ? 'License created'
-                : shouldShowScheduled
-                  ? 'Scheduled for license'
-                  : null,
-            ] as const;
           }
-        })
+        )
       );
 
       if (cancelled) return;
