@@ -142,7 +142,7 @@ export function ContactMatchPopover({
         isOpen ? 'scale-100 opacity-100' : 'pointer-events-none scale-95 opacity-0'
       } ${
         effectiveMatch && isSingleMatch
-          ? 'touch-manipulation cursor-pointer active:scale-[0.99] active:bg-blue-200/80 dark:active:bg-blue-900/75 sm:active:scale-100 sm:hover:-translate-y-[52%] sm:hover:border-blue-300 sm:hover:bg-blue-100/95 sm:hover:shadow-xl dark:sm:hover:border-blue-700 dark:sm:hover:bg-blue-900/70'
+          ? 'touch-manipulation cursor-pointer active:scale-[0.99] active:bg-blue-200/80 dark:active:bg-blue-900/75 sm:active:scale-100 sm:hover:border-blue-300 sm:hover:bg-blue-100/95 sm:hover:shadow-xl dark:sm:hover:border-blue-700 dark:sm:hover:bg-blue-900/70'
           : ''
       }`}
       onMouseDown={(event) => event.preventDefault()}

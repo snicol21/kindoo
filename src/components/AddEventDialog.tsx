@@ -155,22 +155,22 @@ export function AddEventDialog({
     []
   );
 
-  const getCurrentSnapshot = (): Snapshot => {
+  const getCurrentSnapshot = (overrides: Partial<Snapshot> = {}): Snapshot => {
     const form = formRef.current;
     const formData = form ? new FormData(form) : new FormData();
     const eventDateValue = String(formData.get('eventDate') ?? '') || minEventDate;
     const startTimeValue = String(formData.get('startTime') ?? '') || defaultStartTime;
     const endTimeValue = String(formData.get('endTime') ?? '') || defaultEndTime;
     return {
-      building: String(selectedBuilding),
-      ward: String(selectedWard),
-      name: typedName.trim(),
-      email: typedEmail.trim(),
-      phone: typedPhone.trim(),
-      description: descriptionValue.trim(),
-      eventDate: eventDateValue,
-      startTime: startTimeValue,
-      endTime: endTimeValue,
+      building: overrides.building ?? String(selectedBuilding),
+      ward: overrides.ward ?? String(selectedWard),
+      name: overrides.name ?? typedName.trim(),
+      email: overrides.email ?? typedEmail.trim(),
+      phone: overrides.phone ?? typedPhone.trim(),
+      description: overrides.description ?? descriptionValue.trim(),
+      eventDate: overrides.eventDate ?? eventDateValue,
+      startTime: overrides.startTime ?? startTimeValue,
+      endTime: overrides.endTime ?? endTimeValue,
     };
   };
 
@@ -278,7 +278,10 @@ export function AddEventDialog({
 
   useEffect(() => {
     if (open && !wasOpenRef.current) {
-      initialSnapshotRef.current = getCurrentSnapshot();
+      initialSnapshotRef.current = getCurrentSnapshot({
+        building: defaultBuilding,
+        ward: (state.values?.ward as Ward | undefined) ?? '',
+      });
       justSubmittedRef.current = false;
     }
     if (!open) {

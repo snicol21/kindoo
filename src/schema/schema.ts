@@ -139,6 +139,66 @@ export const messageTemplateDefaults = sqliteTable('message_template_default', {
     .default(sql`(unixepoch())`),
 });
 
+export const KINDOO_LICENSE_JOB_STATUSES = ['queued', 'processing', 'completed', 'failed'] as const;
+export type KindooLicenseJobStatus = (typeof KINDOO_LICENSE_JOB_STATUSES)[number];
+export const KINDOO_LICENSE_COMPLETION_TYPES = [
+  'temporary-license-created',
+  'existing-active-license',
+] as const;
+export type KindooLicenseCompletionType = (typeof KINDOO_LICENSE_COMPLETION_TYPES)[number];
+
+export const kindooLicenseJobs = sqliteTable(
+  'kindoo_license_job',
+  {
+    id: text('id')
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    eventId: text('eventId')
+      .notNull()
+      .references(() => events.id, { onDelete: 'cascade' }),
+    requestedByUserId: text('requestedByUserId')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    workerId: text('worker_id'),
+    status: text('status', { enum: KINDOO_LICENSE_JOB_STATUSES })
+      .notNull()
+      .$type<KindooLicenseJobStatus>()
+      .default('queued'),
+    email: text('email').notNull(),
+    description: text('description').notNull(),
+    timezone: text('timezone').notNull(),
+    startDate: text('start_date').notNull(),
+    startTime: text('start_time').notNull(),
+    endDate: text('end_date').notNull(),
+    endTime: text('end_time').notNull(),
+    kindooAccessRule: text('kindoo_access_rule'),
+    attempts: integer('attempts').notNull().default(0),
+    lastError: text('last_error'),
+    completionType: text('completion_type', {
+      enum: KINDOO_LICENSE_COMPLETION_TYPES,
+    }).$type<KindooLicenseCompletionType>(),
+    statusDetails: text('status_details'),
+    durationMs: integer('duration_ms'),
+    sessionReused: integer('session_reused', { mode: 'boolean' }),
+    claimedAt: integer('claimed_at', { mode: 'timestamp' }),
+    completedAt: integer('completed_at', { mode: 'timestamp' }),
+    createdAt: integer('created_at', { mode: 'timestamp' })
+      .notNull()
+      .default(sql`(unixepoch())`),
+    updatedAt: integer('updated_at', { mode: 'timestamp' })
+      .notNull()
+      .default(sql`(unixepoch())`),
+  },
+  (table) => ({
+    eventStatusIdx: index('kindoo_license_job_event_status_idx').on(table.eventId, table.status),
+    statusCreatedIdx: index('kindoo_license_job_status_created_idx').on(
+      table.status,
+      table.createdAt
+    ),
+    requestedByIdx: index('kindoo_license_job_requested_by_idx').on(table.requestedByUserId),
+  })
+);
+
 // ─── Inferred Types ───────────────────────────────────────────────────────────
 
 export type User = typeof users.$inferSelect;
@@ -155,3 +215,6 @@ export type NewMessageTemplate = typeof messageTemplates.$inferInsert;
 
 export type MessageTemplateDefault = typeof messageTemplateDefaults.$inferSelect;
 export type NewMessageTemplateDefault = typeof messageTemplateDefaults.$inferInsert;
+
+export type KindooLicenseJob = typeof kindooLicenseJobs.$inferSelect;
+export type NewKindooLicenseJob = typeof kindooLicenseJobs.$inferInsert;

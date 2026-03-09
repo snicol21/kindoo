@@ -1,0 +1,30 @@
+{
+  "name": "kindoo-automation-service",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node src/server.js",
+    "start:dist": "node dist/src/server.js",
+    "build": "rm -rf dist && mkdir -p dist && cp -R src dist/src",
+    "worker": "node src/worker.js --watch",
+    "worker:once": "node src/worker.js --once",
+    "worker:drain": "node src/worker.js --drain",
+    "worker:watch": "node src/worker.js --watch",
+    "worker:dist": "node dist/src/worker.js --watch",
+    "worker:dist:once": "node dist/src/worker.js --once",
+    "worker:launchd:install": "bash macos/install-launchd-worker.sh",
+    "worker:launchd:start": "launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.kindoo.license-worker.plist && launchctl kickstart -k gui/$(id -u)/com.kindoo.license-worker",
+    "worker:launchd:stop": "launchctl bootout gui/$(id -u)/com.kindoo.license-worker",
+    "worker:launchd:restart": "launchctl kickstart -k gui/$(id -u)/com.kindoo.license-worker",
+    "worker:launchd:status": "launchctl print gui/$(id -u)/com.kindoo.license-worker",
+    "worker:launchd:logs": "tail -n 120 ~/Library/Logs/kindoo-license-worker.out.log; echo '---'; tail -n 120 ~/Library/Logs/kindoo-license-worker.err.log",
+    "worker:launchd:logs:follow": "tail -f ~/Library/Logs/kindoo-license-worker.out.log ~/Library/Logs/kindoo-license-worker.err.log",
+    "codegen": "npx playwright codegen https://web.kindoo.tech/"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "playwright": "1.58.2"
+  }
+}

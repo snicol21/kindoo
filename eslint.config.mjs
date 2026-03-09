@@ -16,5 +16,14 @@ export default tseslint.config(
   },
   {
     ignores: ['.next/**', 'node_modules/**'],
+  },
+  {
+    files: ['automation-service/**/*.js'],
+    languageOptions: {
+      globals: {
+        console: 'readonly',
+        process: 'readonly',
+      },
+    },
   }
 );

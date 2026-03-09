@@ -2,6 +2,7 @@
 node_modules
 .pnp
 .pnp.js
+automation-service/dist/
 
 # ─── Next.js ─────────────────────────────────────────────────────────────────
 .next/
@@ -12,6 +13,7 @@ build
 .env
 .env.local
 .env*.local
+.playwright
 
 # ─── Local dev database ──────────────────────────────────────────────────────
 local.db

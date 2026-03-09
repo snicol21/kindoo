@@ -57,6 +57,68 @@ import { updateContact, type ContactSearchResult } from '@/actions/contacts';
 import { useContactChangeState } from '@/hooks/useContactChangeState';
 import { findExactContact, getContactSuggestions } from '@/lib/contact-matching';
 
+type WorkerHealthSummary = {
+  status: 'healthy' | 'stale' | 'down' | 'unknown';
+  workerId?: string;
+  lastSeenAt?: string;
+};
+
+function getLicenseOutcomeVisual(outcome: string) {
+  if (outcome === 'Retry in progress') {
+    return {
+      textClassName: 'text-blue-700 hover:text-blue-800',
+      icon: <Loader2 className="h-3.5 w-3.5 animate-spin" />,
+    };
+  }
+
+  if (outcome === 'Retry queued') {
+    return {
+      textClassName: 'text-blue-700 hover:text-blue-800',
+      icon: <Clock className="h-3.5 w-3.5" />,
+    };
+  }
+
+  if (outcome === 'Retry failed') {
+    return {
+      textClassName: 'text-red-700 hover:text-red-800',
+      icon: <AlertTriangle className="h-3.5 w-3.5" />,
+    };
+  }
+
+  if (outcome === 'Request in progress') {
+    return {
+      textClassName: 'text-blue-700 hover:text-blue-800',
+      icon: <Loader2 className="h-3.5 w-3.5 animate-spin" />,
+    };
+  }
+
+  if (outcome === 'Request queued') {
+    return {
+      textClassName: 'text-blue-700 hover:text-blue-800',
+      icon: <Clock className="h-3.5 w-3.5" />,
+    };
+  }
+
+  if (outcome === 'Request failed') {
+    return {
+      textClassName: 'text-red-700 hover:text-red-800',
+      icon: <AlertTriangle className="h-3.5 w-3.5" />,
+    };
+  }
+
+  if (outcome === 'Scheduled for license') {
+    return {
+      textClassName: 'text-slate-700 hover:text-slate-800',
+      icon: <Clock className="h-3.5 w-3.5" />,
+    };
+  }
+
+  return {
+    textClassName: 'text-emerald-700 hover:text-emerald-800',
+    icon: <CheckCircle2 className="h-3.5 w-3.5" />,
+  };
+}
+
 export function EventTable({
   events,
   isLoading,
@@ -154,9 +216,176 @@ export function EventTable({
   const [isCompactView, setIsCompactView] = useState(false);
   const [isMobileView, setIsMobileView] = useState(false);
   const [isSingleColumnView, setIsSingleColumnView] = useState(false);
+  const [licenseOutcomeByEvent, setLicenseOutcomeByEvent] = useState<Record<string, string>>({});
+  const [workerHealth, setWorkerHealth] = useState<WorkerHealthSummary | null>(null);
 
   const editLookupQuery = editEmail.trim() || editPhone.trim() || editName.trim();
   const cloneLookupQuery = cloneEmail.trim() || clonePhone.trim() || cloneName.trim();
+
+  useEffect(() => {
+    const trackedEvents = events
+      .filter((event) => !event.id.startsWith('optimistic-'))
+      .map((event) => {
+        const daysValue = getDaysUntilValue(event.eventDate);
+        const withinWindow =
+          Number.isFinite(daysValue) && daysValue >= 0 && daysValue <= effectiveLeadDays;
+        const hasContactEmail = !!event.contactEmail?.trim();
+
+        return {
+          id: event.id,
+          isCompleted: !!event.kindooLicenseCreated,
+          shouldShowScheduled: !event.kindooLicenseCreated && withinWindow && hasContactEmail,
+        };
+      });
+    if (trackedEvents.length === 0) {
+      setLicenseOutcomeByEvent({});
+      return;
+    }
+
+    const trackedEventIdSet = new Set(trackedEvents.map((event) => event.id));
+
+    let cancelled = false;
+
+    const loadOutcomes = async () => {
+      const results = await Promise.all(
+        trackedEvents.map(async ({ id: eventId, isCompleted, shouldShowScheduled }) => {
+          try {
+            const response = await fetch(`/api/license-jobs/event/${eventId}/latest`, {
+              cache: 'no-store',
+            });
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) {
+              return [
+                eventId,
+                isCompleted
+                  ? 'License created'
+                  : shouldShowScheduled
+                    ? 'Scheduled for license'
+                    : null,
+              ] as const;
+            }
+
+            const jobStatus = data?.job?.status;
+            if (jobStatus === 'queued') {
+              return [eventId, isCompleted ? 'Retry queued' : 'Request queued'] as const;
+            }
+            if (jobStatus === 'processing') {
+              return [eventId, isCompleted ? 'Retry in progress' : 'Request in progress'] as const;
+            }
+            if (jobStatus === 'failed') {
+              return [eventId, isCompleted ? 'Retry failed' : 'Request failed'] as const;
+            }
+
+            const completionType = data?.job?.completionType;
+            if (completionType === 'existing-active-license') {
+              return [eventId, 'Active license already existed'] as const;
+            }
+            if (completionType === 'temporary-license-created') {
+              return [eventId, 'Temporary license created'] as const;
+            }
+            return [
+              eventId,
+              isCompleted
+                ? 'License created'
+                : shouldShowScheduled
+                  ? 'Scheduled for license'
+                  : null,
+            ] as const;
+          } catch {
+            return [
+              eventId,
+              isCompleted
+                ? 'License created'
+                : shouldShowScheduled
+                  ? 'Scheduled for license'
+                  : null,
+            ] as const;
+          }
+        })
+      );
+
+      if (cancelled) return;
+      const nextOutcomes: Record<string, string> = {};
+      for (const [eventId, outcome] of results) {
+        if (typeof outcome === 'string' && outcome.length > 0) {
+          nextOutcomes[eventId] = outcome;
+        }
+      }
+      setLicenseOutcomeByEvent(nextOutcomes);
+    };
+
+    void loadOutcomes();
+
+    let reloadTimeout: ReturnType<typeof globalThis.setTimeout> | null = null;
+    const scheduleReload = () => {
+      if (reloadTimeout) return;
+      reloadTimeout = globalThis.setTimeout(() => {
+        reloadTimeout = null;
+        void loadOutcomes();
+      }, 150);
+    };
+
+    let eventSource: EventSource | null = null;
+    if (typeof EventSource !== 'undefined') {
+      eventSource = new EventSource('/api/license-jobs/stream');
+      eventSource.addEventListener('license-job-updated', (rawEvent) => {
+        try {
+          const parsed = JSON.parse((rawEvent as MessageEvent).data ?? '{}') as {
+            eventId?: string;
+          };
+          if (!parsed.eventId) return;
+          if (!trackedEventIdSet.has(parsed.eventId)) return;
+          scheduleReload();
+        } catch {
+          // Ignore parse errors and keep polling fallback.
+        }
+      });
+    }
+
+    const intervalId = globalThis.setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        void loadOutcomes();
+      }
+    }, 10000);
+
+    return () => {
+      cancelled = true;
+      if (reloadTimeout) {
+        globalThis.clearTimeout(reloadTimeout);
+      }
+      globalThis.clearInterval(intervalId);
+      eventSource?.close();
+    };
+  }, [events]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadWorkerHealth = async () => {
+      try {
+        const response = await fetch('/api/license-jobs/worker-health', { cache: 'no-store' });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || cancelled) return;
+        const health = data?.health as WorkerHealthSummary | undefined;
+        if (!health) return;
+        setWorkerHealth(health);
+      } catch {
+        // Ignore worker health fetch errors in table view.
+      }
+    };
+
+    void loadWorkerHealth();
+    const intervalId = globalThis.setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        void loadWorkerHealth();
+      }
+    }, 15000);
+
+    return () => {
+      cancelled = true;
+      globalThis.clearInterval(intervalId);
+    };
+  }, []);
 
   const { data: editMatchingContacts = [], isFetching: isFetchingEditMatches } = useContactSearch(
     editLookupQuery,
@@ -668,8 +897,42 @@ export function EventTable({
     );
   }
 
+  const hasPendingLicenseJobs = Object.values(licenseOutcomeByEvent).some(
+    (outcome) =>
+      outcome === 'Request queued' ||
+      outcome === 'Request in progress' ||
+      outcome === 'Retry queued' ||
+      outcome === 'Retry in progress'
+  );
+  const showWorkerHealthWarning =
+    hasPendingLicenseJobs &&
+    workerHealth &&
+    (workerHealth.status === 'stale' ||
+      workerHealth.status === 'down' ||
+      workerHealth.status === 'unknown');
+  const workerLastSeenLabel = workerHealth?.lastSeenAt
+    ? new Date(workerHealth.lastSeenAt).toLocaleTimeString('en-US')
+    : null;
+
   return (
     <TooltipProvider delayDuration={200}>
+      {showWorkerHealthWarning && (
+        <div className="mb-2 rounded-md border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100">
+          <p className="font-medium">Worker may be offline.</p>
+          <p className="mt-1">
+            {workerHealth.status === 'unknown'
+              ? 'No worker heartbeat has been received yet.'
+              : workerHealth.status === 'stale'
+                ? 'Worker heartbeat is stale and queued jobs may be delayed.'
+                : 'Worker appears down, so queued jobs might not process automatically.'}
+          </p>
+          <p className="mt-1 opacity-90">
+            {workerHealth.workerId ? `Worker: ${workerHealth.workerId}. ` : ''}
+            {workerLastSeenLabel ? `Last seen: ${workerLastSeenLabel}. ` : ''}
+            Resume or restart the worker to continue automatic processing.
+          </p>
+        </div>
+      )}
       <div
         className={`rounded-t-md rounded-b-none border-b ${
           isCompactView ? 'overflow-hidden' : 'overflow-x-auto'
@@ -734,6 +997,8 @@ export function EventTable({
               const withinWindow =
                 Number.isFinite(daysValue) && daysValue >= 0 && daysValue <= effectiveLeadDays;
               const isCompleted = !!event.kindooLicenseCreated;
+              const licenseOutcome = licenseOutcomeByEvent[event.id] ?? null;
+              const hasLicenseStatus = !!licenseOutcome;
               return (
                 <TableRow
                   key={event.id}
@@ -782,29 +1047,30 @@ export function EventTable({
                           <FileText className="h-3.5 w-3.5 shrink-0" />
                           <span className="min-w-0">{event.description}</span>
                         </p>
-                        {!isSingleColumnView && !isOptimistic && withinWindow && !isCompleted && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className={`mt-1.5 h-5 px-1.5 text-[10px] sm:h-6 sm:px-2 sm:text-[11px] ${
-                              withinWindow
-                                ? 'border-yellow-400 bg-yellow-400 text-black hover:bg-yellow-500 hover:border-yellow-500'
-                                : ''
-                            }`}
-                            onClick={() => setLicenseEvent(event)}
-                          >
-                            Kindoo License
-                          </Button>
-                        )}
-                        {!isSingleColumnView && !isOptimistic && isCompleted && (
+                        {!isSingleColumnView &&
+                          !isOptimistic &&
+                          withinWindow &&
+                          !isCompleted &&
+                          !hasLicenseStatus && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="mt-1.5 h-5 border-amber-400 bg-amber-100 px-1.5 text-[10px] text-amber-900 hover:border-amber-500 hover:bg-amber-200 sm:h-6 sm:px-2 sm:text-[11px]"
+                              onClick={() => setLicenseEvent(event)}
+                            >
+                              <AlertTriangle className="mr-1 h-3 w-3" />
+                              Create early license
+                            </Button>
+                          )}
+                        {!isSingleColumnView && !isOptimistic && hasLicenseStatus && (
                           <button
                             type="button"
-                            className="mt-1.5 inline-flex w-fit cursor-pointer items-center gap-1.5 text-xs font-medium text-emerald-700 hover:text-emerald-800 disabled:cursor-not-allowed"
+                            className={`mt-1.5 inline-flex w-fit cursor-pointer items-center gap-1.5 text-xs font-medium disabled:cursor-not-allowed ${getLicenseOutcomeVisual(licenseOutcome).textClassName}`}
                             onClick={() => setLicenseEvent(event)}
                             disabled={!onSetKindooLicenseCreated || isSavingLicenseStatus}
                           >
-                            <CheckCircle2 className="h-3.5 w-3.5" />
-                            <span className="underline underline-offset-2">License created</span>
+                            {getLicenseOutcomeVisual(licenseOutcome).icon}
+                            <span className="underline underline-offset-2">{licenseOutcome}</span>
                           </button>
                         )}
                       </div>
@@ -938,29 +1204,26 @@ export function EventTable({
                             <span className="text-muted-foreground/50">—</span>
                           )}
                         </div>
-                        {!isOptimistic && withinWindow && !isCompleted && (
+                        {!isOptimistic && withinWindow && !isCompleted && !hasLicenseStatus && (
                           <Button
                             variant="outline"
                             size="sm"
-                            className={`h-5 px-1.5 text-[10px] ${
-                              withinWindow
-                                ? 'border-yellow-400 bg-yellow-400 text-black hover:bg-yellow-500 hover:border-yellow-500'
-                                : ''
-                            }`}
+                            className="h-5 border-amber-400 bg-amber-100 px-1.5 text-[10px] text-amber-900 hover:border-amber-500 hover:bg-amber-200"
                             onClick={() => setLicenseEvent(event)}
                           >
-                            Kindoo License
+                            <AlertTriangle className="mr-1 h-3 w-3" />
+                            Create early license
                           </Button>
                         )}
-                        {!isOptimistic && isCompleted && (
+                        {!isOptimistic && hasLicenseStatus && (
                           <button
                             type="button"
-                            className="inline-flex w-fit cursor-pointer items-center gap-1.5 text-xs font-medium text-emerald-700 hover:text-emerald-800 disabled:cursor-not-allowed"
+                            className={`inline-flex w-fit cursor-pointer items-center gap-1.5 text-xs font-medium disabled:cursor-not-allowed ${getLicenseOutcomeVisual(licenseOutcome).textClassName}`}
                             onClick={() => setLicenseEvent(event)}
                             disabled={!onSetKindooLicenseCreated || isSavingLicenseStatus}
                           >
-                            <CheckCircle2 className="h-3.5 w-3.5" />
-                            <span className="underline underline-offset-2">License created</span>
+                            {getLicenseOutcomeVisual(licenseOutcome).icon}
+                            <span className="underline underline-offset-2">{licenseOutcome}</span>
                           </button>
                         )}
                       </div>
@@ -1474,12 +1737,24 @@ export function EventTable({
         licenseEvent={licenseEvent}
         messageTemplates={messageTemplates}
         onCloseAction={() => setLicenseEvent(null)}
-        onToggleLicenseCreatedAction={onSetKindooLicenseCreated}
+        onLicenseOutcomeChangeAction={(eventId, outcome) => {
+          setLicenseOutcomeByEvent((prev) => {
+            if (!outcome) {
+              if (!(eventId in prev)) return prev;
+              const next = { ...prev };
+              delete next[eventId];
+              return next;
+            }
+            if (prev[eventId] === outcome) {
+              return prev;
+            }
+            return { ...prev, [eventId]: outcome };
+          });
+        }}
         submitKindooLicenseStatusAction={submitKindooLicenseStatus}
         getLicenseTimesAction={getLicenseTimes}
         formatDateAction={formatDate}
         formatTimeRangeAction={formatTimeRange}
-        renderMessageTemplateAction={renderMessageTemplate}
       />
     </TooltipProvider>
   );
