@@ -1733,11 +1733,11 @@ export function EventTable({
       </div>
 
       <div className="mt-3 flex flex-col gap-2 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
-        <div>
+        <div className="text-center">
           Showing {sorted.length === 0 ? 0 : pageStartIndex + 1}–
           {Math.min(pageEndIndex, sorted.length)} of {sorted.length} events
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 justify-center">
           <Button
             variant="outline"
             size="sm"
