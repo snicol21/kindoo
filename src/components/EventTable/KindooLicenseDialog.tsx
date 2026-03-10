@@ -243,7 +243,7 @@ function buildDescription(event: EventWithCreator) {
 
   const creatorName = event.creatorName?.trim() || event.creatorEmail?.trim() || 'Unknown';
   const creatorRole = formatCreatorRoleLabel(event.creatorRole);
-  return `[${event.eventType} event] - for ${event.contactName ?? ''} (${event.contactWard ?? ''}) - granted by ${creatorName} [${creatorRole}]`;
+  return `[${event.eventType} event] - for ${event.contactName ?? ''} (${event.contactWard ?? ''}) - granted by ${creatorName} (${creatorRole})`;
 }
 
 // ─── Small presentational pieces ──────────────────────────────────────────────
