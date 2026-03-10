@@ -38,9 +38,9 @@ function MessageBubbleSection({ label, message, onCopyAction }: MessageBubbleSec
   return (
     <div className="flex flex-col gap-2">
       <Label>{label}</Label>
-      <div className="flex items-start gap-3">
+      <div className="flex min-w-0 items-start gap-3">
         <div className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full bg-primary/60" />
-        <div className="w-full rounded-2xl rounded-tl-sm border border-primary/20 bg-primary/5 px-4 py-3 text-sm whitespace-pre-wrap shadow-sm">
+        <div className="min-w-0 flex-1 rounded-2xl rounded-tl-sm border border-primary/20 bg-primary/5 px-4 py-3 text-sm whitespace-pre-wrap shadow-sm">
           <div className="text-foreground/90">{message}</div>
         </div>
       </div>
@@ -70,7 +70,7 @@ export function EventMessagesDialog({
           <DialogDescription>Copy a formatted message to share.</DialogDescription>
         </DialogHeader>
         {copyingEvent && (
-          <div className="-mx-4 min-h-0 flex-1 space-y-4 overflow-y-auto px-4 sm:-mx-6 sm:px-6">
+          <div className="min-h-0 flex-1 space-y-4 overflow-x-hidden overflow-y-auto pr-1">
               {(copyingEvent.contactEmail?.trim() || copyingEvent.contactPhone?.trim()) && (
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   {copyingEvent.contactEmail?.trim() && (
