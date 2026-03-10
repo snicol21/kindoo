@@ -644,7 +644,7 @@ export function AddEventDialog({
 
   return (
     <Dialog open={open} onOpenChange={(nextOpen) => !nextOpen && handleRequestClose()}>
-      <DialogContent className="sm:max-w-3xl">
+      <DialogContent className="flex flex-col overflow-hidden sm:max-w-3xl">
         <DialogHeader>
           <DialogTitle>Add New Event</DialogTitle>
           <DialogDescription>
@@ -655,12 +655,13 @@ export function AddEventDialog({
         <form
           ref={formRef}
           action={formAction}
-          className="space-y-4"
+          className="flex min-h-0 flex-1 flex-col space-y-4"
           autoComplete="off"
           onSubmit={() => {
             justSubmittedRef.current = true;
           }}
         >
+          <div className="-mx-4 min-h-0 flex-1 space-y-4 overflow-y-auto px-4 sm:-mx-6 sm:px-6">
           {/* General error */}
           {state.errors?.general && (
             <div className="rounded-md bg-destructive/10 border border-destructive/20 p-3 text-sm text-destructive">
@@ -1149,8 +1150,9 @@ export function AddEventDialog({
               <p className="text-xs text-destructive">{state.errors.description}</p>
             )}
           </div>
+          </div>
 
-          <DialogFooter className="pt-2">
+          <DialogFooter className="border-t pt-3">
             <Button
               type="button"
               variant="outline"

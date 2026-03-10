@@ -13,7 +13,6 @@ import {
 } from '@/components/_ui/dialog';
 import { Input } from '@/components/_ui/input';
 import { Label } from '@/components/_ui/label';
-import { Textarea } from '@/components/_ui/textarea';
 import { Copy } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -29,6 +28,30 @@ type EventMessagesDialogProps = {
   ) => string;
 };
 
+type MessageBubbleSectionProps = {
+  label: string;
+  message: string;
+  onCopyAction: () => Promise<void>;
+};
+
+function MessageBubbleSection({ label, message, onCopyAction }: MessageBubbleSectionProps) {
+  return (
+    <div className="flex flex-col gap-2">
+      <Label>{label}</Label>
+      <div className="flex items-start gap-3">
+        <div className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full bg-primary/60" />
+        <div className="w-full rounded-2xl rounded-tl-sm border border-primary/20 bg-primary/5 px-4 py-3 text-sm whitespace-pre-wrap shadow-sm">
+          <div className="text-foreground/90">{message}</div>
+        </div>
+      </div>
+      <Button variant="secondary" size="sm" className="ml-[22px] self-start" onClick={onCopyAction}>
+        <Copy className="mr-2 h-4 w-4" />
+        Copy Message
+      </Button>
+    </div>
+  );
+}
+
 export function EventMessagesDialog({
   copyingEvent,
   messageTemplates,
@@ -38,93 +61,87 @@ export function EventMessagesDialog({
 }: EventMessagesDialogProps) {
   return (
     <Dialog open={!!copyingEvent} onOpenChange={(open) => !open && onCloseAction()}>
-      <DialogContent className="sm:max-w-3xl" onOpenAutoFocus={(event) => event.preventDefault()}>
+      <DialogContent
+        className="flex flex-col overflow-hidden sm:max-w-3xl"
+        onOpenAutoFocus={(event) => event.preventDefault()}
+      >
         <DialogHeader>
           <DialogTitle>Event messages</DialogTitle>
           <DialogDescription>Copy a formatted message to share.</DialogDescription>
         </DialogHeader>
         {copyingEvent && (
-          <div className="space-y-4">
-            {(copyingEvent.contactEmail?.trim() || copyingEvent.contactPhone?.trim()) && (
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                {copyingEvent.contactEmail?.trim() && (
-                  <div className="space-y-2">
-                    <Label>Email</Label>
-                    <div className="flex w-full items-center gap-2">
-                      <Input
-                        readOnly
-                        value={copyingEvent.contactEmail}
-                        className="min-w-0 flex-1"
-                      />
-                      <Button
-                        variant="secondary"
-                        size="icon"
-                        className="shrink-0 sm:mr-3"
-                        aria-label="Copy email"
-                        onClick={async () => {
-                          try {
-                            await navigator.clipboard.writeText(copyingEvent.contactEmail ?? '');
-                            toast.success('Email copied.');
-                          } catch {
-                            toast.error('Failed to copy.');
-                          }
-                        }}
-                      >
-                        <Copy className="h-4 w-4" />
-                      </Button>
+          <div className="-mx-4 min-h-0 flex-1 space-y-4 overflow-y-auto px-4 sm:-mx-6 sm:px-6">
+              {(copyingEvent.contactEmail?.trim() || copyingEvent.contactPhone?.trim()) && (
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  {copyingEvent.contactEmail?.trim() && (
+                    <div className="space-y-2">
+                      <Label>Email</Label>
+                      <div className="flex w-full items-center gap-2">
+                        <Input
+                          readOnly
+                          value={copyingEvent.contactEmail}
+                          className="min-w-0 flex-1"
+                        />
+                        <Button
+                          variant="secondary"
+                          size="icon"
+                          className="shrink-0 sm:mr-3"
+                          aria-label="Copy email"
+                          onClick={async () => {
+                            try {
+                              await navigator.clipboard.writeText(copyingEvent.contactEmail ?? '');
+                              toast.success('Email copied.');
+                            } catch {
+                              toast.error('Failed to copy.');
+                            }
+                          }}
+                        >
+                          <Copy className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
-                  </div>
-                )}
-                {copyingEvent.contactPhone?.trim() && (
-                  <div className="space-y-2">
-                    <Label>Phone</Label>
-                    <div className="flex w-full items-center gap-2">
-                      <Input
-                        readOnly
-                        value={formatPhoneAction(copyingEvent.contactPhone)}
-                        className="min-w-0 flex-1"
-                      />
-                      <Button
-                        variant="secondary"
-                        size="icon"
-                        className="shrink-0 sm:mr-3"
-                        aria-label="Copy phone"
-                        onClick={async () => {
-                          try {
-                            await navigator.clipboard.writeText(
-                              formatPhoneAction(copyingEvent.contactPhone)
-                            );
-                            toast.success('Phone copied.');
-                          } catch {
-                            toast.error('Failed to copy.');
-                          }
-                        }}
-                      >
-                        <Copy className="h-4 w-4" />
-                      </Button>
+                  )}
+                  {copyingEvent.contactPhone?.trim() && (
+                    <div className="space-y-2">
+                      <Label>Phone</Label>
+                      <div className="flex w-full items-center gap-2">
+                        <Input
+                          readOnly
+                          value={formatPhoneAction(copyingEvent.contactPhone)}
+                          className="min-w-0 flex-1"
+                        />
+                        <Button
+                          variant="secondary"
+                          size="icon"
+                          className="shrink-0 sm:mr-3"
+                          aria-label="Copy phone"
+                          onClick={async () => {
+                            try {
+                              await navigator.clipboard.writeText(
+                                formatPhoneAction(copyingEvent.contactPhone)
+                              );
+                              toast.success('Phone copied.');
+                            } catch {
+                              toast.error('Failed to copy.');
+                            }
+                          }}
+                        >
+                          <Copy className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
-                  </div>
-                )}
-              </div>
-            )}
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-              <div className="flex h-full flex-col gap-2">
-                <Label>Availability inquiry text</Label>
-                <Textarea
-                  readOnly
-                  rows={4}
-                  className="min-w-0 flex-1 min-h-35"
-                  value={renderMessageTemplateAction(
+                  )}
+                </div>
+              )}
+              <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-2">
+                <MessageBubbleSection
+                  label="Availability inquiry text"
+                  message={renderMessageTemplateAction(
                     copyingEvent,
                     'availability_inquiry',
                     messageTemplates
                   )}
-                />
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  className="self-start"
-                  onClick={async () => {
+                  onCopyAction={async () => {
                     try {
                       await navigator.clipboard.writeText(
                         renderMessageTemplateAction(
@@ -138,28 +155,15 @@ export function EventMessagesDialog({
                       toast.error('Failed to copy.');
                     }
                   }}
-                >
-                  <Copy className="mr-2 h-4 w-4" />
-                  Copy Message
-                </Button>
-              </div>
-              <div className="flex h-full flex-col gap-2">
-                <Label>Calendar item description</Label>
-                <Textarea
-                  readOnly
-                  rows={6}
-                  className="min-w-0 flex-1 min-h-35"
-                  value={renderMessageTemplateAction(
+                />
+                <MessageBubbleSection
+                  label="Calendar item description"
+                  message={renderMessageTemplateAction(
                     copyingEvent,
                     'calendar_item',
                     messageTemplates
                   )}
-                />
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  className="self-start"
-                  onClick={async () => {
+                  onCopyAction={async () => {
                     try {
                       await navigator.clipboard.writeText(
                         renderMessageTemplateAction(copyingEvent, 'calendar_item', messageTemplates)
@@ -169,28 +173,16 @@ export function EventMessagesDialog({
                       toast.error('Failed to copy.');
                     }
                   }}
-                >
-                  <Copy className="mr-2 h-4 w-4" />
-                  Copy Message
-                </Button>
+                />
               </div>
-            </div>
-            <div className="space-y-2">
-              <Label>Availability confirmed + policy text</Label>
-              <Textarea
-                readOnly
-                rows={9}
-                className="min-w-0"
-                value={renderMessageTemplateAction(
+              <MessageBubbleSection
+                label="Availability confirmed + policy text"
+                message={renderMessageTemplateAction(
                   copyingEvent,
                   'availability_confirmed',
                   messageTemplates
                 )}
-              />
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={async () => {
+                onCopyAction={async () => {
                   try {
                     await navigator.clipboard.writeText(
                       renderMessageTemplateAction(
@@ -204,14 +196,24 @@ export function EventMessagesDialog({
                     toast.error('Failed to copy.');
                   }
                 }}
-              >
-                <Copy className="mr-2 h-4 w-4" />
-                Copy Message
-              </Button>
-            </div>
+              />
+              <MessageBubbleSection
+                label="License created message"
+                message={renderMessageTemplateAction(copyingEvent, 'license_created', messageTemplates)}
+                onCopyAction={async () => {
+                  try {
+                    await navigator.clipboard.writeText(
+                      renderMessageTemplateAction(copyingEvent, 'license_created', messageTemplates)
+                    );
+                    toast.success('License created message copied.');
+                  } catch {
+                    toast.error('Failed to copy.');
+                  }
+                }}
+              />
           </div>
         )}
-        <DialogFooter>
+        <DialogFooter className="border-t bg-background pt-3">
           <Button variant="outline" onClick={onCloseAction}>
             Close
           </Button>

@@ -261,12 +261,12 @@ export function EditEventDialog({
 
   return (
     <Dialog open={open} onOpenChange={(nextOpen) => !nextOpen && handleRequestClose()}>
-      <DialogContent className="sm:max-w-3xl">
+      <DialogContent className="flex flex-col overflow-hidden sm:max-w-3xl">
         <DialogHeader>
           <DialogTitle>Edit event</DialogTitle>
           <DialogDescription>Update the event details and save your changes.</DialogDescription>
         </DialogHeader>
-        <div className="space-y-3">
+        <div className="-mx-4 min-h-0 flex-1 space-y-3 overflow-y-auto px-4 sm:-mx-6 sm:px-6">
           <div className="space-y-1.5">
             <Label htmlFor="edit-building">Building</Label>
             <Select
@@ -582,7 +582,7 @@ export function EditEventDialog({
             </p>
           </div>
         </div>
-        <DialogFooter className="pt-2">
+        <DialogFooter className="border-t pt-3">
           <Button variant="outline" className="w-full sm:w-auto" onClick={handleRequestClose}>
             Cancel
           </Button>
