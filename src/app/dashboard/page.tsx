@@ -1,7 +1,7 @@
 import { auth } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { db } from '@/lib/db';
-import { contacts, events, users, WARD_BUILDING, type UserRole } from '@/schema/schema';
+import { contacts, events, users, WARD_BUILDING, type EventType, type UserRole } from '@/schema/schema';
 import { and, eq } from 'drizzle-orm';
 import { DashboardClient } from '@/components/DashboardClient';
 import type { Metadata } from 'next';
@@ -74,6 +74,8 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
 
   const initialTab = normalizedBuilding ?? fallbackTab;
   const canSelectAnyWard = role === 'admin' || role === 'stake_manager';
+  const defaultEventType: EventType =
+    role === 'ward_manager' || role === 'ward_user' ? 'Ward' : 'Private';
   const fixedBuildingForWardUsers = canSelectAnyWard ? undefined : WARD_BUILDING[userWard];
 
   // Initial data fetch for both buildings (runs in parallel)
@@ -82,6 +84,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
       .select({
         id: events.id,
         building: events.building,
+        eventType: events.eventType,
         eventDate: events.eventDate,
         startTime: events.startTime,
         endTime: events.endTime,
@@ -92,6 +95,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         createdAt: events.createdAt,
         creatorName: users.name,
         creatorEmail: users.email,
+        creatorRole: users.role,
         contactName: contacts.name,
         contactWard: contacts.ward,
         contactEmail: contacts.email,
@@ -116,6 +120,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
       .select({
         id: events.id,
         building: events.building,
+        eventType: events.eventType,
         eventDate: events.eventDate,
         startTime: events.startTime,
         endTime: events.endTime,
@@ -126,6 +131,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         createdAt: events.createdAt,
         creatorName: users.name,
         creatorEmail: users.email,
+        creatorRole: users.role,
         contactName: contacts.name,
         contactWard: contacts.ward,
         contactEmail: contacts.email,
@@ -166,6 +172,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
       currentUserWard={userWard}
       canSelectAnyWard={canSelectAnyWard}
       fixedBuildingForWardUsers={fixedBuildingForWardUsers}
+      defaultEventType={defaultEventType}
     />
   );
 }

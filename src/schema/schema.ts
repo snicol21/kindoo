@@ -29,6 +29,9 @@ export const WARD_BUILDING: Record<Ward, Building> = {
 export const USER_ROLES = ['admin', 'stake_manager', 'ward_manager', 'ward_user'] as const;
 export type UserRole = (typeof USER_ROLES)[number];
 
+export const EVENT_TYPES = ['Private', 'Ward', 'Stake', 'Special'] as const;
+export type EventType = (typeof EVENT_TYPES)[number];
+
 // ─── Auth.js Required Tables ──────────────────────────────────────────────────
 
 export const users = sqliteTable('user', {
@@ -103,6 +106,10 @@ export const events = sqliteTable('event', {
     .notNull()
     .references(() => contacts.id, { onDelete: 'restrict' }),
   description: text('description').notNull(),
+  eventType: text('event_type', { enum: EVENT_TYPES })
+    .notNull()
+    .$type<EventType>()
+    .default('Private'),
   kindooLicenseCreated: integer('kindoo_license_created', { mode: 'boolean' })
     .notNull()
     .default(false),

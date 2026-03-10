@@ -1,8 +1,8 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { Building, Ward } from '@/schema/schema';
-import { BUILDINGS, WARDS } from '@/schema/schema';
+import type { Building, EventType, Ward } from '@/schema/schema';
+import { BUILDINGS, EVENT_TYPES, WARDS } from '@/schema/schema';
 import { Button } from '@/components/_ui/button';
 import {
   Dialog,
@@ -44,6 +44,7 @@ type CloneEventDialogProps = {
   open: boolean;
   cloneBuilding: Building;
   cloneWard: Ward | '';
+  cloneEventType: EventType;
   cloneName: string;
   cloneEventDate: string;
   cloneStartTime: string;
@@ -57,6 +58,7 @@ type CloneEventDialogProps = {
   onSubmitAction: () => Promise<void>;
   setCloneBuildingAction: (value: Building) => void;
   setCloneWardAction: (value: Ward | '') => void;
+  setCloneEventTypeAction: (value: EventType) => void;
   setCloneNameAction: (value: string) => void;
   setCloneEventDateAction: (value: string) => void;
   setCloneStartTimeAction: (value: string) => void;
@@ -84,6 +86,7 @@ export function CloneEventDialog({
   open,
   cloneBuilding,
   cloneWard,
+  cloneEventType,
   cloneName,
   cloneEventDate,
   cloneStartTime,
@@ -97,6 +100,7 @@ export function CloneEventDialog({
   onSubmitAction,
   setCloneBuildingAction,
   setCloneWardAction,
+  setCloneEventTypeAction,
   setCloneNameAction,
   setCloneEventDateAction,
   setCloneStartTimeAction,
@@ -190,6 +194,7 @@ export function CloneEventDialog({
   const getCurrentSnapshot = (): Snapshot => ({
     building: String(cloneBuilding),
     ward: String(cloneWard),
+    eventType: String(cloneEventType),
     name: cloneName.trim(),
     eventDate: cloneEventDate,
     startTime: cloneStartTime,
@@ -230,6 +235,7 @@ export function CloneEventDialog({
     open,
     cloneBuilding,
     cloneWard,
+    cloneEventType,
     cloneName,
     cloneEventDate,
     cloneStartTime,
@@ -391,6 +397,7 @@ export function CloneEventDialog({
                   ref={emailInputRef}
                   id="clone-email"
                   type="email"
+                  placeholder="name@example.com"
                   autoComplete="new-password"
                   value={cloneEmail}
                   className={showLinkedState ? 'pr-24' : ''}
@@ -493,6 +500,32 @@ export function CloneEventDialog({
               Event
             </h3>
             <div className="h-px flex-1 bg-border/60" />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label>Event type</Label>
+            <div className="flex flex-nowrap gap-1 overflow-x-auto pb-1 sm:gap-2">
+              {EVENT_TYPES.map((eventType) => (
+                <label
+                  key={eventType}
+                  className={`inline-flex shrink-0 cursor-pointer items-center justify-center gap-1 rounded-md border px-1.5 py-1 text-[11px] sm:justify-start sm:gap-2 sm:px-3 sm:py-1.5 sm:text-sm whitespace-nowrap ${
+                    cloneEventType === eventType
+                      ? 'border-primary bg-primary/5 text-foreground'
+                      : 'border-border text-muted-foreground'
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="cloneEventType"
+                    value={eventType}
+                    checked={cloneEventType === eventType}
+                    onChange={() => setCloneEventTypeAction(eventType)}
+                    className="h-3 w-3 sm:h-3.5 sm:w-3.5"
+                  />
+                  <span>{eventType}</span>
+                </label>
+              ))}
+            </div>
           </div>
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">

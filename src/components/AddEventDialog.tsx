@@ -29,8 +29,8 @@ import { MatchedContactBadge } from '@/components/MatchedContactBadge';
 import { useAddEvent } from '@/hooks/useEvents';
 import { useContactSearch } from '@/hooks/useContacts';
 import { updateContact, type ContactSearchResult } from '@/actions/contacts';
-import type { Building, Ward } from '@/schema/schema';
-import { BUILDINGS, WARDS } from '@/schema/schema';
+import type { Building, EventType, Ward } from '@/schema/schema';
+import { BUILDINGS, EVENT_TYPES, WARDS } from '@/schema/schema';
 import { formatPhone } from '@/utils/phoneUtils';
 import { getTodayYmd } from '@/utils/dateUtils';
 import {
@@ -69,6 +69,7 @@ interface AddEventDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   defaultBuilding?: Building;
+  defaultEventType?: EventType;
   fixedBuilding?: Building;
   fixedWard?: Ward;
 }
@@ -77,6 +78,7 @@ interface FormState {
   errors?: {
     building?: string;
     ward?: string;
+    eventType?: string;
     name?: string;
     eventDate?: string;
     startTime?: string;
@@ -89,6 +91,7 @@ interface FormState {
   values?: {
     building?: string;
     ward?: string;
+    eventType?: string;
     name?: string;
     eventDate?: string;
     startTime?: string;
@@ -120,6 +123,7 @@ export function AddEventDialog({
   open,
   onOpenChange,
   defaultBuilding = 'Stake Center',
+  defaultEventType = 'Private',
   fixedBuilding,
   fixedWard,
 }: AddEventDialogProps) {
@@ -141,6 +145,7 @@ export function AddEventDialog({
     fixedBuilding ?? defaultBuilding
   );
   const [selectedWard, setSelectedWard] = useState<Ward | ''>(fixedWard ?? '');
+  const [selectedEventType, setSelectedEventType] = useState<EventType>(defaultEventType);
   const [selectedEventDate, setSelectedEventDate] = useState('');
   const [selectedStartTime, setSelectedStartTime] = useState('');
   const [selectedEndTime, setSelectedEndTime] = useState('');
@@ -187,6 +192,7 @@ export function AddEventDialog({
     return {
       building: overrides.building ?? String(selectedBuilding),
       ward: overrides.ward ?? String(selectedWard),
+      eventType: overrides.eventType ?? String(selectedEventType),
       name: overrides.name ?? typedName.trim(),
       email: overrides.email ?? typedEmail.trim(),
       phone: overrides.phone ?? typedPhone.trim(),
@@ -310,6 +316,7 @@ export function AddEventDialog({
       initialSnapshotRef.current = getCurrentSnapshot({
         building: fixedBuilding ?? defaultBuilding,
         ward: fixedWard ?? (state.values?.ward as Ward | undefined) ?? '',
+        eventType: state.values?.eventType ?? defaultEventType,
       });
       justSubmittedRef.current = false;
     }
@@ -375,6 +382,7 @@ export function AddEventDialog({
     async (_prevState, formData): Promise<FormState> => {
       const building = formData.get('building') as Building | null;
       const ward = formData.get('ward') as Ward | null;
+      const eventType = formData.get('eventType') as EventType | null;
       const name = formData.get('name') as string | null;
       const eventDate = formData.get('eventDate') as string | null;
       const startTime = formData.get('startTime') as string | null;
@@ -397,6 +405,9 @@ export function AddEventDialog({
         errors.ward = 'Please select a ward.';
       } else if (fixedWard && ward !== fixedWard) {
         errors.ward = 'You can only create events for your assigned ward.';
+      }
+      if (!eventType || !EVENT_TYPES.includes(eventType)) {
+        errors.eventType = 'Please select an event type.';
       }
       if (!name?.trim()) {
         errors.name = 'Name is required.';
@@ -497,6 +508,7 @@ export function AddEventDialog({
               values: {
                 building: building ?? undefined,
                 ward: ward ?? undefined,
+                eventType: eventType ?? undefined,
                 name: name ?? undefined,
                 eventDate: eventDate ?? undefined,
                 startTime: startTime ?? undefined,
@@ -514,6 +526,7 @@ export function AddEventDialog({
             {
               building: building!,
               ward: ward!,
+              eventType: eventType!,
               name: name!.trim(),
               eventDate: eventDate!,
               startTime: startTime!,
@@ -545,6 +558,7 @@ export function AddEventDialog({
           values: {
             building: building ?? undefined,
             ward: ward ?? undefined,
+            eventType: eventType ?? undefined,
             name: name ?? undefined,
             eventDate: eventDate ?? undefined,
             startTime: startTime ?? undefined,
@@ -565,6 +579,7 @@ export function AddEventDialog({
       formRef.current?.reset();
       setSelectedBuilding(fixedBuilding ?? defaultBuilding);
       setSelectedWard(fixedWard ?? '');
+      setSelectedEventType(defaultEventType);
       setTypedName('');
       setTypedEmail('');
       setTypedPhone('');
@@ -577,7 +592,7 @@ export function AddEventDialog({
       setSelectedStartTime('');
       setSelectedEndTime('');
     }
-  }, [defaultBuilding, fixedBuilding, fixedWard, open]);
+  }, [defaultBuilding, defaultEventType, fixedBuilding, fixedWard, open]);
 
   useEffect(() => {
     if (!open) return;
@@ -589,8 +604,9 @@ export function AddEventDialog({
     if (open) {
       setSelectedBuilding(fixedBuilding ?? defaultBuilding);
       setSelectedWard(fixedWard ?? (state.values?.ward as Ward | undefined) ?? '');
+      setSelectedEventType((state.values?.eventType as EventType | undefined) ?? defaultEventType);
     }
-  }, [defaultBuilding, fixedBuilding, fixedWard, open, state.values?.ward]);
+  }, [defaultBuilding, defaultEventType, fixedBuilding, fixedWard, open, state.values?.eventType, state.values?.ward]);
 
   useEffect(() => {
     if (!open) return;
@@ -851,7 +867,7 @@ export function AddEventDialog({
                   id="email"
                   name="email"
                   type="email"
-                  placeholder="name@example.com (optional)"
+                  placeholder="name@example.com"
                   defaultValue={state.values?.email}
                   className={`${state.errors?.email ? 'border-destructive' : ''} ${
                     showLinkedState ? 'pr-24' : ''
@@ -1001,6 +1017,37 @@ export function AddEventDialog({
               Event
             </h3>
             <div className="h-px flex-1 bg-border/60" />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label>
+              Event type <span className="text-destructive">*</span>
+            </Label>
+            <div className="flex flex-nowrap gap-1 overflow-x-auto pb-1 sm:gap-2">
+              {EVENT_TYPES.map((eventType) => (
+                <label
+                  key={eventType}
+                  className={`inline-flex shrink-0 cursor-pointer items-center justify-center gap-1 rounded-md border px-1.5 py-1 text-[11px] sm:justify-start sm:gap-2 sm:px-3 sm:py-1.5 sm:text-sm whitespace-nowrap ${
+                    selectedEventType === eventType
+                      ? 'border-primary bg-primary/5 text-foreground'
+                      : 'border-border text-muted-foreground'
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="eventType"
+                    value={eventType}
+                    checked={selectedEventType === eventType}
+                    onChange={() => setSelectedEventType(eventType)}
+                    className="h-3 w-3 sm:h-3.5 sm:w-3.5"
+                  />
+                  <span>{eventType}</span>
+                </label>
+              ))}
+            </div>
+            {state.errors?.eventType && (
+              <p className="text-xs text-destructive">{state.errors.eventType}</p>
+            )}
           </div>
 
           {/* Date + Time row */}

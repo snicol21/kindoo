@@ -186,20 +186,6 @@ function formatLocalYmd(date: Date) {
   return `${y}-${m}-${d}`;
 }
 
-function formatDeltaMinutes(deltaMinutes: number) {
-  const rounded = Math.round(deltaMinutes);
-  if (rounded === 0) return 'on time';
-  const abs = Math.abs(rounded);
-  const days = Math.floor(abs / 1440);
-  const hours = Math.floor((abs % 1440) / 60);
-  const minutes = abs % 60;
-  const parts: string[] = [];
-  if (days > 0) parts.push(`${days}d`);
-  if (hours > 0) parts.push(`${hours}h`);
-  if (minutes > 0 || parts.length === 0) parts.push(`${minutes}m`);
-  return `${parts.join(' ')} ${rounded < 0 ? 'early' : 'late'}`;
-}
-
 function formatDateTimeNoSeconds(date: Date) {
   return date.toLocaleString('en-US', {
     month: 'numeric',
@@ -241,7 +227,23 @@ function getAccessRule(building: EventWithCreator['building']) {
 }
 
 function buildDescription(event: EventWithCreator) {
-  return `[${event.contactWard ?? ''}] - [Private Event] - [${event.contactName ?? ''}]`;
+  const formatCreatorRoleLabel = (role: string | null | undefined) => {
+    switch (role?.trim()) {
+      case 'admin':
+      case 'stake_manager':
+        return 'Stake Manager';
+      case 'ward_manager':
+        return 'Ward Manager';
+      case 'ward_user':
+        return 'Ward User';
+      default:
+        return 'Unknown';
+    }
+  };
+
+  const creatorName = event.creatorName?.trim() || event.creatorEmail?.trim() || 'Unknown';
+  const creatorRole = formatCreatorRoleLabel(event.creatorRole);
+  return `[${event.eventType} event] - for ${event.contactName ?? ''} (${event.contactWard ?? ''}) - granted by ${creatorName} [${creatorRole}]`;
 }
 
 // ─── Small presentational pieces ──────────────────────────────────────────────
@@ -254,11 +256,31 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
   );
 }
 
-function MetaRow({ label, value }: { label: string; value: React.ReactNode }) {
+function MetaRow({
+  label,
+  value,
+  stackOnMobile = false,
+}: {
+  label: string;
+  value: React.ReactNode;
+  stackOnMobile?: boolean;
+}) {
   return (
-    <div className="flex items-baseline justify-between gap-4 px-4 py-2 odd:bg-muted/30 even:bg-muted/10">
+    <div
+      className={`px-4 py-2 odd:bg-muted/30 even:bg-muted/10 ${
+        stackOnMobile
+          ? 'flex flex-col items-start gap-1 sm:flex-row sm:items-baseline sm:justify-between sm:gap-4'
+          : 'flex items-baseline justify-between gap-4'
+      }`}
+    >
       <span className="shrink-0 text-xs text-muted-foreground">{label}</span>
-      <span className="text-right text-xs font-medium text-foreground">{value}</span>
+      <span
+        className={`text-xs font-medium text-foreground ${
+          stackOnMobile ? 'w-full text-left sm:text-right' : 'text-right'
+        }`}
+      >
+        {value}
+      </span>
     </div>
   );
 }
@@ -527,11 +549,6 @@ export function KindooLicenseDialog({
     ? `${latestFailureMessage.slice(0, 140)}${latestFailureMessage.length > 140 ? '…' : ''}`
     : null;
 
-  const runDeltaMinutes =
-    latestRunDate && scheduledDateTime
-      ? (latestRunDate.getTime() - scheduledDateTime.getTime()) / 60_000
-      : null;
-
   const countdownToScheduledMs = scheduledDateTime ? scheduledDateTime.getTime() - nowMs : null;
   const countdownLabel = countdownToScheduledMs !== null ? formatCountdownMs(countdownToScheduledMs) : null;
   const isScheduledPast = countdownToScheduledMs !== null && countdownToScheduledMs <= 0;
@@ -632,10 +649,10 @@ export function KindooLicenseDialog({
               <section>
                 <SectionLabel>Event</SectionLabel>
                 <div className="rounded-md border border-border divide-y divide-border/60">
-                  <MetaRow label="Email" value={licenseEvent.contactEmail || <span className="text-destructive">Missing</span>} />
-                  <MetaRow label="Description" value={buildDescription(licenseEvent)} />
-                  <MetaRow label="Access rule" value={getAccessRule(licenseEvent.building) ?? 'Unknown'} />
-                  <MetaRow label="Event time" value={`${formatDateAction(licenseEvent.eventDate)} · ${formatTimeRangeAction(licenseEvent.startTime, licenseEvent.endTime)}`} />
+                  <MetaRow label="Email" value={licenseEvent.contactEmail || <span className="text-destructive">Missing</span>} stackOnMobile />
+                  <MetaRow label="Description" value={buildDescription(licenseEvent)} stackOnMobile />
+                  <MetaRow label="Access rule" value={getAccessRule(licenseEvent.building) ?? 'Unknown'} stackOnMobile />
+                  <MetaRow label="Event time" value={`${formatDateAction(licenseEvent.eventDate)} · ${formatTimeRangeAction(licenseEvent.startTime, licenseEvent.endTime)}`} stackOnMobile />
                 </div>
               </section>
 
@@ -650,6 +667,7 @@ export function KindooLicenseDialog({
                         ? `${licenseWindowDateLabel ?? licenseTimes.startDate} · ${licenseTimes.startTime} – ${licenseTimes.endTime}`
                         : 'Unavailable'
                     }
+                    stackOnMobile
                   />
                   <MetaRow
                     label="Scheduled creation"
@@ -658,6 +676,7 @@ export function KindooLicenseDialog({
                         ? `${scheduledDateLabel} · ${scheduledTimeLabel}`
                         : 'Auto-scheduled one day before event'
                     }
+                    stackOnMobile
                   />
                 </div>
               </section>
@@ -725,8 +744,7 @@ export function KindooLicenseDialog({
                     />
                     <MetaRow label="Outcome" value={displayOutcome ?? '—'} />
                     <MetaRow label="Duration" value={latestDurationSec !== null ? `${latestDurationSec}s` : '—'} />
-                    <MetaRow label="Timing delta" value={runDeltaMinutes !== null ? formatDeltaMinutes(runDeltaMinutes) : '—'} />
-                    <MetaRow label="Ran at" value={latestRunDate ? formatDateTimeNoSeconds(latestRunDate) : '—'} />
+                    <MetaRow label="Last attempt" value={latestRunDate ? formatDateTimeNoSeconds(latestRunDate) : '—'} />
                   </div>
 
                   <div className="border-t border-border/60 px-4 py-3 text-xs text-muted-foreground">

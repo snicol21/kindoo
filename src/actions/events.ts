@@ -7,9 +7,11 @@ import {
   events,
   users,
   BUILDINGS,
+  EVENT_TYPES,
   WARDS,
   type Building,
   type Event,
+  type EventType,
   type UserRole,
   type Ward,
 } from '@/schema/schema';
@@ -29,6 +31,7 @@ const EVENT_TIMEZONE = 'America/Denver';
 export interface AddEventInput {
   building: Building;
   ward: Ward;
+  eventType?: EventType;
   name: string;
   eventDate: string;
   startTime: string;
@@ -45,6 +48,7 @@ export interface UpdateEventInput extends AddEventInput {
 export interface EventWithCreator {
   id: string;
   building: Building;
+  eventType: EventType;
   eventDate: string;
   startTime: string;
   endTime: string;
@@ -55,6 +59,7 @@ export interface EventWithCreator {
   createdAt: Date;
   creatorName: string | null;
   creatorEmail: string | null;
+  creatorRole: UserRole | null;
   contactName: string;
   contactWard: Ward;
   contactEmail: string | null;
@@ -132,9 +137,22 @@ function clampImportTimes(input: AddEventInput): AddEventInput {
   };
 }
 
-function normalizeEventInput(input: AddEventInput): AddEventInput {
+function getDefaultEventTypeForRole(role: UserRole): EventType {
+  return role === 'ward_manager' || role === 'ward_user' ? 'Ward' : 'Private';
+}
+
+function normalizeEventType(value: unknown, fallbackEventType: EventType): EventType {
+  const candidate = typeof value === 'string' ? value.trim() : '';
+  if (EVENT_TYPES.includes(candidate as EventType)) {
+    return candidate as EventType;
+  }
+  return fallbackEventType;
+}
+
+function normalizeEventInput(input: AddEventInput, fallbackEventType: EventType): AddEventInput {
   return {
     ...input,
+    eventType: normalizeEventType(input.eventType, fallbackEventType),
     name: input.name.trim(),
     eventDate: input.eventDate.trim(),
     startTime: input.startTime.trim(),
@@ -181,6 +199,9 @@ function validateEventInput(input: AddEventInput): string | null {
     return 'Invalid building selection.';
   }
   if (!input.ward || !WARDS.includes(input.ward)) return 'Ward is required.';
+  if (!input.eventType || !EVENT_TYPES.includes(input.eventType)) {
+    return 'Invalid event type selection.';
+  }
   if (!input.name?.trim()) return 'Name is required.';
   if (!/^[^\s]+\s+[^\s]+/.test(input.name.trim())) {
     return 'Please enter both first and last name.';
@@ -308,7 +329,7 @@ export async function addEvent(input: AddEventInput): Promise<ActionResult<Event
     if (!access.success || !access.data) return { success: false, error: access.error };
     const { userId, role, ward } = access.data;
 
-    const normalizedInput = normalizeEventInput(input);
+    const normalizedInput = normalizeEventInput(input, getDefaultEventTypeForRole(role));
     const validationError = validateEventInput(normalizedInput);
     if (validationError) {
       return { success: false, error: validationError };
@@ -341,6 +362,7 @@ export async function addEvent(input: AddEventInput): Promise<ActionResult<Event
         .insert(events)
         .values({
           building: normalizedInput.building,
+          eventType: normalizedInput.eventType,
           eventDate: normalizedInput.eventDate,
           startTime: normalizedInput.startTime,
           endTime: normalizedInput.endTime,
@@ -386,6 +408,7 @@ export async function getEventsByBuilding(
       .select({
         id: events.id,
         building: events.building,
+        eventType: events.eventType,
         eventDate: events.eventDate,
         startTime: events.startTime,
         endTime: events.endTime,
@@ -396,6 +419,7 @@ export async function getEventsByBuilding(
         createdAt: events.createdAt,
         creatorName: users.name,
         creatorEmail: users.email,
+        creatorRole: users.role,
         contactName: contacts.name,
         contactWard: contacts.ward,
         contactEmail: contacts.email,
@@ -536,7 +560,7 @@ export async function updateEvent(input: UpdateEventInput): Promise<ActionResult
       return { success: false, error: 'Event not found.' };
     }
 
-    const normalizedInput = normalizeEventInput(input);
+    const normalizedInput = normalizeEventInput(input, getDefaultEventTypeForRole(role));
     const validationError = validateEventInput(normalizedInput);
     if (validationError) {
       return { success: false, error: validationError };
@@ -560,6 +584,7 @@ export async function updateEvent(input: UpdateEventInput): Promise<ActionResult
       .update(events)
       .set({
         building: normalizedInput.building,
+        eventType: normalizedInput.eventType,
         eventDate: normalizedInput.eventDate,
         startTime: normalizedInput.startTime,
         endTime: normalizedInput.endTime,
@@ -599,7 +624,9 @@ export async function importEvents(input: {
     const validRows: AddEventInput[] = [];
 
     input.events.forEach((event, index) => {
-      const normalizedEvent = clampImportTimes(normalizeEventInput(event));
+      const normalizedEvent = clampImportTimes(
+        normalizeEventInput(event, getDefaultEventTypeForRole(role))
+      );
       const error = validateEventInput(normalizedEvent);
       if (
         !error &&
@@ -636,6 +663,7 @@ export async function importEvents(input: {
 
       insertValues.push({
         building: event.building,
+        eventType: event.eventType,
         eventDate: event.eventDate,
         startTime: event.startTime,
         endTime: event.endTime,

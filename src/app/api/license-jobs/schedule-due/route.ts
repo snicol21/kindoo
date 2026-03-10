@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { eq, inArray } from 'drizzle-orm';
 import { db } from '@/lib/db';
 import { publishLicenseJobEvent } from '@/lib/license-job-events';
-import { contacts, events, kindooLicenseJobs } from '@/schema/schema';
+import { contacts, events, kindooLicenseJobs, users } from '@/schema/schema';
 
 const DEFAULT_TIMEZONE = 'America/Denver';
 const EARLIEST_MINUTES = 5 * 60;
@@ -55,8 +55,31 @@ function getAccessRule(building: string) {
   return null;
 }
 
-function buildDescription(contactWard: string | null, contactName: string | null) {
-  return `[${contactWard ?? ''}] - [Private Event] - [${contactName ?? ''}]`;
+function buildDescription(
+  eventType: string | null,
+  contactName: string | null,
+  contactWard: string | null,
+  creatorName: string | null,
+  creatorRole: string | null
+) {
+  const formatCreatorRoleLabel = (role: string | null | undefined) => {
+    switch (role?.trim()) {
+      case 'admin':
+      case 'stake_manager':
+        return 'Stake Manager';
+      case 'ward_manager':
+        return 'Ward Manager';
+      case 'ward_user':
+        return 'Ward User';
+      default:
+        return 'Unknown';
+    }
+  };
+
+  const normalizedEventType = eventType?.trim() || 'Private';
+  const normalizedCreatorName = creatorName?.trim() || 'Unknown';
+  const normalizedCreatorRole = formatCreatorRoleLabel(creatorRole);
+  return `[${normalizedEventType} event] - for ${contactName ?? ''} (${contactWard ?? ''}) - granted by ${normalizedCreatorName} [${normalizedCreatorRole}]`;
 }
 
 function getCurrentYmdHmInTimeZone(timeZone: string) {
@@ -136,15 +159,19 @@ export async function POST(request: Request) {
       eventId: events.id,
       requestedByUserId: events.userId,
       building: events.building,
+      eventType: events.eventType,
       eventDate: events.eventDate,
       startTime: events.startTime,
       endTime: events.endTime,
       contactName: contacts.name,
       contactWard: contacts.ward,
       contactEmail: contacts.email,
+      creatorName: users.name,
+      creatorRole: users.role,
     })
     .from(events)
     .innerJoin(contacts, eq(events.contactId, contacts.id))
+    .innerJoin(users, eq(events.userId, users.id))
     .where(eq(events.kindooLicenseCreated, false));
 
   if (candidates.length === 0) {
@@ -181,7 +208,13 @@ export async function POST(request: Request) {
         requestedByUserId: row.requestedByUserId,
         status: 'queued' as const,
         email: row.contactEmail!.trim(),
-        description: buildDescription(row.contactWard, row.contactName),
+        description: buildDescription(
+          row.eventType,
+          row.contactName,
+          row.contactWard,
+          row.creatorName,
+          row.creatorRole
+        ),
         timezone: DEFAULT_TIMEZONE,
         startDate: window.startDate,
         startTime: window.startTime,

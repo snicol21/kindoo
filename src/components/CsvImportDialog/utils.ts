@@ -1,11 +1,12 @@
 import type { AddEventInput } from '@/actions/events';
-import { BUILDINGS, WARDS, type Building, type Ward } from '@/schema/schema';
+import { BUILDINGS, EVENT_TYPES, WARDS, type Building, type EventType, type Ward } from '@/schema/schema';
 import { DESCRIPTION_MAX_LENGTH } from '@/utils/eventConstants';
 import type { CsvParseResult } from '@/components/CsvImportDialog/types';
 
 const HEADER_MAP: Record<string, keyof AddEventInput> = {
   building: 'building',
   ward: 'ward',
+  'event type': 'eventType',
   'member name': 'name',
   name: 'name',
   'event date': 'eventDate',
@@ -141,6 +142,12 @@ export function mapRowsToEvents(rows: string[][]): CsvParseResult {
       return;
     }
 
+    const eventTypeValue = String(data.eventType ?? '').trim();
+    if (eventTypeValue && !EVENT_TYPES.includes(eventTypeValue as EventType)) {
+      errors.push(`Row ${index + 2}: invalid event type.`);
+      return;
+    }
+
     if (!BUILDINGS.includes(data.building as Building)) {
       errors.push(`Row ${index + 2}: invalid building.`);
       return;
@@ -185,6 +192,7 @@ export function mapRowsToEvents(rows: string[][]): CsvParseResult {
     events.push({
       building: data.building as Building,
       ward: data.ward as Ward,
+      eventType: (eventTypeValue || undefined) as EventType | undefined,
       name: String(data.name),
       eventDate: normalizedDate,
       startTime: normalizedStart,

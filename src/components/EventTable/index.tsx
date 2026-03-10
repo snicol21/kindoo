@@ -46,7 +46,7 @@ import { EditEventDialog } from '@/components/EventTable/EditEventDialog';
 import { EventMessagesDialog } from '@/components/EventTable/EventMessagesDialog';
 import { KindooLicenseDialog } from '@/components/EventTable/KindooLicenseDialog';
 import type { EventTableProps, SortDir, SortKey } from '@/components/EventTable/types';
-import type { Building, Ward } from '@/schema/schema';
+import type { Building, EventType, Ward } from '@/schema/schema';
 import { formatDate, getDaysUntil, getDaysUntilValue, toLocalDateTime } from '@/utils/dateUtils';
 import { getLicenseTimes, renderMessageTemplate } from '@/utils/eventTemplateUtils';
 import { DESCRIPTION_MAX_LENGTH } from '@/utils/eventConstants';
@@ -260,6 +260,7 @@ export function EventTable({
   const [editBuilding, setEditBuilding] = useState<Building>('Stake Center');
   const [editName, setEditName] = useState('');
   const [editWard, setEditWard] = useState<Ward | ''>('');
+  const [editEventType, setEditEventType] = useState<EventType>('Private');
   const [editEventDate, setEditEventDate] = useState('');
   const [editStartTime, setEditStartTime] = useState('');
   const [editEndTime, setEditEndTime] = useState('');
@@ -279,6 +280,7 @@ export function EventTable({
   const [cloneBuilding, setCloneBuilding] = useState<Building>('Stake Center');
   const [cloneName, setCloneName] = useState('');
   const [cloneWard, setCloneWard] = useState<Ward | ''>('');
+  const [cloneEventType, setCloneEventType] = useState<EventType>('Private');
   const [cloneEventDate, setCloneEventDate] = useState('');
   const [cloneStartTime, setCloneStartTime] = useState('');
   const [cloneEndTime, setCloneEndTime] = useState('');
@@ -772,6 +774,7 @@ export function EventTable({
     setEditBuilding(event.building);
     setEditName(event.contactName);
     setEditWard(event.contactWard ?? '');
+    setEditEventType(event.eventType);
     setEditEventDate(event.eventDate);
     setEditStartTime(event.startTime);
     setEditEndTime(event.endTime);
@@ -855,6 +858,7 @@ export function EventTable({
         id: editingEvent.id,
         building: editBuilding,
         ward: editWard as Ward,
+        eventType: editEventType,
         name: editName,
         eventDate: editEventDate,
         startTime: editStartTime,
@@ -888,6 +892,7 @@ export function EventTable({
     setCloneBuilding(event.building);
     setCloneName(event.contactName);
     setCloneWard(event.contactWard ?? '');
+    setCloneEventType(event.eventType);
     setCloneEventDate(event.eventDate);
     setCloneStartTime(event.startTime);
     setCloneEndTime(event.endTime);
@@ -1005,6 +1010,7 @@ export function EventTable({
       await onClone({
         building: cloneBuilding,
         ward: cloneWard as Ward,
+        eventType: cloneEventType,
         name: cloneName.trim(),
         eventDate: cloneEventDate,
         startTime: cloneStartTime,
@@ -1227,7 +1233,13 @@ export function EventTable({
                           title={event.description}
                         >
                           <FileText className="h-3.5 w-3.5 shrink-0" />
-                          <span className="min-w-0">{event.description}</span>
+                          <span className="inline-flex min-w-0 items-center gap-1.5">
+                            <span className="rounded-full border border-border/70 bg-muted/50 px-1.5 py-0.5 text-[10px] font-medium leading-none text-foreground">
+                              {event.eventType}
+                            </span>
+                            <span aria-hidden="true">•</span>
+                            <span className="min-w-0">{event.description}</span>
+                          </span>
                         </p>
                         {!isSingleColumnView && shouldShowLicensePlaceholder && (
                           <div className="mt-1.5 min-h-[20px]">
@@ -1771,6 +1783,7 @@ export function EventTable({
         open={!!editingEvent}
         editBuilding={editBuilding}
         editWard={editWard}
+        editEventType={editEventType}
         editName={editName}
         editEventDate={editEventDate}
         editStartTime={editStartTime}
@@ -1791,6 +1804,7 @@ export function EventTable({
         onSubmitAction={submitEdit}
         setEditBuildingAction={setEditBuilding}
         setEditWardAction={setEditWard}
+        setEditEventTypeAction={setEditEventType}
         setEditNameAction={(value) => {
           setEditName(value);
         }}
@@ -1839,6 +1853,7 @@ export function EventTable({
         open={!!cloningEvent}
         cloneBuilding={cloneBuilding}
         cloneWard={cloneWard}
+        cloneEventType={cloneEventType}
         cloneName={cloneName}
         cloneEventDate={cloneEventDate}
         cloneStartTime={cloneStartTime}
@@ -1859,6 +1874,7 @@ export function EventTable({
         onSubmitAction={submitClone}
         setCloneBuildingAction={setCloneBuilding}
         setCloneWardAction={setCloneWard}
+        setCloneEventTypeAction={setCloneEventType}
         setCloneNameAction={(value) => {
           setCloneName(value);
         }}

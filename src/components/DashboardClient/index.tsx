@@ -37,6 +37,7 @@ const buildEventSearchHaystack = (event: EventWithCreator) =>
   [
     event.contactName,
     event.contactWard,
+    event.eventType,
     event.contactEmail,
     event.contactPhone,
     event.description,
@@ -59,6 +60,7 @@ export function DashboardClient({
   currentUserWard,
   canSelectAnyWard,
   fixedBuildingForWardUsers,
+  defaultEventType,
 }: DashboardClientProps) {
   const fixedTabForWardUsers = fixedBuildingForWardUsers
     ? buildingToTab(fixedBuildingForWardUsers)
@@ -291,6 +293,7 @@ export function DashboardClient({
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         defaultBuilding={defaultBuilding}
+        defaultEventType={defaultEventType}
         fixedBuilding={fixedBuildingForWardUsers}
         fixedWard={canSelectAnyWard ? undefined : currentUserWard}
       />

@@ -1,8 +1,8 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { Building, Ward } from '@/schema/schema';
-import { BUILDINGS, WARDS } from '@/schema/schema';
+import type { Building, EventType, Ward } from '@/schema/schema';
+import { BUILDINGS, EVENT_TYPES, WARDS } from '@/schema/schema';
 import { Button } from '@/components/_ui/button';
 import {
   Dialog,
@@ -44,6 +44,7 @@ type EditEventDialogProps = {
   open: boolean;
   editBuilding: Building;
   editWard: Ward | '';
+  editEventType: EventType;
   editName: string;
   editEventDate: string;
   editStartTime: string;
@@ -57,6 +58,7 @@ type EditEventDialogProps = {
   onSubmitAction: () => Promise<void>;
   setEditBuildingAction: (value: Building) => void;
   setEditWardAction: (value: Ward | '') => void;
+  setEditEventTypeAction: (value: EventType) => void;
   setEditNameAction: (value: string) => void;
   setEditEventDateAction: (value: string) => void;
   setEditStartTimeAction: (value: string) => void;
@@ -84,6 +86,7 @@ export function EditEventDialog({
   open,
   editBuilding,
   editWard,
+  editEventType,
   editName,
   editEventDate,
   editStartTime,
@@ -97,6 +100,7 @@ export function EditEventDialog({
   onSubmitAction,
   setEditBuildingAction,
   setEditWardAction,
+  setEditEventTypeAction,
   setEditNameAction,
   setEditEventDateAction,
   setEditStartTimeAction,
@@ -190,6 +194,7 @@ export function EditEventDialog({
   const getCurrentSnapshot = (): Snapshot => ({
     building: String(editBuilding),
     ward: String(editWard),
+    eventType: String(editEventType),
     name: editName.trim(),
     eventDate: editEventDate,
     startTime: editStartTime,
@@ -230,6 +235,7 @@ export function EditEventDialog({
     open,
     editBuilding,
     editWard,
+    editEventType,
     editName,
     editEventDate,
     editStartTime,
@@ -391,6 +397,7 @@ export function EditEventDialog({
                   ref={emailInputRef}
                   id="edit-email"
                   type="email"
+                  placeholder="name@example.com"
                   autoComplete="new-password"
                   value={editEmail}
                   className={matchedContactId ? 'pr-24' : ''}
@@ -490,6 +497,32 @@ export function EditEventDialog({
               Event
             </h3>
             <div className="h-px flex-1 bg-border/60" />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label>Event type</Label>
+            <div className="flex flex-nowrap gap-1 overflow-x-auto pb-1 sm:gap-2">
+              {EVENT_TYPES.map((eventType) => (
+                <label
+                  key={eventType}
+                  className={`inline-flex shrink-0 cursor-pointer items-center justify-center gap-1 rounded-md border px-1.5 py-1 text-[11px] sm:justify-start sm:gap-2 sm:px-3 sm:py-1.5 sm:text-sm whitespace-nowrap ${
+                    editEventType === eventType
+                      ? 'border-primary bg-primary/5 text-foreground'
+                      : 'border-border text-muted-foreground'
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="editEventType"
+                    value={eventType}
+                    checked={editEventType === eventType}
+                    onChange={() => setEditEventTypeAction(eventType)}
+                    className="h-3 w-3 sm:h-3.5 sm:w-3.5"
+                  />
+                  <span>{eventType}</span>
+                </label>
+              ))}
+            </div>
           </div>
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">

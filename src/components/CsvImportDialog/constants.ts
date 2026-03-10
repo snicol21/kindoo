@@ -3,6 +3,7 @@ import { WARDS, type Building, type Ward } from '@/schema/schema';
 export const TEMPLATE_HEADERS = [
   'Building',
   'Ward',
+  'Event Type',
   'Member Name',
   'Event Date',
   'Start Time',
@@ -25,6 +26,7 @@ export const WARD_BUILDING_MAP: Record<Ward, Building> = {
 export const TEMPLATE_SAMPLE_ROWS = WARDS.map((ward, index) => [
   WARD_BUILDING_MAP[ward],
   ward,
+  'Private',
   `Sample Member ${index + 1}`,
   '{tomorrow}',
   '18:00',
