@@ -269,14 +269,14 @@ function MetaRow({
     <div
       className={`px-4 py-2 odd:bg-muted/30 even:bg-muted/10 ${
         stackOnMobile
-          ? 'flex flex-col items-start gap-1 sm:flex-row sm:items-baseline sm:justify-between sm:gap-4'
+          ? 'flex flex-col items-start gap-1'
           : 'flex items-baseline justify-between gap-4'
       }`}
     >
       <span className="shrink-0 text-xs text-muted-foreground">{label}</span>
       <span
         className={`text-xs font-medium text-foreground ${
-          stackOnMobile ? 'w-full text-left sm:text-right' : 'text-right'
+          stackOnMobile ? 'w-full text-left' : 'text-right'
         }`}
       >
         {value}
