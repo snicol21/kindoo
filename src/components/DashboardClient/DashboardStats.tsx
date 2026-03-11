@@ -1,16 +1,20 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Card, CardDescription, CardHeader } from '@/components/_ui/card';
 import type { EventWithCreator } from '@/actions/events';
 import { ChevronLeft, ChevronRight, Pause, Play } from 'lucide-react';
+import type { UserRole } from '@/schema/schema';
 import type { DashboardCounts, DotCalendarDay } from './types';
 import { formatShortDate } from './utils';
+import { WARDS } from '@/schema/schema';
 
 type DashboardStatsProps = {
   activeBuildingKey: 'stake' | 'maples';
   dashboardCounts: DashboardCounts;
   totalCreators: number;
+  currentUserRole: UserRole;
   breakdownEvents: EventWithCreator[];
   dotCalendarDays: DotCalendarDay[];
   todayYmd: string;
@@ -27,26 +31,99 @@ const BREAKDOWN_LABELS: Record<BreakdownMode, string> = {
   creator: 'By Creator',
 };
 const AUTO_ROTATE_PAUSE_MS = 20_000;
+const STATS_CONTENT_HEIGHT_CLASS = 'h-[150px] lg:h-[125px]';
+
+function parsePreviewNumber(value: string | null, fallback: number, min: number, max: number) {
+  if (!value) return fallback;
+  const parsed = Number.parseInt(value, 10);
+  if (!Number.isFinite(parsed)) return fallback;
+  return Math.max(min, Math.min(max, parsed));
+}
 
 export function DashboardStats({
   activeBuildingKey,
   dashboardCounts,
   totalCreators,
+  currentUserRole,
   breakdownEvents,
   dotCalendarDays,
   todayYmd,
   weekdayLabels,
 }: DashboardStatsProps) {
+  const searchParams = useSearchParams();
   const [mobileView, setMobileView] = useState<MobileStatView>('event-totals');
-  const [breakdownMode, setBreakdownMode] = useState<BreakdownMode>('ward');
-  const [autoRotateEnabled, setAutoRotateEnabled] = useState(true);
+  const availableBreakdownModes = useMemo<BreakdownMode[]>(() => {
+    const isWardScopedUser = currentUserRole === 'ward_manager' || currentUserRole === 'ward_user';
+    return isWardScopedUser ? ['eventType', 'creator'] : BREAKDOWN_MODES;
+  }, [currentUserRole]);
+  const [breakdownMode, setBreakdownMode] = useState<BreakdownMode>(availableBreakdownModes[0]);
+  const [autoRotateEnabled, setAutoRotateEnabled] = useState(false);
   const [pauseAutoRotateUntil, setPauseAutoRotateUntil] = useState(0);
   const [calendarPage, setCalendarPage] = useState(0);
+  const breakdownPreviewEnabled = searchParams.get('breakdownPreview') === '1';
+  const previewCreatorCount = parsePreviewNumber(searchParams.get('previewCreators'), 50, 1, 200);
+  const previewWardCount = parsePreviewNumber(searchParams.get('previewWards'), WARDS.length, 1, WARDS.length);
+  const breakdownEventsForDisplay = useMemo(() => {
+    if (!breakdownPreviewEnabled) {
+      return breakdownEvents;
+    }
+
+    const fallbackEvent: EventWithCreator = {
+      id: 'preview-seed',
+      building: activeBuildingKey === 'stake' ? 'Stake Center' : 'Maples Building',
+      eventType: 'Ward',
+      eventDate: '2099-01-01',
+      startTime: '09:00',
+      endTime: '10:00',
+      contactId: 'preview-contact',
+      description: 'Preview event',
+      kindooLicenseCreated: false,
+      userId: 'preview-user',
+      createdAt: new Date(),
+      creatorName: 'Preview Creator 1',
+      creatorEmail: 'creator1@preview.local',
+      creatorRole: 'ward_user',
+      contactName: 'Preview Contact',
+      contactWard: WARDS[0],
+      contactEmail: null,
+      contactPhone: null,
+    };
+
+    const sourcePool = breakdownEvents.length > 0 ? breakdownEvents : [fallbackEvent];
+    const wardPool = WARDS.slice(0, previewWardCount);
+    const previewRows = Math.max(sourcePool.length, previewCreatorCount * 2);
+
+    return Array.from({ length: previewRows }, (_, index) => {
+      const source = sourcePool[index % sourcePool.length];
+      const creatorIndex = (index % previewCreatorCount) + 1;
+      const ward = wardPool[index % wardPool.length];
+
+      return {
+        ...source,
+        id: `preview-${index + 1}`,
+        creatorName: `Preview Creator ${creatorIndex}`,
+        creatorEmail: `creator${creatorIndex}@preview.local`,
+        contactWard: ward,
+      };
+    });
+  }, [
+    activeBuildingKey,
+    breakdownEvents,
+    breakdownPreviewEnabled,
+    previewCreatorCount,
+    previewWardCount,
+  ]);
   const upcomingEvents =
     dashboardCounts.pendingLicense[activeBuildingKey] +
     dashboardCounts.activeLicense[activeBuildingKey] +
     dashboardCounts.upcoming[activeBuildingKey];
   const [displayUpcomingEvents, setDisplayUpcomingEvents] = useState(upcomingEvents);
+
+  useEffect(() => {
+    if (!availableBreakdownModes.includes(breakdownMode)) {
+      setBreakdownMode(availableBreakdownModes[0]);
+    }
+  }, [availableBreakdownModes, breakdownMode]);
 
   useEffect(() => {
     const target = upcomingEvents;
@@ -78,14 +155,14 @@ export function DashboardStats({
       }
 
       setBreakdownMode((prev) => {
-        const currentIndex = BREAKDOWN_MODES.indexOf(prev);
-        const nextIndex = (currentIndex + 1) % BREAKDOWN_MODES.length;
-        return BREAKDOWN_MODES[nextIndex];
+        const currentIndex = availableBreakdownModes.indexOf(prev);
+        const nextIndex = (currentIndex + 1) % availableBreakdownModes.length;
+        return availableBreakdownModes[nextIndex];
       });
     }, 7500);
 
     return () => window.clearInterval(intervalId);
-  }, [autoRotateEnabled, pauseAutoRotateUntil]);
+  }, [autoRotateEnabled, pauseAutoRotateUntil, availableBreakdownModes]);
 
   const fullCalendarPages = Math.floor(dotCalendarDays.length / 28);
   const calendarPages = Math.max(1, fullCalendarPages);
@@ -135,7 +212,7 @@ export function DashboardStats({
   const renderBreakdownCard = () => {
     const grouped = new Map<string, number>();
 
-    for (const event of breakdownEvents) {
+    for (const event of breakdownEventsForDisplay) {
       const key =
         breakdownMode === 'ward'
           ? event.contactWard || 'Unknown'
@@ -149,17 +226,19 @@ export function DashboardStats({
       .map(([label, total]) => ({ label, total }))
       .sort((a, b) => (b.total === a.total ? a.label.localeCompare(b.label) : b.total - a.total));
 
-    const maxVisible = breakdownMode === 'creator' ? 5 : 8;
-    const visibleRows = rows.slice(0, maxVisible);
+    const maxVisible = 9;
+    const hasOverflow = rows.length > maxVisible;
+
+    const visibleRows = hasOverflow ? rows.slice(0, maxVisible - 1) : rows.slice(0, maxVisible);
     const remainingRows = Math.max(0, rows.length - visibleRows.length);
 
     const displayRows =
-      breakdownMode === 'creator' && remainingRows > 0
+      breakdownMode === 'creator' && hasOverflow
         ? [
             ...visibleRows,
             {
               label: 'Other creators',
-              total: rows.slice(maxVisible).reduce((sum, row) => sum + row.total, 0),
+              total: rows.slice(maxVisible - 1).reduce((sum, row) => sum + row.total, 0),
             },
           ]
         : visibleRows;
@@ -169,21 +248,23 @@ export function DashboardStats({
     }
 
     const totalAcrossRows = displayRows.reduce((sum, row) => sum + row.total, 0);
+    const displayCount = displayRows.length;
+    const gridColumnsClass = displayCount <= 4 ? 'grid-cols-2' : 'grid-cols-3';
 
     return (
-      <div className="flex h-full w-full flex-col">
-        <div className="flex flex-1 items-center">
-          <div className="grid w-full grid-cols-2 gap-2 sm:grid-cols-3">
+      <div className="relative grid h-full min-h-0 w-full grid-rows-[1fr_auto] gap-0.5 lg:grid-rows-1">
+        <div className="min-h-0 overflow-y-auto pr-1 lg:overflow-hidden lg:pb-0">
+          <div className={`grid min-h-full w-full auto-rows-min content-center ${gridColumnsClass} gap-1.5`}>
             {displayRows.map((row) => (
               <div
                 key={`${breakdownMode}-${row.label}`}
-                className="rounded-md border border-border/60 bg-background/60 px-2 py-2"
+                className="rounded-md border border-border/60 bg-background/60 px-2 py-1.5"
               >
-                <div className="flex items-center justify-between text-[11px]">
+                <div className="flex items-center justify-between text-[10px] leading-tight">
                   <span className="truncate text-muted-foreground" title={row.label}>{row.label}</span>
                   <span className="font-medium">{row.total}</span>
                 </div>
-                <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-muted/70">
+                <div className="mt-0.5 h-1 w-full overflow-hidden rounded-full bg-muted/70">
                   <div
                     className="h-full bg-emerald-500"
                     style={{
@@ -194,16 +275,16 @@ export function DashboardStats({
               </div>
             ))}
             {remainingRows > 0 && breakdownMode !== 'creator' && (
-              <div className="rounded-md border border-dashed border-border/60 px-2 py-2 text-[11px] text-muted-foreground">
+              <div className="rounded-md border border-dashed border-border/60 px-2 py-1.5 text-[10px] leading-tight text-muted-foreground">
                 +{remainingRows} more
               </div>
             )}
           </div>
         </div>
-        <div className="pt-3 grid grid-cols-[1fr_auto_1fr] items-center">
+        <div className="grid grid-cols-[1fr_auto_1fr] items-center pb-0.5 lg:absolute lg:inset-x-0 lg:-bottom-4 lg:pb-0">
           <span aria-hidden="true" />
           <div className="flex items-center justify-center gap-1.5">
-            {BREAKDOWN_MODES.map((mode) => {
+            {availableBreakdownModes.map((mode) => {
               const active = mode === breakdownMode;
               return (
                 <button
@@ -311,9 +392,9 @@ export function DashboardStats({
   return (
     <>
       <div className="grid grid-cols-1 gap-4 lg:hidden">
-        <Card className="h-full">
-          <CardHeader className="flex h-full flex-col gap-3 py-3">
-            <div className="inline-flex w-full rounded-md border border-border/60 bg-background/80 p-1">
+        <Card className="overflow-hidden">
+          <CardHeader className="flex h-full flex-col pt-3 pb-1">
+            <div className="mb-3 inline-flex w-full rounded-md border border-border/60 bg-background/80 p-1">
               <button
                 type="button"
                 className={`flex-1 rounded px-2 py-1 text-xs font-medium transition-colors ${
@@ -349,13 +430,13 @@ export function DashboardStats({
               </button>
             </div>
             <div className="border-t border-border/60" />
-            <div className="flex min-h-[130px] flex-col">
+            <div className={`${STATS_CONTENT_HEIGHT_CLASS} flex min-h-0 flex-col`}>
               {mobileView === 'next-4-weeks' ? (
                 <div className="flex flex-1 items-center">{renderNext4Weeks()}</div>
               ) : mobileView === 'event-totals' ? (
                 <div className="flex-1">{renderEventTotals()}</div>
               ) : (
-                <div className="flex flex-1">{renderBreakdownCard()}</div>
+                <div className="flex min-h-0 flex-1">{renderBreakdownCard()}</div>
               )}
             </div>
           </CardHeader>
@@ -363,33 +444,33 @@ export function DashboardStats({
       </div>
 
       <div className="hidden grid-cols-1 gap-4 lg:grid lg:grid-cols-3">
-        <Card className="h-full">
-          <CardHeader className="h-full py-3 flex flex-col">
+        <Card className="overflow-hidden">
+          <CardHeader className="flex h-full min-h-0 flex-col pt-3 pb-1">
             <CardDescription className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground/80">
               {BREAKDOWN_LABELS[breakdownMode]}
             </CardDescription>
             <div className="mt-2 border-t border-border/60" />
-            <div className="flex flex-1">{renderBreakdownCard()}</div>
+            <div className={`${STATS_CONTENT_HEIGHT_CLASS} flex min-h-0`}>{renderBreakdownCard()}</div>
           </CardHeader>
         </Card>
 
-        <Card className="h-full">
-          <CardHeader className="h-full py-3 flex flex-col">
+        <Card className="overflow-hidden">
+          <CardHeader className="flex h-full min-h-0 flex-col py-3">
             <CardDescription className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground/80">
               Events
             </CardDescription>
             <div className="mt-2 border-t border-border/60" />
-            <div className="flex flex-1 items-center">{renderEventTotals()}</div>
+            <div className={`${STATS_CONTENT_HEIGHT_CLASS} flex items-center`}>{renderEventTotals()}</div>
           </CardHeader>
         </Card>
 
-        <Card className="h-full">
-          <CardHeader className="h-full py-3 flex flex-col">
+        <Card className="overflow-hidden">
+          <CardHeader className="flex h-full min-h-0 flex-col py-3">
             <CardDescription className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground/80">
               {next4WeeksLabel}
             </CardDescription>
             <div className="mt-2 border-t border-border/60" />
-            <div className="mt-2 flex flex-1 items-center">{renderNext4Weeks()}</div>
+            <div className={`${STATS_CONTENT_HEIGHT_CLASS} mt-2 flex items-center`}>{renderNext4Weeks()}</div>
           </CardHeader>
         </Card>
       </div>

@@ -56,6 +56,7 @@ export function DashboardClient({
   initialDefaultBuilding = 'Stake Center',
   initialTab,
   messageTemplates,
+  currentUserRole,
   currentUserWard,
   canSelectAnyWard,
   fixedBuildingForWardUsers,
@@ -233,6 +234,7 @@ export function DashboardClient({
           activeBuildingKey={activeBuildingKey}
           dashboardCounts={dashboardCounts}
           totalCreators={totalCreators}
+          currentUserRole={currentUserRole}
           breakdownEvents={activeUpcoming}
           dotCalendarDays={dotCalendarDays}
           todayYmd={todayYmd}
