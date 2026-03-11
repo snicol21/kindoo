@@ -2,7 +2,7 @@ import type { NextConfig } from 'next';
 import path from 'path';
 
 const nextConfig: NextConfig = {
-  cacheComponents: true,
+  cacheComponents: false,
   reactCompiler: true,
   turbopack: {
     root: path.resolve(__dirname),
