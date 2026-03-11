@@ -488,7 +488,7 @@ export function DashboardStats({
                 }`}
                 onClick={() => setMobileView('next-4-weeks')}
               >
-                Next 4 Weeks
+                Next 4 weeks
               </button>
               <button
                 type="button"
