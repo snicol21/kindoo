@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Card, CardDescription, CardHeader } from '@/components/_ui/card';
 import type { EventWithCreator } from '@/actions/events';
-import { Pause, Play } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Pause, Play } from 'lucide-react';
 import type { DashboardCounts, DotCalendarDay } from './types';
 import { formatShortDate } from './utils';
 
@@ -41,6 +41,7 @@ export function DashboardStats({
   const [breakdownMode, setBreakdownMode] = useState<BreakdownMode>('ward');
   const [autoRotateEnabled, setAutoRotateEnabled] = useState(true);
   const [pauseAutoRotateUntil, setPauseAutoRotateUntil] = useState(0);
+  const [calendarPage, setCalendarPage] = useState(0);
   const upcomingEvents =
     dashboardCounts.pendingLicense[activeBuildingKey] +
     dashboardCounts.activeLicense[activeBuildingKey] +
@@ -85,6 +86,26 @@ export function DashboardStats({
 
     return () => window.clearInterval(intervalId);
   }, [autoRotateEnabled, pauseAutoRotateUntil]);
+
+  const fullCalendarPages = Math.floor(dotCalendarDays.length / 28);
+  const calendarPages = Math.max(1, fullCalendarPages);
+  const maxCalendarPage = calendarPages - 1;
+  const pageStartIndex = calendarPage * 28;
+  const pageDays = dotCalendarDays.slice(pageStartIndex, pageStartIndex + 28);
+  const startLabel = pageDays[0] ? formatShortDate(pageDays[0].ymd) : '-';
+  const endLabel = pageDays[pageDays.length - 1] ? formatShortDate(pageDays[pageDays.length - 1].ymd) : '-';
+  const next4WeeksLabel = `Next 4 weeks (${startLabel} - ${endLabel})`;
+  const canGoPrev = calendarPage > 0;
+  const nextPageStartIndex = (calendarPage + 1) * 28;
+  const canGoNext =
+    calendarPage < maxCalendarPage &&
+    dotCalendarDays
+      .slice(nextPageStartIndex, nextPageStartIndex + 28)
+      .some((day) => day.count > 0);
+
+  useEffect(() => {
+    setCalendarPage((prev) => Math.min(prev, maxCalendarPage));
+  }, [maxCalendarPage]);
 
   const renderEventTotals = () => {
     return (
@@ -218,45 +239,71 @@ export function DashboardStats({
 
   const renderNext4Weeks = () => (
     <div className="w-full">
-      <div className="flex w-full items-center justify-between text-[10px] text-muted-foreground">
-        {weekdayLabels.map((label, index) => (
-          <div key={`${label}-${index}`} className="w-4 text-center leading-none">
-            {label}
-          </div>
-        ))}
-      </div>
-      <div className="mt-2 space-y-2">
-        {[0, 1, 2, 3].map((weekIndex) => {
-          const week = dotCalendarDays.slice(weekIndex * 7, weekIndex * 7 + 7);
-          return (
-            <div key={`week-${weekIndex}`} className="flex w-full items-center justify-between">
-              {week.map((day) => {
-                const isToday = day.ymd === todayYmd;
-                const dotClass =
-                  day.count === 0 ? 'bg-muted-foreground/30' : 'bg-emerald-500';
-                const title = `${formatShortDate(day.ymd)}${
-                  isToday ? ' (today)' : ''
-                } - ${day.count} event${day.count === 1 ? '' : 's'}${
-                  day.count === 0 ? ' (no events)' : ''
-                }`;
+      <div className="relative">
+        <button
+          type="button"
+          aria-label="Previous 4 weeks"
+          className={`absolute -left-6 top-[calc(50%-2px)] inline-flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded text-muted-foreground/80 transition-colors ${
+            canGoPrev ? 'hover:text-foreground' : 'pointer-events-none opacity-30'
+          }`}
+          onClick={() => setCalendarPage((prev) => Math.max(0, prev - 1))}
+          disabled={!canGoPrev}
+        >
+          <ChevronLeft className="h-3.5 w-3.5" />
+        </button>
+        <button
+          type="button"
+          aria-label="Next 4 weeks"
+          className={`absolute -right-6 top-[calc(50%-2px)] inline-flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded text-muted-foreground/80 transition-colors ${
+            canGoNext ? 'hover:text-foreground' : 'pointer-events-none opacity-30'
+          }`}
+          onClick={() => setCalendarPage((prev) => Math.min(maxCalendarPage, prev + 1))}
+          disabled={!canGoNext}
+        >
+          <ChevronRight className="h-3.5 w-3.5" />
+        </button>
 
-                return (
-                  <div key={day.ymd} title={title} className="flex h-4 w-4 items-center justify-center">
-                    <span
-                      className={`inline-flex h-3 w-3 items-center justify-center rounded-full ${
-                        isToday
-                          ? 'shadow-[0_0_6px_2px_rgba(0,0,0,0.9)] dark:shadow-[0_0_6px_2px_rgba(255,255,255,0.9)]'
-                          : ''
-                      }`}
-                    >
-                      <span className={`inline-block h-3 w-3 rounded-full ${dotClass}`} />
-                    </span>
-                  </div>
-                );
-              })}
+        <div className="flex w-full items-center justify-between text-[10px] text-muted-foreground">
+          {weekdayLabels.map((label, index) => (
+            <div key={`${label}-${index}`} className="w-4 text-center leading-none">
+              {label}
             </div>
-          );
-        })}
+          ))}
+        </div>
+        <div className="mt-2 space-y-2">
+          {[0, 1, 2, 3].map((weekIndex) => {
+            const baseIndex = calendarPage * 28;
+            const week = dotCalendarDays.slice(baseIndex + weekIndex * 7, baseIndex + weekIndex * 7 + 7);
+            return (
+              <div key={`week-${weekIndex}`} className="flex w-full items-center justify-between">
+                {week.map((day) => {
+                  const isToday = day.ymd === todayYmd;
+                  const dotClass =
+                    day.count === 0 ? 'bg-muted-foreground/30' : 'bg-emerald-500';
+                  const title = `${formatShortDate(day.ymd)}${
+                    isToday ? ' (today)' : ''
+                  } - ${day.count} event${day.count === 1 ? '' : 's'}${
+                    day.count === 0 ? ' (no events)' : ''
+                  }`;
+
+                  return (
+                    <div key={day.ymd} title={title} className="flex h-4 w-4 items-center justify-center">
+                      <span
+                        className={`inline-flex h-3 w-3 items-center justify-center rounded-full ${
+                          isToday
+                            ? 'shadow-[0_0_6px_2px_rgba(0,0,0,0.9)] dark:shadow-[0_0_6px_2px_rgba(255,255,255,0.9)]'
+                            : ''
+                        }`}
+                      >
+                        <span className={`inline-block h-3 w-3 rounded-full ${dotClass}`} />
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
@@ -339,7 +386,7 @@ export function DashboardStats({
         <Card className="h-full">
           <CardHeader className="h-full py-3 flex flex-col">
             <CardDescription className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground/80">
-              Next 4 weeks
+              {next4WeeksLabel}
             </CardDescription>
             <div className="mt-2 border-t border-border/60" />
             <div className="mt-2 flex flex-1 items-center">{renderNext4Weeks()}</div>

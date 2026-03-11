@@ -198,7 +198,7 @@ export function buildDotCalendarDays(activeUpcoming: EventWithCreator[]): DotCal
   start.setDate(start.getDate() - start.getDay());
   const days: DotCalendarDay[] = [];
 
-  for (let i = 0; i < 28; i += 1) {
+  for (let i = 0; i < 56; i += 1) {
     const date = new Date(start);
     date.setDate(start.getDate() + i);
     const ymd = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(
