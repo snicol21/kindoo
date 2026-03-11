@@ -129,18 +129,12 @@ export function DashboardClient({
   );
 
   const activeBuildingKey = activeTab === 'maples-building' ? 'maples' : 'stake';
-  const activeBuildingEvents = activeTab === 'maples-building' ? maplesEvents : stakeCenterEvents;
   const activeUpcoming = activeTab === 'maples-building' ? maplesUpcoming : stakeUpcoming;
   const activeBuildingName = activeTab === 'maples-building' ? 'Maples Building' : 'Stake Center';
   const activeBuildingSubtitle =
     activeTab === 'maples-building'
       ? 'All upcoming events at Maples Building'
       : 'All upcoming events at Stake Center';
-
-  const totalCreators = useMemo(
-    () => new Set(activeUpcoming.map((event) => event.userId)).size,
-    [activeUpcoming]
-  );
 
   const todayYmd = useMemo(() => getTodayYmd(), []);
 
@@ -233,7 +227,6 @@ export function DashboardClient({
         <DashboardStats
           activeBuildingKey={activeBuildingKey}
           dashboardCounts={dashboardCounts}
-          totalCreators={totalCreators}
           currentUserRole={currentUserRole}
           breakdownEvents={activeUpcoming}
           dotCalendarDays={dotCalendarDays}

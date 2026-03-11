@@ -13,7 +13,6 @@ import { WARDS } from '@/schema/schema';
 type DashboardStatsProps = {
   activeBuildingKey: 'stake' | 'maples';
   dashboardCounts: DashboardCounts;
-  totalCreators: number;
   currentUserRole: UserRole;
   breakdownEvents: EventWithCreator[];
   dotCalendarDays: DotCalendarDay[];
@@ -43,7 +42,6 @@ function parsePreviewNumber(value: string | null, fallback: number, min: number,
 export function DashboardStats({
   activeBuildingKey,
   dashboardCounts,
-  totalCreators,
   currentUserRole,
   breakdownEvents,
   dotCalendarDays,
