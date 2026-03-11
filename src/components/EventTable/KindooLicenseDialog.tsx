@@ -298,7 +298,7 @@ export function KindooLicenseDialog({
   const [isRetrying, setIsRetrying] = useState(false);
   const [hasAppliedCompletion, setHasAppliedCompletion] = useState(false);
   const [workerHealth, setWorkerHealth] = useState<WorkerHealthSummary | null>(null);
-  const [nowMs, setNowMs] = useState(() => Date.now());
+  const [nowMs, setNowMs] = useState<number | null>(null);
 
   useEffect(() => {
     submitKindooLicenseStatusRef.current = submitKindooLicenseStatusAction;
@@ -510,6 +510,7 @@ export function KindooLicenseDialog({
 
   // Countdown ticker
   useEffect(() => {
+    setNowMs(Date.now());
     const interval = globalThis.setInterval(() => setNowMs(Date.now()), 1000);
     return () => globalThis.clearInterval(interval);
   }, []);
@@ -551,7 +552,8 @@ export function KindooLicenseDialog({
     ? `${latestFailureMessage.slice(0, 140)}${latestFailureMessage.length > 140 ? '…' : ''}`
     : null;
 
-  const countdownToScheduledMs = scheduledDateTime ? scheduledDateTime.getTime() - nowMs : null;
+  const countdownToScheduledMs =
+    scheduledDateTime && nowMs !== null ? scheduledDateTime.getTime() - nowMs : null;
   const countdownLabel =
     countdownToScheduledMs !== null ? formatCountdownMs(countdownToScheduledMs) : null;
   const isScheduledPast = countdownToScheduledMs !== null && countdownToScheduledMs <= 0;

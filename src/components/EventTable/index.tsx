@@ -304,12 +304,13 @@ export function EventTable({
     Record<string, boolean>
   >({});
   const [workerHealth, setWorkerHealth] = useState<WorkerHealthSummary | null>(null);
-  const [nowMs, setNowMs] = useState(() => Date.now());
+  const [nowMs, setNowMs] = useState<number | null>(null);
 
   const editLookupQuery = editEmail.trim() || editPhone.trim() || editName.trim();
   const cloneLookupQuery = cloneEmail.trim() || clonePhone.trim() || cloneName.trim();
 
   useEffect(() => {
+    setNowMs(Date.now());
     const interval = globalThis.setInterval(() => setNowMs(Date.now()), 1000);
     return () => globalThis.clearInterval(interval);
   }, []);
@@ -1161,7 +1162,7 @@ export function EventTable({
               const isDayOfEvent = getDaysUntilValue(event.eventDate) === 0;
               const dueAtMs = getAutoScheduleDueTimestamp(event.eventDate, event.startTime);
               const hasValidDueAt = Number.isFinite(dueAtMs);
-              const msUntilDue = hasValidDueAt ? dueAtMs - nowMs : null;
+              const msUntilDue = hasValidDueAt && nowMs !== null ? dueAtMs - nowMs : null;
               const hasEmail = !!event.contactEmail?.trim();
               const shouldShowScheduleCountdown =
                 !isOptimistic &&
@@ -1169,6 +1170,7 @@ export function EventTable({
                 hasEmail &&
                 isDayOfEvent &&
                 hasValidDueAt &&
+                nowMs !== null &&
                 (!licenseOutcome || !HIDE_SCHEDULE_COUNTDOWN_OUTCOMES.has(licenseOutcome));
               const shouldUseCountdownAsOutcomeLabel =
                 shouldShowScheduleCountdown &&

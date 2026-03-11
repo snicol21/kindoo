@@ -13,6 +13,7 @@ import {
   type EventType,
   type UserRole,
 } from '@/schema/schema';
+import { getTodayYmd } from '@/utils/dateUtils';
 import { and, eq } from 'drizzle-orm';
 import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
@@ -84,6 +85,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   const defaultEventType: EventType =
     role === 'ward_manager' || role === 'ward_user' ? 'Ward' : 'Private';
   const fixedBuildingForWardUsers = canSelectAnyWard ? undefined : WARD_BUILDING[userWard];
+  const todayYmd = getTodayYmd();
 
   // Initial data fetch for both buildings (runs in parallel)
   const [stakeCenterEvents, maplesEvents] = await Promise.all([
@@ -172,6 +174,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     <DashboardClient
       initialDefaultBuilding={initialDefaultBuilding}
       initialTab={initialTab}
+      todayYmd={todayYmd}
       initialStakeCenterEvents={stakeCenterEvents}
       initialMaplesEvents={maplesEvents}
       messageTemplates={messageTemplates}

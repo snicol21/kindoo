@@ -9,6 +9,7 @@ export interface DashboardClientProps {
   initialMaplesEvents: EventWithCreator[];
   initialDefaultBuilding?: Building;
   initialTab?: DashboardTab;
+  todayYmd: string;
   messageTemplates: MessageTemplateMap;
   currentUserRole: UserRole;
   currentUserWard: Ward;

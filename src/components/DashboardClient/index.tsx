@@ -15,7 +15,6 @@ import {
   buildDashboardCounts,
   buildDotCalendarDays,
   buildingToTab,
-  getTodayYmd,
   isPastEvent,
   normalizeTab,
   tabToBuilding,
@@ -55,6 +54,7 @@ export function DashboardClient({
   initialMaplesEvents,
   initialDefaultBuilding = 'Stake Center',
   initialTab,
+  todayYmd,
   messageTemplates,
   currentUserRole,
   currentUserWard,
@@ -135,8 +135,6 @@ export function DashboardClient({
     activeTab === 'maples-building'
       ? 'All upcoming events at Maples Building'
       : 'All upcoming events at Stake Center';
-
-  const todayYmd = useMemo(() => getTodayYmd(), []);
 
   const dotCalendarDays = useMemo(() => buildDotCalendarDays(activeUpcoming), [activeUpcoming]);
 
