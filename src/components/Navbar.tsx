@@ -6,8 +6,10 @@ import { Suspense } from 'react';
 function NavbarUserFallback() {
   return (
     <div className="flex items-center gap-3" aria-hidden="true">
-      <div className="h-8 w-8 animate-pulse rounded bg-muted" />
-      <div className="h-9 w-24 animate-pulse rounded bg-muted" />
+      <div className="hidden h-4 w-28 animate-pulse rounded bg-muted sm:block" />
+      <div className="hidden h-4 w-px animate-pulse rounded bg-muted sm:block" />
+      <div className="h-9 w-9 animate-pulse rounded-md bg-muted" />
+      <div className="h-9 w-9 animate-pulse rounded-full bg-muted" />
     </div>
   );
 }

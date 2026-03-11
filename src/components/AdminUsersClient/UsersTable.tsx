@@ -21,7 +21,7 @@ import type { ManagedUser } from '@/components/AdminUsersClient/types';
 import { ROLE_LABELS, canManageUser } from '@/lib/permissions';
 import type { UserRole } from '@/schema/schema';
 import { Copy, Mail, MoreVertical, Pencil, Phone, Trash2 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useLayoutEffect, useState } from 'react';
 import { toast } from 'sonner';
 
 type UsersTableProps = {
@@ -43,7 +43,7 @@ export function UsersTable({
 }: UsersTableProps) {
   const [isMobileView, setIsMobileView] = useState(false);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const mobileQuery = window.matchMedia('(max-width: 767px)');
     const syncMobileBreakpoint = () => setIsMobileView(mobileQuery.matches);
 

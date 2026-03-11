@@ -54,7 +54,7 @@ import {
   Phone,
   Trash2,
 } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
 type WorkerHealthSummary = {
@@ -624,7 +624,7 @@ export function EventTable({
     }
   }, [selectableEvents, selectedIdSet]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const compactQuery = window.matchMedia('(max-width: 1023px)');
     const mobileQuery = window.matchMedia('(max-width: 767px)');
     const singleColumnQuery = window.matchMedia(`(max-width: ${SINGLE_COLUMN_MAX_WIDTH}px)`);
@@ -1242,11 +1242,11 @@ export function EventTable({
                           </span>
                         </p>
                         {!isSingleColumnView && shouldShowLicensePlaceholder && (
-                          <div className="mt-1.5 min-h-[20px]">
+                          <div className="mt-1.5 min-h-[22px]">
                             {hasLicenseStatus ? (
                               <button
                                 type="button"
-                                className={`inline-flex w-fit cursor-pointer items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-semibold transition-colors hover:opacity-90 disabled:cursor-not-allowed ${licenseOutcomeVisual.textClassName} ${licenseOutcomeVisual.badgeClassName}`}
+                                className={`inline-flex h-[22px] w-fit cursor-pointer items-center gap-1.5 rounded-full px-2 text-[11px] leading-none font-semibold transition-colors hover:opacity-90 disabled:cursor-not-allowed ${licenseOutcomeVisual.textClassName} ${licenseOutcomeVisual.badgeClassName}`}
                                 onClick={() => {
                                   setLicenseEvent(event);
                                   setLicenseOutcomePreview(licenseOutcome);
@@ -1258,7 +1258,7 @@ export function EventTable({
                               </button>
                             ) : (
                               <div
-                                className="h-5 w-36 rounded-full bg-muted/60 animate-pulse"
+                                className="h-[22px] w-36 rounded-full border border-transparent bg-muted/60 animate-pulse"
                                 aria-hidden="true"
                               />
                             )}
@@ -1396,11 +1396,11 @@ export function EventTable({
                           )}
                         </div>
                         {shouldShowLicensePlaceholder && (
-                          <div className="min-h-[20px]">
+                          <div className="min-h-[22px]">
                             {hasLicenseStatus ? (
                               <button
                                 type="button"
-                                className={`inline-flex w-fit cursor-pointer items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-semibold transition-colors hover:opacity-90 disabled:cursor-not-allowed ${licenseOutcomeVisual.textClassName} ${licenseOutcomeVisual.badgeClassName}`}
+                                className={`inline-flex h-[22px] w-fit cursor-pointer items-center gap-1.5 rounded-full px-2 text-[11px] leading-none font-semibold transition-colors hover:opacity-90 disabled:cursor-not-allowed ${licenseOutcomeVisual.textClassName} ${licenseOutcomeVisual.badgeClassName}`}
                                 onClick={() => {
                                   setLicenseEvent(event);
                                   setLicenseOutcomePreview(licenseOutcome);
@@ -1412,7 +1412,7 @@ export function EventTable({
                               </button>
                             ) : (
                               <div
-                                className="h-5 w-36 rounded-full bg-muted/60 animate-pulse"
+                                className="h-[22px] w-36 rounded-full border border-transparent bg-muted/60 animate-pulse"
                                 aria-hidden="true"
                               />
                             )}

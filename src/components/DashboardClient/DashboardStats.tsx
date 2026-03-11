@@ -6,7 +6,7 @@ import type { UserRole } from '@/schema/schema';
 import { WARDS } from '@/schema/schema';
 import { ChevronLeft, ChevronRight, Pause, Play } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { DashboardCounts, DotCalendarDay } from './types';
 import { formatShortDate } from './utils';
 
@@ -58,6 +58,10 @@ export function DashboardStats({
   const [autoRotateEnabled, setAutoRotateEnabled] = useState(false);
   const [pauseAutoRotateUntil, setPauseAutoRotateUntil] = useState(0);
   const [calendarPage, setCalendarPage] = useState(0);
+  const breakdownTouchStartX = useRef<number | null>(null);
+  const breakdownTouchStartY = useRef<number | null>(null);
+  const calendarTouchStartX = useRef<number | null>(null);
+  const calendarTouchStartY = useRef<number | null>(null);
   const breakdownPreviewEnabled = searchParams.get('breakdownPreview') === '1';
   const previewCreatorCount = parsePreviewNumber(searchParams.get('previewCreators'), 50, 1, 200);
   const previewWardCount = parsePreviewNumber(
@@ -187,6 +191,49 @@ export function DashboardStats({
     setCalendarPage((prev) => Math.min(prev, maxCalendarPage));
   }, [maxCalendarPage]);
 
+  const handleCalendarTouchStart = (event: React.TouchEvent<HTMLDivElement>) => {
+    const firstTouch = event.touches[0];
+    if (!firstTouch) {
+      return;
+    }
+    calendarTouchStartX.current = firstTouch.clientX;
+    calendarTouchStartY.current = firstTouch.clientY;
+  };
+
+  const handleCalendarTouchEnd = (event: React.TouchEvent<HTMLDivElement>) => {
+    const startX = calendarTouchStartX.current;
+    const startY = calendarTouchStartY.current;
+    calendarTouchStartX.current = null;
+    calendarTouchStartY.current = null;
+
+    if (startX === null || startY === null) {
+      return;
+    }
+
+    const endTouch = event.changedTouches[0];
+    if (!endTouch) {
+      return;
+    }
+
+    const deltaX = endTouch.clientX - startX;
+    const deltaY = endTouch.clientY - startY;
+    const absX = Math.abs(deltaX);
+    const absY = Math.abs(deltaY);
+
+    if (absX < 28 || absX <= absY * 1.2) {
+      return;
+    }
+
+    if (deltaX < 0 && canGoNext) {
+      setCalendarPage((prev) => Math.min(maxCalendarPage, prev + 1));
+      return;
+    }
+
+    if (deltaX > 0 && canGoPrev) {
+      setCalendarPage((prev) => Math.max(0, prev - 1));
+    }
+  };
+
   const renderEventTotals = () => {
     return (
       <div className="flex h-full w-full flex-col items-center justify-center text-center">
@@ -213,6 +260,61 @@ export function DashboardStats({
   };
 
   const renderBreakdownCard = () => {
+    const canCycleBreakdown = availableBreakdownModes.length > 1;
+    const cycleBreakdown = (step: -1 | 1) => {
+      if (!canCycleBreakdown) {
+        return;
+      }
+      setPauseAutoRotateUntil(Date.now() + AUTO_ROTATE_PAUSE_MS);
+      setBreakdownMode((prev) => {
+        const currentIndex = availableBreakdownModes.indexOf(prev);
+        const safeIndex = currentIndex >= 0 ? currentIndex : 0;
+        const nextIndex =
+          (safeIndex + step + availableBreakdownModes.length) % availableBreakdownModes.length;
+        return availableBreakdownModes[nextIndex];
+      });
+    };
+
+    const handleBreakdownTouchStart = (event: React.TouchEvent<HTMLDivElement>) => {
+      const firstTouch = event.touches[0];
+      if (!firstTouch) {
+        return;
+      }
+      breakdownTouchStartX.current = firstTouch.clientX;
+      breakdownTouchStartY.current = firstTouch.clientY;
+    };
+
+    const handleBreakdownTouchEnd = (event: React.TouchEvent<HTMLDivElement>) => {
+      const startX = breakdownTouchStartX.current;
+      const startY = breakdownTouchStartY.current;
+      breakdownTouchStartX.current = null;
+      breakdownTouchStartY.current = null;
+
+      if (startX === null || startY === null || !canCycleBreakdown) {
+        return;
+      }
+
+      const endTouch = event.changedTouches[0];
+      if (!endTouch) {
+        return;
+      }
+
+      const deltaX = endTouch.clientX - startX;
+      const deltaY = endTouch.clientY - startY;
+      const absX = Math.abs(deltaX);
+      const absY = Math.abs(deltaY);
+
+      if (absX < 28 || absX <= absY * 1.2) {
+        return;
+      }
+
+      if (deltaX < 0) {
+        cycleBreakdown(1);
+      } else {
+        cycleBreakdown(-1);
+      }
+    };
+
     const grouped = new Map<string, number>();
 
     for (const event of breakdownEventsForDisplay) {
@@ -257,7 +359,11 @@ export function DashboardStats({
     const gridColumnsClass = displayCount <= 4 ? 'grid-cols-2' : 'grid-cols-3';
 
     return (
-      <div className="relative grid h-full min-h-0 w-full grid-rows-[1fr_auto] gap-0.5 lg:grid-rows-1">
+      <div
+        className="relative grid h-full min-h-0 w-full grid-rows-[1fr_auto] gap-0.5 lg:grid-rows-1"
+        onTouchStart={handleBreakdownTouchStart}
+        onTouchEnd={handleBreakdownTouchEnd}
+      >
         <div className="min-h-0 overflow-y-auto pr-1 lg:overflow-hidden lg:pb-0">
           <div
             className={`grid min-h-full w-full auto-rows-min content-center ${gridColumnsClass} gap-1.5`}
@@ -290,6 +396,7 @@ export function DashboardStats({
             )}
           </div>
         </div>
+
         <div className="grid grid-cols-[1fr_auto_1fr] items-center pb-0.5 lg:absolute lg:inset-x-0 lg:-bottom-4 lg:pb-0">
           <span aria-hidden="true" />
           <div className="flex items-center justify-center gap-1.5">
@@ -336,29 +443,33 @@ export function DashboardStats({
   };
 
   const renderNext4Weeks = () => (
-    <div className="w-full">
+    <div
+      className="w-full"
+      onTouchStart={handleCalendarTouchStart}
+      onTouchEnd={handleCalendarTouchEnd}
+    >
       <div className="relative">
         <button
           type="button"
           aria-label="Previous 4 weeks"
-          className={`absolute -left-6 top-[calc(50%-2px)] inline-flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded text-muted-foreground/80 transition-colors ${
+          className={`absolute -left-7 top-[calc(50%-2px)] z-10 inline-flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground/80 transition-colors md:-left-6 md:h-6 md:w-6 md:rounded ${
             canGoPrev ? 'hover:text-foreground' : 'pointer-events-none opacity-30'
           }`}
           onClick={() => setCalendarPage((prev) => Math.max(0, prev - 1))}
           disabled={!canGoPrev}
         >
-          <ChevronLeft className="h-3.5 w-3.5" />
+          <ChevronLeft className="h-4 w-4 md:h-3.5 md:w-3.5" />
         </button>
         <button
           type="button"
           aria-label="Next 4 weeks"
-          className={`absolute -right-6 top-[calc(50%-2px)] inline-flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded text-muted-foreground/80 transition-colors ${
+          className={`absolute -right-7 top-[calc(50%-2px)] z-10 inline-flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground/80 transition-colors md:-right-6 md:h-6 md:w-6 md:rounded ${
             canGoNext ? 'hover:text-foreground' : 'pointer-events-none opacity-30'
           }`}
           onClick={() => setCalendarPage((prev) => Math.min(maxCalendarPage, prev + 1))}
           disabled={!canGoNext}
         >
-          <ChevronRight className="h-3.5 w-3.5" />
+          <ChevronRight className="h-4 w-4 md:h-3.5 md:w-3.5" />
         </button>
 
         <div className="flex w-full items-center justify-between text-[10px] text-muted-foreground">
