@@ -10,6 +10,7 @@ type PhoneInputProps = {
   value?: string;
   placeholder?: string;
   required?: boolean;
+  disabled?: boolean;
   onValueChange?: (value: string) => void;
 };
 
@@ -20,6 +21,7 @@ export function PhoneInput({
   value,
   placeholder = '(555) 000-0000',
   required,
+  disabled,
   onValueChange,
 }: PhoneInputProps) {
   return (
@@ -31,6 +33,7 @@ export function PhoneInput({
       defaultValue={defaultValue}
       value={value}
       required={required}
+      disabled={disabled}
       onChange={(event) => {
         const formatted = formatPhone(event.target.value);
         event.target.value = formatted;

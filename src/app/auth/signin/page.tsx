@@ -90,7 +90,8 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
             </form>
 
             <p className="text-xs text-center text-muted-foreground">
-              This is a private application. Access is restricted to authorized users only.
+              This is a private application.
+              <wbr /> Access is restricted to authorized users only.
             </p>
           </CardContent>
         </Card>

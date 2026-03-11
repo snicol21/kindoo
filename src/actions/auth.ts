@@ -200,6 +200,149 @@ export async function adminSetUserRole(input: {
   return { success: true };
 }
 
+export async function adminSetUserName(input: {
+  userId: string;
+  name: string;
+}): Promise<ActionResult> {
+  const admin = await requireUserAdmin();
+  if (!admin.ok) return { success: false, error: admin.error };
+
+  const userId = input.userId.trim();
+  const name = input.name.trim();
+
+  if (!userId) return { success: false, error: 'Invalid user id.' };
+  if (name.length > 80) return { success: false, error: 'Name must be 80 characters or less.' };
+
+  const existing = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+  const user = existing[0];
+  if (!user) return { success: false, error: 'User not found.' };
+
+  if (
+    !canManageUserInWard({
+      actorRole: admin.role,
+      actorWard: admin.ward,
+      targetRole: (user.role ?? 'ward_user') as UserRole,
+      targetWard: user.ward,
+    })
+  ) {
+    return { success: false, error: 'You are not allowed to change this user.' };
+  }
+
+  await db.update(users).set({ name: name || null }).where(eq(users.id, userId));
+  return { success: true };
+}
+
+export async function adminSetUserWard(input: {
+  userId: string;
+  ward: Ward;
+}): Promise<ActionResult> {
+  const admin = await requireUserAdmin();
+  if (!admin.ok) return { success: false, error: admin.error };
+
+  const userId = input.userId.trim();
+  const ward = input.ward;
+
+  if (!userId) return { success: false, error: 'Invalid user id.' };
+  if (!WARDS.includes(ward)) return { success: false, error: 'Invalid ward.' };
+
+  const existing = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+  const user = existing[0];
+  if (!user) return { success: false, error: 'User not found.' };
+
+  if (
+    !canManageUserInWard({
+      actorRole: admin.role,
+      actorWard: admin.ward,
+      targetRole: (user.role ?? 'ward_user') as UserRole,
+      targetWard: user.ward,
+    })
+  ) {
+    return { success: false, error: 'You are not allowed to change this user.' };
+  }
+
+  if (admin.role === 'ward_manager' && ward !== admin.ward) {
+    return { success: false, error: 'You can only assign users to your ward.' };
+  }
+
+  await db.update(users).set({ ward }).where(eq(users.id, userId));
+  return { success: true };
+}
+
+export async function adminSetUserEmail(input: {
+  userId: string;
+  email: string;
+}): Promise<ActionResult> {
+  const admin = await requireUserAdmin();
+  if (!admin.ok) return { success: false, error: admin.error };
+
+  const userId = input.userId.trim();
+  const email = input.email.trim().toLowerCase();
+
+  if (!userId) return { success: false, error: 'Invalid user id.' };
+  if (!isValidEmail(email)) return { success: false, error: 'Valid email is required.' };
+
+  const existing = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+  const user = existing[0];
+  if (!user) return { success: false, error: 'User not found.' };
+
+  if (
+    !canManageUserInWard({
+      actorRole: admin.role,
+      actorWard: admin.ward,
+      targetRole: (user.role ?? 'ward_user') as UserRole,
+      targetWard: user.ward,
+    })
+  ) {
+    return { success: false, error: 'You are not allowed to change this user.' };
+  }
+
+  if (admin.role !== 'admin' && isAdminEmail(email)) {
+    return { success: false, error: 'You are not allowed to assign an admin email.' };
+  }
+
+  const duplicate = await db.select().from(users).where(eq(users.email, email)).limit(1);
+  if (duplicate[0] && duplicate[0].id !== userId) {
+    return { success: false, error: 'A user with this email already exists.' };
+  }
+
+  await db.update(users).set({ email }).where(eq(users.id, userId));
+  return { success: true };
+}
+
+export async function adminSetUserPhone(input: {
+  userId: string;
+  phone: string;
+}): Promise<ActionResult> {
+  const admin = await requireUserAdmin();
+  if (!admin.ok) return { success: false, error: admin.error };
+
+  const userId = input.userId.trim();
+  const phone = normalizePhoneForStorage(input.phone);
+
+  if (!userId) return { success: false, error: 'Invalid user id.' };
+  if (!phone || !/^[\d\s\-+().]{7,20}$/.test(phone)) {
+    return { success: false, error: 'Valid phone number is required.' };
+  }
+
+  const existing = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+  const user = existing[0];
+  if (!user) return { success: false, error: 'User not found.' };
+
+  if (
+    !canManageUserInWard({
+      actorRole: admin.role,
+      actorWard: admin.ward,
+      targetRole: (user.role ?? 'ward_user') as UserRole,
+      targetWard: user.ward,
+    })
+  ) {
+    return { success: false, error: 'You are not allowed to change this user.' };
+  }
+
+  await db.update(users).set({ phone }).where(eq(users.id, userId));
+  return { success: true };
+}
+
 export async function adminSetUserPassword(input: {
   userId: string;
   password: string;

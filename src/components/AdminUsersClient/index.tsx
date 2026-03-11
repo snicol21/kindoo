@@ -6,8 +6,12 @@ import { toast } from 'sonner';
 import { Card, CardContent } from '@/components/_ui/card';
 import {
   adminDeleteUser,
+  adminSetUserEmail,
+  adminSetUserName,
+  adminSetUserPhone,
   adminSetUserPassword,
   adminSetUserRole,
+  adminSetUserWard,
   createUser,
 } from '@/actions/auth';
 import type { UserRole, Ward } from '@/schema/schema';
@@ -15,8 +19,7 @@ import { WARDS } from '@/schema/schema';
 import { AdminUsersHeader } from '@/components/AdminUsersClient/AdminUsersHeader';
 import { CreateUserDialog } from '@/components/AdminUsersClient/CreateUserDialog';
 import { DeleteUserDialog } from '@/components/AdminUsersClient/DeleteUserDialog';
-import { PasswordDialog } from '@/components/AdminUsersClient/PasswordDialog';
-import { RoleDialog } from '@/components/AdminUsersClient/RoleDialog';
+import { EditUserDialog } from '@/components/AdminUsersClient/EditUserDialog';
 import { UsersTable } from '@/components/AdminUsersClient/UsersTable';
 import type { AdminUsersClientProps, ManagedUser } from './types';
 import { canAssignRole, canManageUser } from '@/lib/permissions';
@@ -48,14 +51,14 @@ export function AdminUsersClient({
   const [createWard, setCreateWard] = useState<Ward>(currentUserWard as Ward);
   const [createPhone, setCreatePhone] = useState('');
 
-  const [roleOpen, setRoleOpen] = useState(false);
-  const [rolePending, setRolePending] = useState(false);
-  const [roleUser, setRoleUser] = useState<ManagedUser | null>(null);
-  const [nextRole, setNextRole] = useState<UserRole>('ward_user');
-
-  const [passwordOpen, setPasswordOpen] = useState(false);
-  const [passwordPending, setPasswordPending] = useState(false);
-  const [passwordUser, setPasswordUser] = useState<ManagedUser | null>(null);
+  const [editOpen, setEditOpen] = useState(false);
+  const [editPending, setEditPending] = useState(false);
+  const [editUser, setEditUser] = useState<ManagedUser | null>(null);
+  const [editEmail, setEditEmail] = useState('');
+  const [editPhone, setEditPhone] = useState('');
+  const [editName, setEditName] = useState('');
+  const [editRole, setEditRole] = useState<UserRole>('ward_user');
+  const [editWard, setEditWard] = useState<Ward>(currentUserWard as Ward);
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
 
@@ -80,25 +83,20 @@ export function AdminUsersClient({
     return true;
   };
 
-  const openRoleDialog = (user: ManagedUser) => {
+  const openEditDialog = (user: ManagedUser) => {
     if (!canManageTargetUser(user)) {
       toast.error('You cannot change this user.');
       return;
     }
-    setRoleUser(user);
-    setNextRole(user.role);
-    setRoleOpen(true);
-  };
-
-  const openPasswordDialog = (user: ManagedUser) => {
-    if (!canManageTargetUser(user)) {
-      toast.error('You cannot change this user.');
-      return;
-    }
-    setPasswordUser(user);
+    setEditUser(user);
+    setEditEmail(user.email);
+    setEditPhone(user.phone);
+    setEditName(user.name ?? '');
+    setEditRole(user.role);
+    setEditWard(user.ward);
     setNewPassword('');
     setConfirmPassword('');
-    setPasswordOpen(true);
+    setEditOpen(true);
   };
 
   const openDeleteDialog = (user: ManagedUser) => {
@@ -117,6 +115,29 @@ export function AdminUsersClient({
       ),
     [currentUserRole]
   );
+
+  const editAllowedRoles = useMemo(() => {
+    if (!editUser || !canManageTargetUser(editUser)) return [] as UserRole[];
+    return assignableRoles;
+  }, [assignableRoles, editUser, currentUserRole, currentUserWard]);
+
+  const canEditRoleField = useMemo(() => {
+    if (!editUser || !canManageTargetUser(editUser)) return false;
+    if (currentUserRole === 'ward_manager') return false;
+    return editAllowedRoles.some((role) => role !== editUser.role);
+  }, [editAllowedRoles, editUser, currentUserRole, currentUserWard]);
+
+  const editWardOptions = useMemo(() => {
+    if (currentUserRole === 'ward_manager') {
+      return [currentUserWard as Ward] as const;
+    }
+    return WARDS;
+  }, [currentUserRole, currentUserWard]);
+
+  const canEditWardField = useMemo(() => {
+    if (!editUser || !canManageTargetUser(editUser)) return false;
+    return currentUserRole !== 'ward_manager';
+  }, [editUser, currentUserRole, currentUserWard]);
 
   const handleCreateUser = async () => {
     setCreatePending(true);
@@ -144,47 +165,82 @@ export function AdminUsersClient({
     }
   };
 
-  const handleUpdateRole = async () => {
-    if (!roleUser) return;
+  const handleSaveEditUser = async () => {
+    if (!editUser) return;
 
-    setRolePending(true);
+    setEditPending(true);
     try {
-      const result = await adminSetUserRole({ userId: roleUser.id, role: nextRole });
-      if (!result.success) {
-        toast.error(result.error ?? 'Failed to update role.');
+      const changedEmail = editEmail.trim().toLowerCase() !== editUser.email.trim().toLowerCase();
+      const changedPhone = editPhone.trim() !== editUser.phone.trim();
+      const changedName = (editName.trim() || '') !== (editUser.name?.trim() || '');
+      const changedRole = editRole !== editUser.role;
+      const changedWard = editWard !== editUser.ward;
+      const wantsPasswordUpdate = newPassword.trim().length > 0 || confirmPassword.trim().length > 0;
+
+      if (!changedEmail && !changedPhone && !changedName && !changedRole && !changedWard && !wantsPasswordUpdate) {
+        setEditOpen(false);
         return;
       }
 
-      toast.success('Role updated.');
-      setRoleOpen(false);
-      router.refresh();
-    } finally {
-      setRolePending(false);
-    }
-  };
-
-  const handleUpdatePassword = async () => {
-    if (!passwordUser) return;
-
-    setPasswordPending(true);
-    try {
-      const result = await adminSetUserPassword({
-        userId: passwordUser.id,
-        password: newPassword,
-        confirmPassword,
-      });
-
-      if (!result.success) {
-        toast.error(result.error ?? 'Failed to update password.');
-        return;
+      if (changedEmail) {
+        const emailResult = await adminSetUserEmail({ userId: editUser.id, email: editEmail });
+        if (!emailResult.success) {
+          toast.error(emailResult.error ?? 'Failed to update email.');
+          return;
+        }
       }
 
-      toast.success('Password updated.');
-      setPasswordOpen(false);
+      if (changedPhone) {
+        const phoneResult = await adminSetUserPhone({ userId: editUser.id, phone: editPhone });
+        if (!phoneResult.success) {
+          toast.error(phoneResult.error ?? 'Failed to update phone.');
+          return;
+        }
+      }
+
+      if (changedName) {
+        const nameResult = await adminSetUserName({ userId: editUser.id, name: editName });
+        if (!nameResult.success) {
+          toast.error(nameResult.error ?? 'Failed to update name.');
+          return;
+        }
+      }
+
+      if (changedRole) {
+        const roleResult = await adminSetUserRole({ userId: editUser.id, role: editRole });
+        if (!roleResult.success) {
+          toast.error(roleResult.error ?? 'Failed to update role.');
+          return;
+        }
+      }
+
+      if (changedWard) {
+        const wardResult = await adminSetUserWard({ userId: editUser.id, ward: editWard });
+        if (!wardResult.success) {
+          toast.error(wardResult.error ?? 'Failed to update ward.');
+          return;
+        }
+      }
+
+      if (wantsPasswordUpdate) {
+        const passwordResult = await adminSetUserPassword({
+          userId: editUser.id,
+          password: newPassword,
+          confirmPassword,
+        });
+        if (!passwordResult.success) {
+          toast.error(passwordResult.error ?? 'Failed to update password.');
+          return;
+        }
+      }
+
+      toast.success('User updated.');
+      setEditOpen(false);
       setNewPassword('');
       setConfirmPassword('');
+      router.refresh();
     } finally {
-      setPasswordPending(false);
+      setEditPending(false);
     }
   };
 
@@ -217,8 +273,7 @@ export function AdminUsersClient({
             currentUserId={currentUserId}
             currentUserRole={currentUserRole}
             currentUserWard={currentUserWard}
-            onOpenRoleAction={openRoleDialog}
-            onOpenPasswordAction={openPasswordDialog}
+            onOpenEditAction={openEditDialog}
             onOpenDeleteAction={openDeleteDialog}
           />
         </CardContent>
@@ -246,27 +301,31 @@ export function AdminUsersClient({
         onSubmitAction={handleCreateUser}
       />
 
-      <RoleDialog
-        open={roleOpen}
-        roleUser={roleUser}
-        nextRole={nextRole}
-        rolePending={rolePending}
-        allowedRoles={roleUser && !canManageTargetUser(roleUser) ? [] : assignableRoles}
-        onOpenChangeAction={setRoleOpen}
-        onNextRoleAction={setNextRole}
-        onSubmitAction={handleUpdateRole}
-      />
-
-      <PasswordDialog
-        open={passwordOpen}
-        passwordUser={passwordUser}
+      <EditUserDialog
+        open={editOpen}
+        editUser={editUser}
+        editEmail={editEmail}
+        editPhone={editPhone}
+        editName={editName}
+        editRole={editRole}
+        editWard={editWard}
         newPassword={newPassword}
         confirmPassword={confirmPassword}
-        passwordPending={passwordPending}
-        onOpenChangeAction={setPasswordOpen}
+        pending={editPending}
+        canEditNameAndPassword={!!editUser && canManageTargetUser(editUser)}
+        canEditRole={canEditRoleField}
+        canEditWard={canEditWardField}
+        wardOptions={editWardOptions}
+        allowedRoles={editAllowedRoles}
+        onOpenChangeAction={setEditOpen}
+        onEditEmailAction={setEditEmail}
+        onEditPhoneAction={setEditPhone}
+        onEditNameAction={setEditName}
+        onEditRoleAction={setEditRole}
+        onEditWardAction={setEditWard}
         onNewPasswordAction={setNewPassword}
         onConfirmPasswordAction={setConfirmPassword}
-        onSubmitAction={handleUpdatePassword}
+        onSubmitAction={handleSaveEditUser}
       />
 
       <DeleteUserDialog

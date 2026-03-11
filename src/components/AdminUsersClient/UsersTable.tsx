@@ -18,18 +18,18 @@ import {
   TableRow,
 } from '@/components/_ui/table';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/_ui/tooltip';
-import { KeyRound, Mail, MoreVertical, Shield, Trash2 } from 'lucide-react';
+import { Copy, Mail, MoreVertical, Pencil, Phone, Trash2 } from 'lucide-react';
 import type { ManagedUser } from '@/components/AdminUsersClient/types';
 import type { UserRole } from '@/schema/schema';
 import { ROLE_LABELS, canManageUser } from '@/lib/permissions';
+import { toast } from 'sonner';
 
 type UsersTableProps = {
   users: ManagedUser[];
   currentUserId: string;
   currentUserRole: UserRole;
   currentUserWard: string;
-  onOpenRoleAction: (user: ManagedUser) => void;
-  onOpenPasswordAction: (user: ManagedUser) => void;
+  onOpenEditAction: (user: ManagedUser) => void;
   onOpenDeleteAction: (user: ManagedUser) => void;
 };
 
@@ -38,8 +38,7 @@ export function UsersTable({
   currentUserId,
   currentUserRole,
   currentUserWard,
-  onOpenRoleAction,
-  onOpenPasswordAction,
+  onOpenEditAction,
   onOpenDeleteAction,
 }: UsersTableProps) {
   const [isMobileView, setIsMobileView] = useState(false);
@@ -95,13 +94,67 @@ export function UsersTable({
                       <span className="rounded-full border border-border px-2 py-0.5 text-xs">
                         {ROLE_LABELS[user.role]}
                       </span>
+                      <span className="text-xs text-muted-foreground">• {user.ward || '—'}</span>
                     </div>
                     <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                       <Mail className="h-3.5 w-3.5 shrink-0" />
-                      <span className="truncate">{user.email}</span>
+                      <div className="flex min-w-0 items-center gap-1.5">
+                        <a
+                          href={`mailto:${user.email}`}
+                          className="max-w-44 truncate text-muted-foreground hover:underline"
+                          title={user.email}
+                        >
+                          {user.email}
+                        </a>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-5 w-5 p-0"
+                          aria-label={`Copy email for ${user.email}`}
+                          onClick={async () => {
+                            try {
+                              await navigator.clipboard.writeText(user.email ?? '');
+                              toast.success('Email copied.');
+                            } catch {
+                              toast.error('Failed to copy.');
+                            }
+                          }}
+                        >
+                          <Copy className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
                     </div>
-                    <div className="text-xs text-muted-foreground">
-                      Ward: {user.ward} | Phone: {user.phone}
+                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <Phone className="h-3.5 w-3.5 shrink-0" />
+                      {user.phone ? (
+                        <div className="flex min-w-0 items-center gap-1.5">
+                          <a
+                            href={`tel:${user.phone.replace(/\D/g, '')}`}
+                            className="max-w-44 truncate hover:text-foreground hover:underline"
+                            title={user.phone}
+                          >
+                            {user.phone}
+                          </a>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-5 w-5 p-0"
+                            aria-label={`Copy phone for ${user.email}`}
+                            onClick={async () => {
+                              try {
+                                await navigator.clipboard.writeText(user.phone ?? '');
+                                toast.success('Phone copied.');
+                              } catch {
+                                toast.error('Failed to copy.');
+                              }
+                            }}
+                          >
+                            <Copy className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground/50">—</span>
+                      )}
                     </div>
                     {!canManage && user.id !== currentUserId && (
                       <p className="w-fit rounded-sm bg-yellow-200/35 px-1.5 py-0.5 text-xs italic text-yellow-900/80 dark:bg-yellow-300/20 dark:text-yellow-100/85">
@@ -138,20 +191,10 @@ export function UsersTable({
                                 !canManageUser(currentUserRole, user.role) ||
                                 (currentUserRole === 'ward_manager' && user.ward !== currentUserWard)
                               }
-                              onSelect={() => onOpenRoleAction(user)}
+                              onSelect={() => onOpenEditAction(user)}
                             >
-                              <Shield className="h-4 w-4" />
-                              Change role
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              disabled={
-                                !canManageUser(currentUserRole, user.role) ||
-                                (currentUserRole === 'ward_manager' && user.ward !== currentUserWard)
-                              }
-                              onSelect={() => onOpenPasswordAction(user)}
-                            >
-                              <KeyRound className="h-4 w-4" />
-                              Change password
+                              <Pencil className="h-4 w-4" />
+                              Edit user
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem
@@ -174,36 +217,18 @@ export function UsersTable({
                               <Button
                                 size="icon"
                                 variant="ghost"
-                                aria-label={`Change role for ${user.email}`}
+                                aria-label={`Edit ${user.email}`}
                                 disabled={
                                   !canManageUser(currentUserRole, user.role) ||
                                   (currentUserRole === 'ward_manager' &&
                                     user.ward !== currentUserWard)
                                 }
-                                onClick={() => onOpenRoleAction(user)}
+                                onClick={() => onOpenEditAction(user)}
                               >
-                                <Shield className="h-4 w-4" />
+                                <Pencil className="h-4 w-4" />
                               </Button>
                             </TooltipTrigger>
-                            <TooltipContent>Change role</TooltipContent>
-                          </Tooltip>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                size="icon"
-                                variant="ghost"
-                                aria-label={`Change password for ${user.email}`}
-                                disabled={
-                                  !canManageUser(currentUserRole, user.role) ||
-                                  (currentUserRole === 'ward_manager' &&
-                                    user.ward !== currentUserWard)
-                                }
-                                onClick={() => onOpenPasswordAction(user)}
-                              >
-                                <KeyRound className="h-4 w-4" />
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>Change password</TooltipContent>
+                            <TooltipContent>Edit user</TooltipContent>
                           </Tooltip>
                           <Tooltip>
                             <TooltipTrigger asChild>

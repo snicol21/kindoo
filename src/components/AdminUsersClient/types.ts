@@ -1,11 +1,11 @@
-import type { UserRole } from '@/schema/schema';
+import type { UserRole, Ward } from '@/schema/schema';
 
 export type ManagedUser = {
   id: string;
   email: string;
   name: string | null;
   role: UserRole;
-  ward: string;
+  ward: Ward;
   phone: string;
 };
 
