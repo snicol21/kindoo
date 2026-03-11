@@ -15,10 +15,8 @@ import { ROLE_LABELS, canAccessUserAdmin } from '@/lib/permissions';
 import type { UserRole } from '@/schema/schema';
 import { LayoutDashboard, LogOut, MessageSquare, Settings, Shield } from 'lucide-react';
 import Link from 'next/link';
-import { connection } from 'next/server';
 
 export async function NavbarUserSection() {
-  await connection();
   const session = await auth();
 
   const userInitials = session?.user?.name
@@ -87,6 +85,13 @@ export async function NavbarUserSection() {
                   Account Settings
                 </Link>
               </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href="/dashboard/message-templates" className="gap-2 cursor-pointer">
+                  <MessageSquare className="h-4 w-4" />
+                  Message templates
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
               {canAccessUserAdmin(
                 isAdminEmail(session.user.email ?? null)
                   ? 'admin'
@@ -99,13 +104,6 @@ export async function NavbarUserSection() {
                   </Link>
                 </DropdownMenuItem>
               )}
-              <DropdownMenuSeparator />
-              <DropdownMenuItem asChild>
-                <Link href="/dashboard/message-templates" className="gap-2 cursor-pointer">
-                  <MessageSquare className="h-4 w-4" />
-                  Message templates
-                </Link>
-              </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem asChild>
                 <form
