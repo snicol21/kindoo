@@ -30,7 +30,11 @@ package-lock.json
 *.lock
 
 # ─── Static assets ───────────────────────────────────────────────────────────
-public/
+# Keep public assets (manifest/icons) in git for PWA support.
+# Ignore generated service worker artifacts emitted during production builds.
+public/sw.js
+public/workbox-*.js
+public/swe-worker-*.js
 
 # ─── Misc ────────────────────────────────────────────────────────────────────
 .DS_Store

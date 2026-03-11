@@ -10,7 +10,7 @@
   "shell": {
     "init_hook": [
       "echo ''",
-      "echo '🗓️  Event Tracker'",
+      "echo '🔐  DigitalFob'",
       "echo '─────────────────────────────────────────'",
       "echo 'Start dev server?  devbox run start'",
       "echo 'Fresh reset?       devbox run freshstart'",

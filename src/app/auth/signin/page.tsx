@@ -3,8 +3,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/_ui/input';
 import { PasswordInput } from '@/components/_ui/password-input';
 import { auth, signIn } from '@/lib/auth';
-import { CalendarDays } from 'lucide-react';
 import type { Metadata } from 'next';
+import Image from 'next/image';
 import { redirect } from 'next/navigation';
 import { connection } from 'next/server';
 
@@ -43,12 +43,14 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
       <div className="w-full max-w-md space-y-6">
         {/* Logo */}
         <div className="flex items-center gap-3">
-          <div className="rounded-full bg-primary/10 p-3">
-            <CalendarDays className="h-8 w-8 text-primary" />
+          <div className="rounded-2xl bg-primary/10 p-3 ring-1 ring-primary/15">
+            <Image src="/icons/favicon.svg" alt="DigitalFob" width={40} height={40} />
           </div>
           <div className="space-y-0.5">
-            <h1 className="text-2xl font-bold">Event Tracker</h1>
-            <p className="text-sm text-muted-foreground">Sign in to access your event dashboard</p>
+            <h1 className="text-2xl font-bold">DigitalFob</h1>
+            <p className="text-sm text-muted-foreground">
+              Sign in to access your operations dashboard
+            </p>
           </div>
         </div>
 

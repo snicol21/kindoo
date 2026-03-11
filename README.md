@@ -1,4 +1,4 @@
-# 🗓️ Event Tracker — Private Dashboard
+# 🔐 DigitalFob — Private Dashboard
 
 A production-ready, private event tracking dashboard for **Stake Center** and **Maples Building** events. Built with Next.js 16+, React 19, Drizzle ORM, Turso (libSQL), Auth.js v5, TanStack Query v5, and shadcn/ui.
 

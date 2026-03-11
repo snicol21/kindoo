@@ -29,7 +29,7 @@ function normalizeDashboardTab(value: string | null | undefined): DashboardTab |
 }
 
 export const metadata: Metadata = {
-  title: { absolute: 'Event Tracker' },
+  title: { absolute: 'DigitalFob' },
 };
 
 interface DashboardPageProps {

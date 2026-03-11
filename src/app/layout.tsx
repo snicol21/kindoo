@@ -1,5 +1,6 @@
 import '@/app/globals.css';
 import { Navbar } from '@/components/Navbar';
+import { PwaInstallBanner } from '@/components/PwaInstallBanner';
 import { Providers } from '@/providers/providers';
 import type { Metadata, Viewport } from 'next';
 import { Inter } from 'next/font/google';
@@ -13,8 +14,31 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: { default: 'Event Tracker', template: '%s | Event Tracker' },
-  description: 'Private event tracker for Stake Center and Maples Building events.',
+  title: { default: 'DigitalFob', template: '%s | DigitalFob' },
+  applicationName: 'DigitalFob',
+  description: 'Private operations dashboard for Stake Center and Maples Building events.',
+  manifest: '/manifest.json',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'DigitalFob',
+  },
+  icons: {
+    shortcut: [
+      { url: '/favicon.ico', type: 'image/x-icon' },
+      { url: '/icons/favicon.svg', type: 'image/svg+xml' },
+      { url: '/icons/favicon-96x96.png', sizes: '96x96', type: 'image/png' },
+    ],
+    icon: [
+      { url: '/icons/favicon.svg', type: 'image/svg+xml' },
+      { url: '/icons/favicon-96x96.png', sizes: '96x96', type: 'image/png' },
+    ],
+    apple: [{ url: '/icons/apple-touch-icon.png', sizes: '180x180', type: 'image/png' }],
+  },
+  other: {
+    'mobile-web-app-capable': 'yes',
+    'apple-mobile-web-app-capable': 'yes',
+  },
   robots: { index: false, follow: false },
 };
 
@@ -53,6 +77,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <Suspense fallback={<NavbarSkeleton />}>
               <Navbar />
             </Suspense>
+            <PwaInstallBanner />
             <main className="flex-1 min-h-[calc(100vh-4rem)]">{children}</main>
             <footer className="border-t bg-muted/20">
               <div className="container mx-auto max-w-7xl px-4 py-4 text-xs leading-relaxed text-muted-foreground text-center">
