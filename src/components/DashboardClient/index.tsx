@@ -24,7 +24,6 @@ import { WEEKDAY_LABELS } from '@/components/DashboardClient/constants';
 import {
   buildDashboardCounts,
   buildDotCalendarDays,
-  buildWardBreakdown,
   buildingToTab,
   getTodayYmd,
   isPastEvent,
@@ -137,12 +136,10 @@ export function DashboardClient({
       ? 'All upcoming events at Maples Building'
       : 'All upcoming events at Stake Center';
 
-  const wardBreakdown = useMemo(
-    () => buildWardBreakdown(activeBuildingEvents),
-    [activeBuildingEvents]
+  const totalCreators = useMemo(
+    () => new Set(activeUpcoming.map((event) => event.userId)).size,
+    [activeUpcoming]
   );
-  const wardBreakdownVisible = wardBreakdown.slice(0, 8);
-  const wardBreakdownRemaining = Math.max(0, wardBreakdown.length - wardBreakdownVisible.length);
 
   const todayYmd = useMemo(() => getTodayYmd(), []);
 
@@ -235,8 +232,8 @@ export function DashboardClient({
         <DashboardStats
           activeBuildingKey={activeBuildingKey}
           dashboardCounts={dashboardCounts}
-          wardBreakdownVisible={wardBreakdownVisible}
-          wardBreakdownRemaining={wardBreakdownRemaining}
+          totalCreators={totalCreators}
+          breakdownEvents={activeUpcoming}
           dotCalendarDays={dotCalendarDays}
           todayYmd={todayYmd}
           weekdayLabels={WEEKDAY_LABELS}
