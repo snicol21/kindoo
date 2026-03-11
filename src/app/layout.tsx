@@ -26,11 +26,10 @@ export const metadata: Metadata = {
   icons: {
     shortcut: [
       { url: '/favicon.ico', type: 'image/x-icon' },
-      { url: '/icons/favicon.svg', type: 'image/svg+xml' },
       { url: '/icons/favicon-96x96.png', sizes: '96x96', type: 'image/png' },
     ],
     icon: [
-      { url: '/icons/favicon.svg', type: 'image/svg+xml' },
+      { url: '/favicon.ico', type: 'image/x-icon' },
       { url: '/icons/favicon-96x96.png', sizes: '96x96', type: 'image/png' },
     ],
     apple: [{ url: '/icons/apple-touch-icon.png', sizes: '180x180', type: 'image/png' }],
