@@ -1,14 +1,14 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
-import { useSearchParams } from 'next/navigation';
-import { Card, CardDescription, CardHeader } from '@/components/_ui/card';
 import type { EventWithCreator } from '@/actions/events';
-import { ChevronLeft, ChevronRight, Pause, Play } from 'lucide-react';
+import { Card, CardDescription, CardHeader } from '@/components/_ui/card';
 import type { UserRole } from '@/schema/schema';
+import { WARDS } from '@/schema/schema';
+import { ChevronLeft, ChevronRight, Pause, Play } from 'lucide-react';
+import { useSearchParams } from 'next/navigation';
+import { useEffect, useMemo, useState } from 'react';
 import type { DashboardCounts, DotCalendarDay } from './types';
 import { formatShortDate } from './utils';
-import { WARDS } from '@/schema/schema';
 
 type DashboardStatsProps = {
   activeBuildingKey: 'stake' | 'maples';
@@ -60,7 +60,12 @@ export function DashboardStats({
   const [calendarPage, setCalendarPage] = useState(0);
   const breakdownPreviewEnabled = searchParams.get('breakdownPreview') === '1';
   const previewCreatorCount = parsePreviewNumber(searchParams.get('previewCreators'), 50, 1, 200);
-  const previewWardCount = parsePreviewNumber(searchParams.get('previewWards'), WARDS.length, 1, WARDS.length);
+  const previewWardCount = parsePreviewNumber(
+    searchParams.get('previewWards'),
+    WARDS.length,
+    1,
+    WARDS.length
+  );
   const breakdownEventsForDisplay = useMemo(() => {
     if (!breakdownPreviewEnabled) {
       return breakdownEvents;
@@ -168,15 +173,15 @@ export function DashboardStats({
   const pageStartIndex = calendarPage * 28;
   const pageDays = dotCalendarDays.slice(pageStartIndex, pageStartIndex + 28);
   const startLabel = pageDays[0] ? formatShortDate(pageDays[0].ymd) : '-';
-  const endLabel = pageDays[pageDays.length - 1] ? formatShortDate(pageDays[pageDays.length - 1].ymd) : '-';
+  const endLabel = pageDays[pageDays.length - 1]
+    ? formatShortDate(pageDays[pageDays.length - 1].ymd)
+    : '-';
   const next4WeeksLabel = `Next 4 weeks (${startLabel} - ${endLabel})`;
   const canGoPrev = calendarPage > 0;
   const nextPageStartIndex = (calendarPage + 1) * 28;
   const canGoNext =
     calendarPage < maxCalendarPage &&
-    dotCalendarDays
-      .slice(nextPageStartIndex, nextPageStartIndex + 28)
-      .some((day) => day.count > 0);
+    dotCalendarDays.slice(nextPageStartIndex, nextPageStartIndex + 28).some((day) => day.count > 0);
 
   useEffect(() => {
     setCalendarPage((prev) => Math.min(prev, maxCalendarPage));
@@ -242,7 +247,9 @@ export function DashboardStats({
         : visibleRows;
 
     if (visibleRows.length === 0) {
-      return <div className="text-xs text-muted-foreground">No upcoming events to break down yet.</div>;
+      return (
+        <div className="text-xs text-muted-foreground">No upcoming events to break down yet.</div>
+      );
     }
 
     const totalAcrossRows = displayRows.reduce((sum, row) => sum + row.total, 0);
@@ -252,14 +259,18 @@ export function DashboardStats({
     return (
       <div className="relative grid h-full min-h-0 w-full grid-rows-[1fr_auto] gap-0.5 lg:grid-rows-1">
         <div className="min-h-0 overflow-y-auto pr-1 lg:overflow-hidden lg:pb-0">
-          <div className={`grid min-h-full w-full auto-rows-min content-center ${gridColumnsClass} gap-1.5`}>
+          <div
+            className={`grid min-h-full w-full auto-rows-min content-center ${gridColumnsClass} gap-1.5`}
+          >
             {displayRows.map((row) => (
               <div
                 key={`${breakdownMode}-${row.label}`}
                 className="rounded-md border border-border/60 bg-background/60 px-2 py-1.5"
               >
                 <div className="flex items-center justify-between text-[10px] leading-tight">
-                  <span className="truncate text-muted-foreground" title={row.label}>{row.label}</span>
+                  <span className="truncate text-muted-foreground" title={row.label}>
+                    {row.label}
+                  </span>
                   <span className="font-medium">{row.total}</span>
                 </div>
                 <div className="mt-0.5 h-1 w-full overflow-hidden rounded-full bg-muted/70">
@@ -290,7 +301,9 @@ export function DashboardStats({
                   type="button"
                   aria-label={`Show ${BREAKDOWN_LABELS[mode]}`}
                   className={`h-2 w-2 rounded-full transition-all ${
-                    active ? 'bg-emerald-500 scale-105' : 'bg-muted-foreground/35 hover:bg-muted-foreground/55'
+                    active
+                      ? 'bg-emerald-500 scale-105'
+                      : 'bg-muted-foreground/35 hover:bg-muted-foreground/55'
                   }`}
                   onClick={() => {
                     setBreakdownMode(mode);
@@ -304,11 +317,17 @@ export function DashboardStats({
             <button
               type="button"
               className="inline-flex h-6 w-6 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
-              aria-label={autoRotateEnabled ? 'Pause breakdown auto-rotate' : 'Play breakdown auto-rotate'}
+              aria-label={
+                autoRotateEnabled ? 'Pause breakdown auto-rotate' : 'Play breakdown auto-rotate'
+              }
               title={autoRotateEnabled ? 'Pause auto-rotate' : 'Play auto-rotate'}
               onClick={() => setAutoRotateEnabled((prev) => !prev)}
             >
-              {autoRotateEnabled ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
+              {autoRotateEnabled ? (
+                <Pause className="h-3.5 w-3.5" />
+              ) : (
+                <Play className="h-3.5 w-3.5" />
+              )}
             </button>
           </div>
         </div>
@@ -352,13 +371,15 @@ export function DashboardStats({
         <div className="mt-2 space-y-2">
           {[0, 1, 2, 3].map((weekIndex) => {
             const baseIndex = calendarPage * 28;
-            const week = dotCalendarDays.slice(baseIndex + weekIndex * 7, baseIndex + weekIndex * 7 + 7);
+            const week = dotCalendarDays.slice(
+              baseIndex + weekIndex * 7,
+              baseIndex + weekIndex * 7 + 7
+            );
             return (
               <div key={`week-${weekIndex}`} className="flex w-full items-center justify-between">
                 {week.map((day) => {
                   const isToday = day.ymd === todayYmd;
-                  const dotClass =
-                    day.count === 0 ? 'bg-muted-foreground/30' : 'bg-emerald-500';
+                  const dotClass = day.count === 0 ? 'bg-muted-foreground/30' : 'bg-emerald-500';
                   const title = `${formatShortDate(day.ymd)}${
                     isToday ? ' (today)' : ''
                   } - ${day.count} event${day.count === 1 ? '' : 's'}${
@@ -366,7 +387,11 @@ export function DashboardStats({
                   }`;
 
                   return (
-                    <div key={day.ymd} title={title} className="flex h-4 w-4 items-center justify-center">
+                    <div
+                      key={day.ymd}
+                      title={title}
+                      className="flex h-4 w-4 items-center justify-center"
+                    >
                       <span
                         className={`inline-flex h-3 w-3 items-center justify-center rounded-full ${
                           isToday
@@ -448,7 +473,9 @@ export function DashboardStats({
               {BREAKDOWN_LABELS[breakdownMode]}
             </CardDescription>
             <div className="mt-2 border-t border-border/60" />
-            <div className={`${STATS_CONTENT_HEIGHT_CLASS} flex min-h-0`}>{renderBreakdownCard()}</div>
+            <div className={`${STATS_CONTENT_HEIGHT_CLASS} flex min-h-0`}>
+              {renderBreakdownCard()}
+            </div>
           </CardHeader>
         </Card>
 
@@ -458,7 +485,9 @@ export function DashboardStats({
               Events
             </CardDescription>
             <div className="mt-2 border-t border-border/60" />
-            <div className={`${STATS_CONTENT_HEIGHT_CLASS} flex items-center`}>{renderEventTotals()}</div>
+            <div className={`${STATS_CONTENT_HEIGHT_CLASS} flex items-center`}>
+              {renderEventTotals()}
+            </div>
           </CardHeader>
         </Card>
 
@@ -468,7 +497,9 @@ export function DashboardStats({
               {next4WeeksLabel}
             </CardDescription>
             <div className="mt-2 border-t border-border/60" />
-            <div className={`${STATS_CONTENT_HEIGHT_CLASS} mt-2 flex items-center`}>{renderNext4Weeks()}</div>
+            <div className={`${STATS_CONTENT_HEIGHT_CLASS} mt-2 flex items-center`}>
+              {renderNext4Weeks()}
+            </div>
           </CardHeader>
         </Card>
       </div>

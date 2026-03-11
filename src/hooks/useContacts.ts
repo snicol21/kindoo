@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import type { Ward } from '@/schema/schema';
 import { searchContacts, type ContactSearchResult } from '@/actions/contacts';
+import type { Ward } from '@/schema/schema';
+import { useQuery } from '@tanstack/react-query';
+import { useEffect, useState } from 'react';
 
 export const contactKeys = {
   all: ['contacts'] as const,

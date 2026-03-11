@@ -1,14 +1,13 @@
 'use server';
 
+import { isAdminEmail } from '@/lib/admin';
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
-import { contacts, type Contact, type Ward } from '@/schema/schema';
-import { and, asc, eq, like, or } from 'drizzle-orm';
-import type { SQL } from 'drizzle-orm';
-import { normalizeEmail } from '@/utils/stringUtils';
+import { contacts, users, type Contact, type UserRole, type Ward } from '@/schema/schema';
 import { normalizePhoneForStorage } from '@/utils/phoneUtils';
-import { users, type UserRole } from '@/schema/schema';
-import { isAdminEmail } from '@/lib/admin';
+import { normalizeEmail } from '@/utils/stringUtils';
+import type { SQL } from 'drizzle-orm';
+import { and, asc, eq, like, or } from 'drizzle-orm';
 
 export interface ContactSearchResult {
   id: string;
@@ -35,7 +34,9 @@ async function resolveContactAccess() {
     .limit(1);
 
   if (!dbUser) return null;
-  const role: UserRole = isAdminEmail(dbUser.email) ? 'admin' : ((dbUser.role ?? 'ward_user') as UserRole);
+  const role: UserRole = isAdminEmail(dbUser.email)
+    ? 'admin'
+    : ((dbUser.role ?? 'ward_user') as UserRole);
   return { userId: dbUser.id, role, ward: dbUser.ward };
 }
 
@@ -86,7 +87,10 @@ export async function updateContact(input: {
       return { success: false, error: 'At least one contact method is required (email or phone).' };
     }
 
-    if ((access.role === 'ward_manager' || access.role === 'ward_user') && input.ward !== access.ward) {
+    if (
+      (access.role === 'ward_manager' || access.role === 'ward_user') &&
+      input.ward !== access.ward
+    ) {
       return { success: false, error: 'You can only update contacts in your ward.' };
     }
 

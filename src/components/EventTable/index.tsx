@@ -1,16 +1,8 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/_ui/table';
+import { updateContact, type ContactSearchResult } from '@/actions/contacts';
+import type { EventWithCreator } from '@/actions/events';
 import { Button } from '@/components/_ui/button';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/_ui/tooltip';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -19,43 +11,51 @@ import {
   DropdownMenuTrigger,
 } from '@/components/_ui/dropdown-menu';
 import {
-  ArrowUpDown,
-  ArrowUp,
-  ArrowDown,
-  Loader2,
-  AlertTriangle,
-  Inbox,
-  Pencil,
-  Trash2,
-  MessageSquare,
-  Copy,
-  CopyPlus,
-  Mail,
-  Phone,
-  Church,
-  Clock,
-  FileText,
-  CheckCircle2,
-  MoreVertical,
-} from 'lucide-react';
-import type { EventWithCreator } from '@/actions/events';
-import { toast } from 'sonner';
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/_ui/table';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/_ui/tooltip';
 import { CloneEventDialog } from '@/components/EventTable/CloneEventDialog';
 import { DeleteEventDialog } from '@/components/EventTable/DeleteEventDialog';
 import { EditEventDialog } from '@/components/EventTable/EditEventDialog';
 import { EventMessagesDialog } from '@/components/EventTable/EventMessagesDialog';
 import { KindooLicenseDialog } from '@/components/EventTable/KindooLicenseDialog';
 import type { EventTableProps, SortDir, SortKey } from '@/components/EventTable/types';
+import { useContactChangeState } from '@/hooks/useContactChangeState';
+import { useContactSearch } from '@/hooks/useContacts';
+import { findExactContact, getContactSuggestions } from '@/lib/contact-matching';
 import type { Building, EventType, Ward } from '@/schema/schema';
 import { formatDate, getDaysUntil, getDaysUntilValue, toLocalDateTime } from '@/utils/dateUtils';
-import { getLicenseTimes, renderMessageTemplate } from '@/utils/eventTemplateUtils';
 import { DESCRIPTION_MAX_LENGTH } from '@/utils/eventConstants';
+import { getLicenseTimes, renderMessageTemplate } from '@/utils/eventTemplateUtils';
 import { formatPhone } from '@/utils/phoneUtils';
 import { formatTimeRange, validateTimeWindow } from '@/utils/timeUtils';
-import { useContactSearch } from '@/hooks/useContacts';
-import { updateContact, type ContactSearchResult } from '@/actions/contacts';
-import { useContactChangeState } from '@/hooks/useContactChangeState';
-import { findExactContact, getContactSuggestions } from '@/lib/contact-matching';
+import {
+  AlertTriangle,
+  ArrowDown,
+  ArrowUp,
+  ArrowUpDown,
+  CheckCircle2,
+  Church,
+  Clock,
+  Copy,
+  CopyPlus,
+  FileText,
+  Inbox,
+  Loader2,
+  Mail,
+  MessageSquare,
+  MoreVertical,
+  Pencil,
+  Phone,
+  Trash2,
+} from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { toast } from 'sonner';
 
 type WorkerHealthSummary = {
   status: 'healthy' | 'stale' | 'down' | 'unknown';
@@ -94,8 +94,7 @@ function getLicenseOutcomeVisual(outcome: string) {
 
   const automationQueuedBadge = {
     textClassName: 'text-sky-700 dark:text-sky-300',
-    badgeClassName:
-      'border border-sky-200 bg-sky-50/80 dark:border-sky-700/60 dark:bg-sky-900/25',
+    badgeClassName: 'border border-sky-200 bg-sky-50/80 dark:border-sky-700/60 dark:bg-sky-900/25',
     icon: <Clock className="h-3.5 w-3.5" />,
   };
 
@@ -115,8 +114,7 @@ function getLicenseOutcomeVisual(outcome: string) {
 
   const failedBadge = {
     textClassName: 'text-red-700 dark:text-red-300',
-    badgeClassName:
-      'border border-red-300 bg-red-100/80 dark:border-red-700/60 dark:bg-red-900/30',
+    badgeClassName: 'border border-red-300 bg-red-100/80 dark:border-red-700/60 dark:bg-red-900/30',
     icon: <AlertTriangle className="h-3.5 w-3.5" />,
   };
 
@@ -1185,7 +1183,7 @@ export function EventTable({
               const scheduleTimeReached =
                 shouldUseCountdownAsOutcomeLabel && (msUntilDue === null || msUntilDue <= 0);
               const licenseOutcomeVisual = getLicenseOutcomeVisual(
-                scheduleTimeReached ? 'Scheduling queued' : licenseOutcome ?? ''
+                scheduleTimeReached ? 'Scheduling queued' : (licenseOutcome ?? '')
               );
               return (
                 <TableRow

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { updateDefaultBuilding } from '@/actions/auth';
 import { Label } from '@/components/_ui/label';
 import {
   Select,
@@ -9,8 +9,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/_ui/select';
-import { updateDefaultBuilding } from '@/actions/auth';
 import { BUILDINGS, type Building } from '@/schema/schema';
+import { useState } from 'react';
 import { toast } from 'sonner';
 
 interface DefaultBuildingSettingProps {

@@ -1,12 +1,12 @@
 'use client';
 
-import { useState } from 'react';
-import Link from 'next/link';
-import { ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/_ui/button';
-import { SearchInput } from '@/components/SearchInput';
 import { AdminUsersClient } from '@/components/AdminUsersClient';
 import type { AdminUsersClientProps } from '@/components/AdminUsersClient/types';
+import { SearchInput } from '@/components/SearchInput';
+import { ArrowLeft } from 'lucide-react';
+import Link from 'next/link';
+import { useState } from 'react';
 
 export function AdminUsersPageClient({
   users,

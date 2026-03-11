@@ -1,26 +1,16 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import type { EventWithCreator } from '@/actions/events';
 import { Tabs, TabsContent } from '@/components/_ui/tabs';
 import { AddEventDialog } from '@/components/AddEventDialog';
 import { CsvImportDialog } from '@/components/CsvImportDialog';
-import {
-  useAddEvent,
-  useBulkDeleteEvents,
-  useDeleteEvent,
-  useEvents,
-  useSetKindooLicenseCreated,
-  useUpdateEvent,
-} from '@/hooks/useEvents';
-import type { Building } from '@/schema/schema';
-import type { EventWithCreator } from '@/actions/events';
 import { BulkDeleteDialog } from '@/components/DashboardClient/BulkDeleteDialog';
+import { WEEKDAY_LABELS } from '@/components/DashboardClient/constants';
 import { DashboardEventsHeader } from '@/components/DashboardClient/DashboardEventsHeader';
 import { DashboardStats } from '@/components/DashboardClient/DashboardStats';
 import { DashboardTabsHeader } from '@/components/DashboardClient/DashboardTabsHeader';
 import { EventsTabPanel } from '@/components/DashboardClient/EventsTabPanel';
-import { PageContainer } from '@/components/PageContainer';
-import { WEEKDAY_LABELS } from '@/components/DashboardClient/constants';
+import type { DashboardClientProps, DashboardTab } from '@/components/DashboardClient/types';
 import {
   buildDashboardCounts,
   buildDotCalendarDays,
@@ -30,7 +20,17 @@ import {
   normalizeTab,
   tabToBuilding,
 } from '@/components/DashboardClient/utils';
-import type { DashboardClientProps, DashboardTab } from '@/components/DashboardClient/types';
+import { PageContainer } from '@/components/PageContainer';
+import {
+  useAddEvent,
+  useBulkDeleteEvents,
+  useDeleteEvent,
+  useEvents,
+  useSetKindooLicenseCreated,
+  useUpdateEvent,
+} from '@/hooks/useEvents';
+import type { Building } from '@/schema/schema';
+import { useEffect, useMemo, useState } from 'react';
 
 const buildEventSearchHaystack = (event: EventWithCreator) =>
   [

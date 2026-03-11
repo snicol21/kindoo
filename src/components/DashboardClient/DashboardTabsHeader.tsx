@@ -1,8 +1,8 @@
 'use client';
 
 import { TabsList, TabsTrigger } from '@/components/_ui/tabs';
-import { Building2 } from 'lucide-react';
 import { SearchInput } from '@/components/SearchInput';
+import { Building2 } from 'lucide-react';
 
 type DashboardTabsHeaderProps = {
   stakeCount: number;

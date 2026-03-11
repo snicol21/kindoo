@@ -1,10 +1,7 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
-import { TooltipProvider } from '@/components/_ui/tooltip';
-import { toast } from 'sonner';
 import { updateMessageTemplate } from '@/actions/message-templates';
-import { MESSAGE_TEMPLATE_DEFINITIONS, type MessageTemplateKey } from '@/lib/message-templates';
+import { TooltipProvider } from '@/components/_ui/tooltip';
 import { EMPTY_PLACEHOLDER_SELECTION } from '@/components/MessageTemplatesEditor/constants';
 import { TemplateCard } from '@/components/MessageTemplatesEditor/TemplateCard';
 import type {
@@ -18,6 +15,9 @@ import {
   getUsedPlaceholders,
   insertTokenAtCursor,
 } from '@/components/MessageTemplatesEditor/utils';
+import { MESSAGE_TEMPLATE_DEFINITIONS, type MessageTemplateKey } from '@/lib/message-templates';
+import { useEffect, useRef, useState } from 'react';
+import { toast } from 'sonner';
 
 export function MessageTemplatesEditor({ initialTemplates }: MessageTemplatesEditorProps) {
   const [savedTemplates, setSavedTemplates] = useState(initialTemplates);

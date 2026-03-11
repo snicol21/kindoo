@@ -1,6 +1,6 @@
-import type { Building, EventType, UserRole, Ward } from '@/schema/schema';
 import type { EventWithCreator } from '@/actions/events';
 import type { MessageTemplateMap } from '@/lib/message-templates';
+import type { Building, EventType, UserRole, Ward } from '@/schema/schema';
 
 export type DashboardTab = 'stake-center' | 'maples-building';
 

@@ -1,28 +1,28 @@
 'use client';
 
-import { useMemo, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { toast } from 'sonner';
-import { Card, CardContent } from '@/components/_ui/card';
 import {
   adminDeleteUser,
   adminSetUserEmail,
   adminSetUserName,
-  adminSetUserPhone,
   adminSetUserPassword,
+  adminSetUserPhone,
   adminSetUserRole,
   adminSetUserWard,
   createUser,
 } from '@/actions/auth';
-import type { UserRole, Ward } from '@/schema/schema';
-import { WARDS } from '@/schema/schema';
+import { Card, CardContent } from '@/components/_ui/card';
 import { AdminUsersHeader } from '@/components/AdminUsersClient/AdminUsersHeader';
 import { CreateUserDialog } from '@/components/AdminUsersClient/CreateUserDialog';
 import { DeleteUserDialog } from '@/components/AdminUsersClient/DeleteUserDialog';
 import { EditUserDialog } from '@/components/AdminUsersClient/EditUserDialog';
 import { UsersTable } from '@/components/AdminUsersClient/UsersTable';
-import type { AdminUsersClientProps, ManagedUser } from './types';
 import { canAssignRole, canManageUser } from '@/lib/permissions';
+import type { UserRole, Ward } from '@/schema/schema';
+import { WARDS } from '@/schema/schema';
+import { useRouter } from 'next/navigation';
+import { useMemo, useState } from 'react';
+import { toast } from 'sonner';
+import type { AdminUsersClientProps, ManagedUser } from './types';
 
 const buildUserSearchHaystack = (user: ManagedUser) =>
   [user.name, user.email, user.role, user.ward, user.phone].filter(Boolean).join(' ').toLowerCase();
@@ -175,9 +175,17 @@ export function AdminUsersClient({
       const changedName = (editName.trim() || '') !== (editUser.name?.trim() || '');
       const changedRole = editRole !== editUser.role;
       const changedWard = editWard !== editUser.ward;
-      const wantsPasswordUpdate = newPassword.trim().length > 0 || confirmPassword.trim().length > 0;
+      const wantsPasswordUpdate =
+        newPassword.trim().length > 0 || confirmPassword.trim().length > 0;
 
-      if (!changedEmail && !changedPhone && !changedName && !changedRole && !changedWard && !wantsPasswordUpdate) {
+      if (
+        !changedEmail &&
+        !changedPhone &&
+        !changedName &&
+        !changedRole &&
+        !changedWard &&
+        !wantsPasswordUpdate
+      ) {
         setEditOpen(false);
         return;
       }

@@ -1,7 +1,7 @@
-import Link from 'next/link';
-import { CalendarDays } from 'lucide-react';
-import { Suspense } from 'react';
 import { NavbarUserSection } from '@/components/NavbarUserSection';
+import { CalendarDays } from 'lucide-react';
+import Link from 'next/link';
+import { Suspense } from 'react';
 
 function NavbarUserFallback() {
   return (

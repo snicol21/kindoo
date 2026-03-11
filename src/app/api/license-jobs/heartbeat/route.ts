@@ -1,5 +1,5 @@
-import { NextResponse } from 'next/server';
 import { recordWorkerHeartbeat } from '@/lib/license-worker-health';
+import { NextResponse } from 'next/server';
 
 function getWorkerTokenFromHeader(request: Request) {
   const headerValue = request.headers.get('x-worker-token')?.trim();

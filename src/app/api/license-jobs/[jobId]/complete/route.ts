@@ -1,9 +1,9 @@
-import { NextResponse } from 'next/server';
-import { and, eq } from 'drizzle-orm';
-import { revalidateTag } from 'next/cache';
 import { db } from '@/lib/db';
 import { publishLicenseJobEvent } from '@/lib/license-job-events';
 import { events, kindooLicenseJobs } from '@/schema/schema';
+import { and, eq } from 'drizzle-orm';
+import { revalidateTag } from 'next/cache';
+import { NextResponse } from 'next/server';
 
 function getWorkerTokenFromHeader(request: Request) {
   const headerValue = request.headers.get('x-worker-token')?.trim();

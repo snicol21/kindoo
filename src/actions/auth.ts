@@ -1,15 +1,22 @@
 'use server';
 
+import { getAdminEmails, isAdminEmail } from '@/lib/admin';
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
-import { users, USER_ROLES, WARDS, type UserRole } from '@/schema/schema';
-import { BUILDINGS, type Building, type Ward } from '@/schema/schema';
-import { eq } from 'drizzle-orm';
-import { getAdminEmails, isAdminEmail } from '@/lib/admin';
 import { hashPassword, verifyPassword } from '@/lib/password';
-import { put } from '@vercel/blob';
-import { normalizePhoneForStorage } from '@/utils/phoneUtils';
 import { canAccessUserAdmin, canAssignRole, canManageUserInWard } from '@/lib/permissions';
+import {
+  BUILDINGS,
+  USER_ROLES,
+  users,
+  WARDS,
+  type Building,
+  type UserRole,
+  type Ward,
+} from '@/schema/schema';
+import { normalizePhoneForStorage } from '@/utils/phoneUtils';
+import { put } from '@vercel/blob';
+import { eq } from 'drizzle-orm';
 
 export interface ActionResult<T = unknown> {
   success: boolean;
@@ -65,7 +72,9 @@ async function requireUserAdmin() {
   }
 
   const [dbUser] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
-  const role: UserRole = isAdminEmail(email) ? 'admin' : ((dbUser?.role ?? 'ward_user') as UserRole);
+  const role: UserRole = isAdminEmail(email)
+    ? 'admin'
+    : ((dbUser?.role ?? 'ward_user') as UserRole);
 
   if (!dbUser || !canAccessUserAdmin(role)) {
     return { ok: false, error: 'Not authorized.' } as const;
@@ -228,7 +237,10 @@ export async function adminSetUserName(input: {
     return { success: false, error: 'You are not allowed to change this user.' };
   }
 
-  await db.update(users).set({ name: name || null }).where(eq(users.id, userId));
+  await db
+    .update(users)
+    .set({ name: name || null })
+    .where(eq(users.id, userId));
   return { success: true };
 }
 
@@ -454,10 +466,7 @@ export async function changePassword(input: {
   return { success: true };
 }
 
-export async function changeProfile(input: {
-  name: string;
-  phone: string;
-}): Promise<ActionResult> {
+export async function changeProfile(input: { name: string; phone: string }): Promise<ActionResult> {
   const session = await auth();
   const userId = session?.user?.id ?? null;
 

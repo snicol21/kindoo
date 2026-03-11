@@ -19,9 +19,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/_ui/select';
-import type { UserRole, Ward } from '@/schema/schema';
-import { ROLE_LABELS } from '@/lib/permissions';
 import { PhoneInput } from '@/components/PhoneInput';
+import { ROLE_LABELS } from '@/lib/permissions';
+import type { UserRole, Ward } from '@/schema/schema';
 
 type CreateUserDialogProps = {
   open: boolean;
@@ -137,7 +137,9 @@ export function CreateUserDialog({
               </SelectContent>
             </Select>
             {fixedWard && (
-              <p className="mt-1 text-xs text-muted-foreground">Ward is assigned from your account.</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Ward is assigned from your account.
+              </p>
             )}
           </div>
           <div>

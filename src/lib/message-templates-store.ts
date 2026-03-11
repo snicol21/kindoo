@@ -1,6 +1,5 @@
 import 'server-only';
 
-import { eq } from 'drizzle-orm';
 import { db } from '@/lib/db';
 import {
   EMPTY_MESSAGE_TEMPLATES,
@@ -9,6 +8,7 @@ import {
   type MessageTemplateMap,
 } from '@/lib/message-templates';
 import { messageTemplateDefaults, messageTemplates } from '@/schema/schema';
+import { eq } from 'drizzle-orm';
 
 export async function loadMessageTemplatesForUser(userId: string): Promise<MessageTemplateMap> {
   const defaults = await db

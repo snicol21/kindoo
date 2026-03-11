@@ -1,8 +1,8 @@
 'use client';
 
-import { Search } from 'lucide-react';
 import { Input } from '@/components/_ui/input';
 import { cn } from '@/lib/utils';
+import { Search } from 'lucide-react';
 
 type SearchInputProps = {
   value: string;

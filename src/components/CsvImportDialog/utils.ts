@@ -1,7 +1,14 @@
 import type { AddEventInput } from '@/actions/events';
-import { BUILDINGS, EVENT_TYPES, WARDS, type Building, type EventType, type Ward } from '@/schema/schema';
-import { DESCRIPTION_MAX_LENGTH } from '@/utils/eventConstants';
 import type { CsvParseResult } from '@/components/CsvImportDialog/types';
+import {
+  BUILDINGS,
+  EVENT_TYPES,
+  WARDS,
+  type Building,
+  type EventType,
+  type Ward,
+} from '@/schema/schema';
+import { DESCRIPTION_MAX_LENGTH } from '@/utils/eventConstants';
 
 const HEADER_MAP: Record<string, keyof AddEventInput> = {
   building: 'building',

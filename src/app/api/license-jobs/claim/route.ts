@@ -1,8 +1,8 @@
-import { NextResponse } from 'next/server';
-import { and, asc, eq, lt, sql } from 'drizzle-orm';
 import { db } from '@/lib/db';
 import { publishLicenseJobEvent } from '@/lib/license-job-events';
 import { kindooLicenseJobs } from '@/schema/schema';
+import { and, asc, eq, lt, sql } from 'drizzle-orm';
+import { NextResponse } from 'next/server';
 
 const DEFAULT_CLAIM_LIMIT = 3;
 const MAX_CLAIM_LIMIT = 20;

@@ -1,11 +1,11 @@
 'use client';
 
-import type { EventWithCreator, UpdateEventInput, AddEventInput } from '@/actions/events';
-import type { Building } from '@/schema/schema';
-import type { MessageTemplateMap } from '@/lib/message-templates';
+import type { AddEventInput, EventWithCreator, UpdateEventInput } from '@/actions/events';
 import { Button } from '@/components/_ui/button';
 import { Card, CardContent } from '@/components/_ui/card';
 import { EventTable } from '@/components/EventTable';
+import type { MessageTemplateMap } from '@/lib/message-templates';
+import type { Building } from '@/schema/schema';
 
 type EventsTabPanelProps = {
   events: EventWithCreator[];

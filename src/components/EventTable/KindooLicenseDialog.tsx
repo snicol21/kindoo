@@ -10,16 +10,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/_ui/dialog';
-import { AlertTriangle, CheckCircle2, Clock, Loader2, RotateCw } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/_ui/tooltip';
 import { parseTimeToMinutes } from '@/utils/timeUtils';
+import { AlertTriangle, CheckCircle2, Clock, Loader2, RotateCw } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/_ui/tooltip';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -249,11 +244,7 @@ function buildDescription(event: EventWithCreator) {
 // ─── Small presentational pieces ──────────────────────────────────────────────
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <p className="mb-2 text-sm font-medium text-foreground">
-      {children}
-    </p>
-  );
+  return <p className="mb-2 text-sm font-medium text-foreground">{children}</p>;
 }
 
 function MetaRow({
@@ -400,13 +391,18 @@ export function KindooLicenseDialog({
       try {
         const res = await fetch(`/api/license-jobs/${queuedJobId}`, { cache: 'no-store' });
         const data = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(typeof data?.error === 'string' ? data.error : 'Failed to load status.');
+        if (!res.ok)
+          throw new Error(typeof data?.error === 'string' ? data.error : 'Failed to load status.');
 
         const job = data?.job;
-        const nextStatus: LicenseJobStatus | null =
-          ['queued', 'processing', 'completed', 'failed'].includes(job?.status)
-            ? job.status
-            : null;
+        const nextStatus: LicenseJobStatus | null = [
+          'queued',
+          'processing',
+          'completed',
+          'failed',
+        ].includes(job?.status)
+          ? job.status
+          : null;
 
         if (!nextStatus || cancelled) return;
         setJobStatus(nextStatus);
@@ -429,10 +425,15 @@ export function KindooLicenseDialog({
         }
 
         if (nextStatus === 'completed') {
-          const ct = typeof job?.completionType === 'string' ? job.completionType : 'temporary-license-created';
+          const ct =
+            typeof job?.completionType === 'string'
+              ? job.completionType
+              : 'temporary-license-created';
           onLicenseOutcomeChangeAction?.(
             licenseEvent.id,
-            ct === 'existing-active-license' ? 'Active license already existed' : 'Temporary license created'
+            ct === 'existing-active-license'
+              ? 'Active license already existed'
+              : 'Temporary license created'
           );
           setIsPollingStatus(false);
 
@@ -541,7 +542,8 @@ export function KindooLicenseDialog({
   const latestDurationSec =
     typeof latestJob?.durationMs === 'number' ? Math.round(latestJob.durationMs / 1000) : null;
 
-  const latestRunTimestamp = latestJob?.claimedAt ?? latestJob?.createdAt ?? latestJob?.completedAt ?? null;
+  const latestRunTimestamp =
+    latestJob?.claimedAt ?? latestJob?.createdAt ?? latestJob?.completedAt ?? null;
   const latestRunDate = latestRunTimestamp ? new Date(latestRunTimestamp) : null;
 
   const latestFailureMessage = latestJob?.statusDetails ?? latestJob?.lastError ?? null;
@@ -550,7 +552,8 @@ export function KindooLicenseDialog({
     : null;
 
   const countdownToScheduledMs = scheduledDateTime ? scheduledDateTime.getTime() - nowMs : null;
-  const countdownLabel = countdownToScheduledMs !== null ? formatCountdownMs(countdownToScheduledMs) : null;
+  const countdownLabel =
+    countdownToScheduledMs !== null ? formatCountdownMs(countdownToScheduledMs) : null;
   const isScheduledPast = countdownToScheduledMs !== null && countdownToScheduledMs <= 0;
 
   const shouldShowAutomationQueued =
@@ -585,7 +588,9 @@ export function KindooLicenseDialog({
   const showWorkerWarning =
     (jobStatus === 'queued' || jobStatus === 'processing') &&
     workerHealth &&
-    (workerHealth.status === 'down' || workerHealth.status === 'stale' || workerHealth.status === 'unknown');
+    (workerHealth.status === 'down' ||
+      workerHealth.status === 'stale' ||
+      workerHealth.status === 'unknown');
 
   const workerLastSeenLabel = workerHealth?.lastSeenAt
     ? new Date(workerHealth.lastSeenAt).toLocaleTimeString('en-US', {
@@ -608,7 +613,8 @@ export function KindooLicenseDialog({
     try {
       const res = await fetch(`/api/license-jobs/${retryJobId}/retry`, { method: 'POST' });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(typeof data?.error === 'string' ? data.error : 'Failed to retry request.');
+      if (!res.ok)
+        throw new Error(typeof data?.error === 'string' ? data.error : 'Failed to retry request.');
 
       onLicenseOutcomeChangeAction?.(licenseEvent.id, 'Retry queued');
       setQueuedJobId(retryJobId);
@@ -636,142 +642,166 @@ export function KindooLicenseDialog({
       >
         <DialogHeader>
           <DialogTitle>Kindoo License</DialogTitle>
-          <DialogDescription>
-            Automated license request details for this event.
-          </DialogDescription>
+          <DialogDescription>Automated license request details for this event.</DialogDescription>
         </DialogHeader>
 
         <TooltipProvider delayDuration={200}>
           <div className="flex-1 space-y-5 overflow-y-auto pr-1">
-          {licenseEvent && (
-            <>
-              {/* Event details */}
-              <section>
-                <SectionLabel>Event</SectionLabel>
-                <div className="rounded-md border border-border divide-y divide-border/60">
-                  <MetaRow label="Email" value={licenseEvent.contactEmail || <span className="text-destructive">Missing</span>} stackOnMobile />
-                  <MetaRow label="Description" value={buildDescription(licenseEvent)} stackOnMobile />
-                  <MetaRow label="Access rule" value={getAccessRule(licenseEvent.building) ?? 'Unknown'} stackOnMobile />
-                  <MetaRow label="Event time" value={`${formatDateAction(licenseEvent.eventDate)} · ${formatTimeRangeAction(licenseEvent.startTime, licenseEvent.endTime)}`} stackOnMobile />
-                </div>
-              </section>
-
-              {/* Timing */}
-              <section>
-                <SectionLabel>Timing</SectionLabel>
-                <div className="rounded-md border border-border divide-y divide-border/60">
-                  <MetaRow
-                    label="License window"
-                    value={
-                      licenseTimes
-                        ? `${licenseWindowDateLabel ?? licenseTimes.startDate} · ${licenseTimes.startTime} – ${licenseTimes.endTime}`
-                        : 'Unavailable'
-                    }
-                    stackOnMobile
-                  />
-                  <MetaRow
-                    label="Scheduled creation"
-                    value={
-                      scheduledDateLabel && scheduledTimeLabel
-                        ? `${scheduledDateLabel} · ${scheduledTimeLabel}`
-                        : 'Auto-scheduled one day before event'
-                    }
-                    stackOnMobile
-                  />
-                </div>
-              </section>
-
-              {/* Scheduled creation status (minimal) */}
-              <section>
-                <SectionLabel>Scheduled creation status</SectionLabel>
-                <div className="rounded-md border border-border bg-background">
-                  <div className="divide-y divide-border/60">
+            {licenseEvent && (
+              <>
+                {/* Event details */}
+                <section>
+                  <SectionLabel>Event</SectionLabel>
+                  <div className="rounded-md border border-border divide-y divide-border/60">
                     <MetaRow
-                      label="Status"
+                      label="Email"
                       value={
-                        <div className="flex items-center justify-end gap-2">
-                          {latestJob ? (
-                            <span
-                              className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-semibold ${latestStatusVisual.textClassName} ${latestStatusVisual.badgeClassName}`}
-                            >
-                              {latestStatusVisual.icon}
-                              {latestStatusVisual.label}
-                            </span>
-                          ) : (
-                            <span
-                              className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-semibold ${latestStatusVisual.textClassName} ${latestStatusVisual.badgeClassName}`}
-                            >
-                              {latestStatusVisual.icon}
-                              {latestStatusVisual.label}
-                            </span>
-                          )}
-                          {canRetryFailedJob ? (
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-6 w-6"
-                                  onClick={retryFailedJob}
-                                  disabled={isRetrying}
-                                  aria-label="Retry failed job"
-                                >
-                                  {isRetrying ? (
-                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                                  ) : (
-                                    <RotateCw className="h-3.5 w-3.5" />
-                                  )}
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>Retry failed job</TooltipContent>
-                            </Tooltip>
-                          ) : null}
-                        </div>
-                      }
-                    />
-                    <MetaRow
-                      label={isScheduledPast ? 'Scheduled time' : 'Time until scheduled'}
-                      value={
-                        countdownToScheduledMs === null ? (
-                          '—'
-                        ) : isScheduledPast ? (
-                          <span className="text-muted-foreground">Scheduled time reached</span>
-                        ) : (
-                          <span className="tabular-nums">{countdownLabel}</span>
+                        licenseEvent.contactEmail || (
+                          <span className="text-destructive">Missing</span>
                         )
                       }
+                      stackOnMobile
                     />
-                    <MetaRow label="Outcome" value={displayOutcome ?? '—'} />
-                    <MetaRow label="Duration" value={latestDurationSec !== null ? `${latestDurationSec}s` : '—'} />
-                    <MetaRow label="Last attempt" value={latestRunDate ? formatDateTimeNoSeconds(latestRunDate) : '—'} />
+                    <MetaRow
+                      label="Description"
+                      value={buildDescription(licenseEvent)}
+                      stackOnMobile
+                    />
+                    <MetaRow
+                      label="Access rule"
+                      value={getAccessRule(licenseEvent.building) ?? 'Unknown'}
+                      stackOnMobile
+                    />
+                    <MetaRow
+                      label="Event time"
+                      value={`${formatDateAction(licenseEvent.eventDate)} · ${formatTimeRangeAction(licenseEvent.startTime, licenseEvent.endTime)}`}
+                      stackOnMobile
+                    />
                   </div>
+                </section>
 
-                  <div className="border-t border-border/60 px-4 py-3 text-xs text-muted-foreground">
-                    {latestJob?.status === 'failed' && trimmedFailureMessage
-                      ? `Failure: ${trimmedFailureMessage}`
-                      : 'Status details are available on the scheduled job record.'}
+                {/* Timing */}
+                <section>
+                  <SectionLabel>Timing</SectionLabel>
+                  <div className="rounded-md border border-border divide-y divide-border/60">
+                    <MetaRow
+                      label="License window"
+                      value={
+                        licenseTimes
+                          ? `${licenseWindowDateLabel ?? licenseTimes.startDate} · ${licenseTimes.startTime} – ${licenseTimes.endTime}`
+                          : 'Unavailable'
+                      }
+                      stackOnMobile
+                    />
+                    <MetaRow
+                      label="Scheduled creation"
+                      value={
+                        scheduledDateLabel && scheduledTimeLabel
+                          ? `${scheduledDateLabel} · ${scheduledTimeLabel}`
+                          : 'Auto-scheduled one day before event'
+                      }
+                      stackOnMobile
+                    />
                   </div>
-                </div>
-              </section>
+                </section>
 
-              {/* Worker health warning */}
-              {showWorkerWarning && (
-                <div className="rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-100">
-                  <p className="font-medium">Worker may be offline</p>
-                  <p className="mt-1 text-xs opacity-80">
-                    {workerHealth?.status === 'unknown'
-                      ? 'No worker heartbeat received yet.'
-                      : workerHealth?.status === 'stale'
-                        ? 'Worker heartbeat is stale — queued jobs may not process.'
-                        : 'Worker appears down. Queued jobs may not process automatically.'}
-                    {workerHealth?.workerId ? ` Worker: ${workerHealth.workerId}.` : ''}
-                    {workerLastSeenLabel ? ` Last seen: ${workerLastSeenLabel}.` : ''}
-                  </p>
-                </div>
-              )}
-            </>
-          )}
+                {/* Scheduled creation status (minimal) */}
+                <section>
+                  <SectionLabel>Scheduled creation status</SectionLabel>
+                  <div className="rounded-md border border-border bg-background">
+                    <div className="divide-y divide-border/60">
+                      <MetaRow
+                        label="Status"
+                        value={
+                          <div className="flex items-center justify-end gap-2">
+                            {latestJob ? (
+                              <span
+                                className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-semibold ${latestStatusVisual.textClassName} ${latestStatusVisual.badgeClassName}`}
+                              >
+                                {latestStatusVisual.icon}
+                                {latestStatusVisual.label}
+                              </span>
+                            ) : (
+                              <span
+                                className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-semibold ${latestStatusVisual.textClassName} ${latestStatusVisual.badgeClassName}`}
+                              >
+                                {latestStatusVisual.icon}
+                                {latestStatusVisual.label}
+                              </span>
+                            )}
+                            {canRetryFailedJob ? (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-6 w-6"
+                                    onClick={retryFailedJob}
+                                    disabled={isRetrying}
+                                    aria-label="Retry failed job"
+                                  >
+                                    {isRetrying ? (
+                                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                    ) : (
+                                      <RotateCw className="h-3.5 w-3.5" />
+                                    )}
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>Retry failed job</TooltipContent>
+                              </Tooltip>
+                            ) : null}
+                          </div>
+                        }
+                      />
+                      <MetaRow
+                        label={isScheduledPast ? 'Scheduled time' : 'Time until scheduled'}
+                        value={
+                          countdownToScheduledMs === null ? (
+                            '—'
+                          ) : isScheduledPast ? (
+                            <span className="text-muted-foreground">Scheduled time reached</span>
+                          ) : (
+                            <span className="tabular-nums">{countdownLabel}</span>
+                          )
+                        }
+                      />
+                      <MetaRow label="Outcome" value={displayOutcome ?? '—'} />
+                      <MetaRow
+                        label="Duration"
+                        value={latestDurationSec !== null ? `${latestDurationSec}s` : '—'}
+                      />
+                      <MetaRow
+                        label="Last attempt"
+                        value={latestRunDate ? formatDateTimeNoSeconds(latestRunDate) : '—'}
+                      />
+                    </div>
+
+                    <div className="border-t border-border/60 px-4 py-3 text-xs text-muted-foreground">
+                      {latestJob?.status === 'failed' && trimmedFailureMessage
+                        ? `Failure: ${trimmedFailureMessage}`
+                        : 'Status details are available on the scheduled job record.'}
+                    </div>
+                  </div>
+                </section>
+
+                {/* Worker health warning */}
+                {showWorkerWarning && (
+                  <div className="rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-100">
+                    <p className="font-medium">Worker may be offline</p>
+                    <p className="mt-1 text-xs opacity-80">
+                      {workerHealth?.status === 'unknown'
+                        ? 'No worker heartbeat received yet.'
+                        : workerHealth?.status === 'stale'
+                          ? 'Worker heartbeat is stale — queued jobs may not process.'
+                          : 'Worker appears down. Queued jobs may not process automatically.'}
+                      {workerHealth?.workerId ? ` Worker: ${workerHealth.workerId}.` : ''}
+                      {workerLastSeenLabel ? ` Last seen: ${workerLastSeenLabel}.` : ''}
+                    </p>
+                  </div>
+                )}
+              </>
+            )}
           </div>
         </TooltipProvider>
 

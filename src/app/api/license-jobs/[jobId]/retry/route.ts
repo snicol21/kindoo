@@ -1,9 +1,9 @@
-import { NextResponse } from 'next/server';
-import { and, eq } from 'drizzle-orm';
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { publishLicenseJobEvent } from '@/lib/license-job-events';
 import { kindooLicenseJobs } from '@/schema/schema';
+import { and, eq } from 'drizzle-orm';
+import { NextResponse } from 'next/server';
 
 export async function POST(_request: Request, context: { params: Promise<{ jobId: string }> }) {
   const session = await auth();

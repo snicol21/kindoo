@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm';
-import { text, integer, sqliteTable, uniqueIndex, index, check } from 'drizzle-orm/sqlite-core';
+import { check, index, integer, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
 
 export const BUILDINGS = ['Stake Center', 'Maples Building'] as const;
 export type Building = (typeof BUILDINGS)[number];

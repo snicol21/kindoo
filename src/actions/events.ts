@@ -1,13 +1,15 @@
 'use server';
 
+import { isAdminEmail } from '@/lib/admin';
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
+import { canCreateEventInBuildingForWard, canMutateEvent } from '@/lib/permissions';
 import {
+  BUILDINGS,
   contacts,
+  EVENT_TYPES,
   events,
   users,
-  BUILDINGS,
-  EVENT_TYPES,
   WARDS,
   type Building,
   type Event,
@@ -15,14 +17,12 @@ import {
   type UserRole,
   type Ward,
 } from '@/schema/schema';
-import { and, eq, inArray, or } from 'drizzle-orm';
-import { revalidateTag } from 'next/cache';
-import { isAdminEmail } from '@/lib/admin';
+import { DESCRIPTION_MAX_LENGTH } from '@/utils/eventConstants';
 import { normalizePhoneForStorage } from '@/utils/phoneUtils';
 import { normalizeEmail } from '@/utils/stringUtils';
 import { parseTimeToMinutes } from '@/utils/timeUtils';
-import { DESCRIPTION_MAX_LENGTH } from '@/utils/eventConstants';
-import { canCreateEventInBuildingForWard, canMutateEvent } from '@/lib/permissions';
+import { and, eq, inArray, or } from 'drizzle-orm';
+import { revalidateTag } from 'next/cache';
 
 const EVENT_TIMEZONE = 'America/Denver';
 
@@ -335,11 +335,12 @@ export async function addEvent(input: AddEventInput): Promise<ActionResult<Event
       return { success: false, error: validationError };
     }
 
-    if (!canCreateEventInBuildingForWard(role, ward, normalizedInput.ward, normalizedInput.building)) {
+    if (
+      !canCreateEventInBuildingForWard(role, ward, normalizedInput.ward, normalizedInput.building)
+    ) {
       return {
         success: false,
-        error:
-          'You can only create events for your assigned ward and its designated building.',
+        error: 'You can only create events for your assigned ward and its designated building.',
       };
     }
 
@@ -451,7 +452,12 @@ export async function deleteEvent(eventId: string): Promise<ActionResult<void>> 
     const { userId, role, ward } = access.data;
 
     const deletableRows = await db
-      .select({ id: events.id, contactId: events.contactId, eventUserId: events.userId, eventWard: contacts.ward })
+      .select({
+        id: events.id,
+        contactId: events.contactId,
+        eventUserId: events.userId,
+        eventWard: contacts.ward,
+      })
       .from(events)
       .innerJoin(contacts, eq(events.contactId, contacts.id))
       .where(eq(events.id, eventId))
@@ -463,7 +469,13 @@ export async function deleteEvent(eventId: string): Promise<ActionResult<void>> 
 
     const row = deletableRows[0];
     if (
-      !canMutateEvent({ role, userId, userWard: ward, eventUserId: row.eventUserId, eventWard: row.eventWard })
+      !canMutateEvent({
+        role,
+        userId,
+        userWard: ward,
+        eventUserId: row.eventUserId,
+        eventWard: row.eventWard,
+      })
     ) {
       return { success: false, error: 'Event not found or not authorized.' };
     }
@@ -503,7 +515,13 @@ export async function deleteEvents(eventIds: string[]): Promise<ActionResult<{ d
       .where(inArray(events.id, ids));
 
     const allowedRows = deletableRows.filter((row) =>
-      canMutateEvent({ role, userId, userWard: ward, eventUserId: row.eventUserId, eventWard: row.eventWard })
+      canMutateEvent({
+        role,
+        userId,
+        userWard: ward,
+        eventUserId: row.eventUserId,
+        eventWard: row.eventWard,
+      })
     );
 
     if (allowedRows.length === 0) {
@@ -566,7 +584,9 @@ export async function updateEvent(input: UpdateEventInput): Promise<ActionResult
       return { success: false, error: validationError };
     }
 
-    if (!canCreateEventInBuildingForWard(role, ward, normalizedInput.ward, normalizedInput.building)) {
+    if (
+      !canCreateEventInBuildingForWard(role, ward, normalizedInput.ward, normalizedInput.building)
+    ) {
       return {
         success: false,
         error: 'You can only save events for your assigned ward and its designated building.',

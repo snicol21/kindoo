@@ -1,11 +1,11 @@
-import { auth, signIn } from '@/lib/auth';
-import { redirect } from 'next/navigation';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/_ui/card';
 import { Button } from '@/components/_ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/_ui/card';
 import { Input } from '@/components/_ui/input';
 import { PasswordInput } from '@/components/_ui/password-input';
+import { auth, signIn } from '@/lib/auth';
 import { CalendarDays } from 'lucide-react';
 import type { Metadata } from 'next';
+import { redirect } from 'next/navigation';
 import { connection } from 'next/server';
 
 export const metadata: Metadata = {

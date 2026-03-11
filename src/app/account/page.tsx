@@ -1,24 +1,24 @@
-import { auth } from '@/lib/auth';
-import { redirect } from 'next/navigation';
-import type { Metadata } from 'next';
+import { changePassword, changeProfile } from '@/actions/auth';
+import { Button } from '@/components/_ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/_ui/card';
 import { Input } from '@/components/_ui/input';
-import { PasswordInput } from '@/components/_ui/password-input';
-import { Button } from '@/components/_ui/button';
 import { Label } from '@/components/_ui/label';
+import { PasswordInput } from '@/components/_ui/password-input';
 import { DefaultBuildingSetting } from '@/components/DefaultBuildingSetting';
-import { changeProfile, changePassword } from '@/actions/auth';
-import { db } from '@/lib/db';
-import { users } from '@/schema/schema';
-import type { UserRole } from '@/schema/schema';
-import { eq } from 'drizzle-orm';
-import Link from 'next/link';
-import { ArrowLeft } from 'lucide-react';
 import { PageContainer } from '@/components/PageContainer';
-import { ProfileImageUploader } from '@/components/ProfileImageUploader';
 import { PhoneInput } from '@/components/PhoneInput';
-import { ROLE_LABELS } from '@/lib/permissions';
+import { ProfileImageUploader } from '@/components/ProfileImageUploader';
 import { isAdminEmail } from '@/lib/admin';
+import { auth } from '@/lib/auth';
+import { db } from '@/lib/db';
+import { ROLE_LABELS } from '@/lib/permissions';
+import type { UserRole } from '@/schema/schema';
+import { users } from '@/schema/schema';
+import { eq } from 'drizzle-orm';
+import { ArrowLeft } from 'lucide-react';
+import type { Metadata } from 'next';
+import Link from 'next/link';
+import { redirect } from 'next/navigation';
 
 export const metadata: Metadata = {
   title: 'Account Settings',
@@ -95,7 +95,9 @@ export default async function AccountPage({ searchParams }: AccountPageProps) {
         <Card>
           <CardHeader>
             <CardTitle>Profile</CardTitle>
-            <CardDescription>Update your profile details. Ward is managed by user admins.</CardDescription>
+            <CardDescription>
+              Update your profile details. Ward is managed by user admins.
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-6">

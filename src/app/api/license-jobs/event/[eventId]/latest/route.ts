@@ -1,8 +1,8 @@
-import { NextResponse } from 'next/server';
-import { and, desc, eq } from 'drizzle-orm';
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { events, kindooLicenseJobs } from '@/schema/schema';
+import { and, desc, eq } from 'drizzle-orm';
+import { NextResponse } from 'next/server';
 
 export async function GET(_request: Request, context: { params: Promise<{ eventId: string }> }) {
   const session = await auth();

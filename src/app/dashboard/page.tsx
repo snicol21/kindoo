@@ -1,15 +1,22 @@
-import { auth } from '@/lib/auth';
-import { redirect } from 'next/navigation';
-import { db } from '@/lib/db';
-import { contacts, events, users, WARD_BUILDING, type EventType, type UserRole } from '@/schema/schema';
-import { and, eq } from 'drizzle-orm';
 import { DashboardClient } from '@/components/DashboardClient';
-import type { Metadata } from 'next';
-import type { Building } from '@/schema/schema';
-import { connection } from 'next/server';
-import { loadMessageTemplatesForUser } from '@/lib/message-templates-store';
-import { EMPTY_MESSAGE_TEMPLATES } from '@/lib/message-templates';
 import { isAdminEmail } from '@/lib/admin';
+import { auth } from '@/lib/auth';
+import { db } from '@/lib/db';
+import { EMPTY_MESSAGE_TEMPLATES } from '@/lib/message-templates';
+import { loadMessageTemplatesForUser } from '@/lib/message-templates-store';
+import type { Building } from '@/schema/schema';
+import {
+  contacts,
+  events,
+  users,
+  WARD_BUILDING,
+  type EventType,
+  type UserRole,
+} from '@/schema/schema';
+import { and, eq } from 'drizzle-orm';
+import type { Metadata } from 'next';
+import { redirect } from 'next/navigation';
+import { connection } from 'next/server';
 
 type DashboardTab = 'stake-center' | 'maples-building';
 

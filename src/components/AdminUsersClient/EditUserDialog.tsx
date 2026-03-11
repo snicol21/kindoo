@@ -20,9 +20,9 @@ import {
   SelectValue,
 } from '@/components/_ui/select';
 import type { ManagedUser } from '@/components/AdminUsersClient/types';
-import type { UserRole, Ward } from '@/schema/schema';
-import { ROLE_LABELS } from '@/lib/permissions';
 import { PhoneInput } from '@/components/PhoneInput';
+import { ROLE_LABELS } from '@/lib/permissions';
+import type { UserRole, Ward } from '@/schema/schema';
 
 type EditUserDialogProps = {
   open: boolean;

@@ -1,6 +1,6 @@
-import { desc } from 'drizzle-orm';
 import { db } from '@/lib/db';
 import { licenseWorkerHeartbeats } from '@/schema/schema';
+import { desc } from 'drizzle-orm';
 
 export type LicenseWorkerHealthStatus = 'healthy' | 'stale' | 'down' | 'unknown';
 

@@ -1,8 +1,5 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
-import type { Building, EventType, Ward } from '@/schema/schema';
-import { BUILDINGS, EVENT_TYPES, WARDS } from '@/schema/schema';
 import { Button } from '@/components/_ui/button';
 import {
   Dialog,
@@ -21,7 +18,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/_ui/select';
-import { Loader2 } from 'lucide-react';
 import {
   ContactMatchPopover,
   handleContactMatchKeyDown,
@@ -29,8 +25,11 @@ import {
 } from '@/components/ContactMatchPopover';
 import { MatchedContactBadge } from '@/components/MatchedContactBadge';
 import { UnsavedChangesDialog } from '@/components/UnsavedChangesDialog';
-import { DESCRIPTION_MAX_LENGTH } from '@/utils/eventConstants';
+import type { ContactChangeState, LinkedContactSnapshot } from '@/lib/contact-linking';
+import type { Building, EventType, Ward } from '@/schema/schema';
+import { BUILDINGS, EVENT_TYPES, WARDS } from '@/schema/schema';
 import { getTodayYmd } from '@/utils/dateUtils';
+import { DESCRIPTION_MAX_LENGTH } from '@/utils/eventConstants';
 import {
   buildTimeOptions,
   EARLIEST_EVENT_MINUTES,
@@ -38,7 +37,8 @@ import {
   LATEST_EVENT_MINUTES,
   TIME_SLOT_INTERVAL_MINUTES,
 } from '@/utils/timeUtils';
-import type { ContactChangeState, LinkedContactSnapshot } from '@/lib/contact-linking';
+import { Loader2 } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 type EditEventDialogProps = {
   open: boolean;
@@ -144,10 +144,7 @@ export function EditEventDialog({
     const isToday = editEventDate === todayYmd;
     const now = new Date();
     const startMinutes = isToday
-      ? Math.max(
-          EARLIEST_EVENT_MINUTES,
-          Math.min(LATEST_EVENT_MINUTES, now.getHours() * 60)
-        )
+      ? Math.max(EARLIEST_EVENT_MINUTES, Math.min(LATEST_EVENT_MINUTES, now.getHours() * 60))
       : EARLIEST_EVENT_MINUTES;
     return buildTimeOptions(startMinutes, LATEST_EVENT_MINUTES, TIME_SLOT_INTERVAL_MINUTES);
   }, [editEventDate]);

@@ -1,10 +1,10 @@
-import NextAuth from 'next-auth';
-import Credentials from 'next-auth/providers/credentials';
+import { isAdminEmail } from '@/lib/admin';
 import { db } from '@/lib/db';
+import { hashPassword, verifyPassword } from '@/lib/password';
 import { users, type UserRole } from '@/schema/schema';
 import { eq } from 'drizzle-orm';
-import { hashPassword, verifyPassword } from '@/lib/password';
-import { isAdminEmail } from '@/lib/admin';
+import NextAuth from 'next-auth';
+import Credentials from 'next-auth/providers/credentials';
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   providers: [

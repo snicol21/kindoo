@@ -17,9 +17,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/_ui/select';
-import type { UserRole } from '@/schema/schema';
 import type { ManagedUser } from '@/components/AdminUsersClient/types';
 import { ROLE_LABELS } from '@/lib/permissions';
+import type { UserRole } from '@/schema/schema';
 
 type RoleDialogProps = {
   open: boolean;

@@ -1,12 +1,7 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
-import Cropper, { type Area } from 'react-easy-crop';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/_ui/avatar';
 import { Button } from '@/components/_ui/button';
-import { Trash2 } from 'lucide-react';
-import { Input } from '@/components/_ui/input';
-import { Label } from '@/components/_ui/label';
 import {
   Dialog,
   DialogContent,
@@ -16,6 +11,11 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/_ui/dialog';
+import { Input } from '@/components/_ui/input';
+import { Label } from '@/components/_ui/label';
+import { Trash2 } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import Cropper, { type Area } from 'react-easy-crop';
 
 const MAX_PREVIEW_SIZE = 512;
 const MAX_UPLOAD_SIZE = 3 * 1024 * 1024;

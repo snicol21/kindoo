@@ -1,10 +1,10 @@
-import { NextResponse } from 'next/server';
-import { randomUUID } from 'node:crypto';
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { publishLicenseJobEvent } from '@/lib/license-job-events';
 import { events, kindooLicenseJobs } from '@/schema/schema';
 import { and, eq, inArray } from 'drizzle-orm';
+import { NextResponse } from 'next/server';
+import { randomUUID } from 'node:crypto';
 
 type LicensePayload = {
   eventId: string;

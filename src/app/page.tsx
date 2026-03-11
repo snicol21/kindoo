@@ -1,9 +1,9 @@
-import { auth } from '@/lib/auth';
-import { redirect } from 'next/navigation';
 import { Button } from '@/components/_ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/_ui/card';
-import { CalendarDays, Building2, Shield } from 'lucide-react';
+import { auth } from '@/lib/auth';
+import { Building2, CalendarDays, Shield } from 'lucide-react';
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import { connection } from 'next/server';
 
 export default async function HomePage() {
@@ -73,7 +73,9 @@ export default async function HomePage() {
           </Button>
         </div>
 
-        <p className="mt-3 mb-10 text-sm text-muted-foreground text-center">Authorized personnel only.</p>
+        <p className="mt-3 mb-10 text-sm text-muted-foreground text-center">
+          Authorized personnel only.
+        </p>
       </div>
     </div>
   );

@@ -1,5 +1,3 @@
-import { auth, signOut } from '@/lib/auth';
-import Link from 'next/link';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/_ui/avatar';
 import { Button } from '@/components/_ui/button';
 import {
@@ -11,12 +9,16 @@ import {
   DropdownMenuTrigger,
 } from '@/components/_ui/dropdown-menu';
 import { ThemeToggle } from '@/components/ThemeToggle';
-import { LayoutDashboard, Settings, Shield, LogOut, MessageSquare } from 'lucide-react';
 import { isAdminEmail } from '@/lib/admin';
+import { auth, signOut } from '@/lib/auth';
 import { ROLE_LABELS, canAccessUserAdmin } from '@/lib/permissions';
 import type { UserRole } from '@/schema/schema';
+import { LayoutDashboard, LogOut, MessageSquare, Settings, Shield } from 'lucide-react';
+import Link from 'next/link';
+import { connection } from 'next/server';
 
 export async function NavbarUserSection() {
+  await connection();
   const session = await auth();
 
   const userInitials = session?.user?.name
@@ -29,9 +31,9 @@ export async function NavbarUserSection() {
     : (session?.user?.email?.[0]?.toUpperCase() ?? '?');
 
   const displayRole = session?.user
-    ? (isAdminEmail(session.user.email ?? null)
-        ? 'admin'
-        : ((session.user.role ?? 'ward_user') as UserRole))
+    ? isAdminEmail(session.user.email ?? null)
+      ? 'admin'
+      : ((session.user.role ?? 'ward_user') as UserRole)
     : null;
 
   return (
@@ -63,9 +65,7 @@ export async function NavbarUserSection() {
             <DropdownMenuContent align="end" className="w-56">
               <DropdownMenuLabel>
                 <div className="flex flex-col space-y-1 gap-0.5">
-                  <p className="text-sm font-medium leading-none">
-                    {session.user.name ?? 'User'}
-                  </p>
+                  <p className="text-sm font-medium leading-none">{session.user.name ?? 'User'}</p>
                   <p className="text-xs leading-none text-muted-foreground">{session.user.email}</p>
                   {displayRole && (
                     <span className="w-fit rounded-full border border-border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">

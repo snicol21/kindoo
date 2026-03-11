@@ -153,8 +153,8 @@ body {
   color: var(--color-foreground);
 }
 
-input[type="date"],
-input[type="time"] {
+input[type='date'],
+input[type='time'] {
   -webkit-appearance: none;
   appearance: none;
   width: 100% !important;

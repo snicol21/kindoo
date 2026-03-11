@@ -1,26 +1,26 @@
 'use client';
 
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import {
-  getEventsByBuilding,
-  addEvent,
-  deleteEvent,
-  deleteEvents,
-  updateEvent,
-  importEvents,
-  setKindooLicenseCreated,
-} from '@/actions/events';
-import type { Building } from '@/schema/schema';
 import type {
   AddEventInput,
   EventWithCreator,
   ImportEventsResult,
   UpdateEventInput,
 } from '@/actions/events';
-import { toast } from 'sonner';
+import {
+  addEvent,
+  deleteEvent,
+  deleteEvents,
+  getEventsByBuilding,
+  importEvents,
+  setKindooLicenseCreated,
+  updateEvent,
+} from '@/actions/events';
+import { contactKeys } from '@/hooks/useContacts';
+import type { Building } from '@/schema/schema';
 import { normalizePhoneForStorage } from '@/utils/phoneUtils';
 import { normalizeEmail } from '@/utils/stringUtils';
-import { contactKeys } from '@/hooks/useContacts';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 
 // ─── Query Keys ───────────────────────────────────────────────────────────────
 

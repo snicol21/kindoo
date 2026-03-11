@@ -1,4 +1,3 @@
-import { useMemo } from 'react';
 import type {
   ContactChangeOptions,
   ContactChangeState,
@@ -6,6 +5,7 @@ import type {
   LinkedContactSnapshot,
 } from '@/lib/contact-linking';
 import { getContactChangeState } from '@/lib/contact-linking';
+import { useMemo } from 'react';
 
 export function useContactChangeState(
   linked: LinkedContactSnapshot | null,

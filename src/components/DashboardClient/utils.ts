@@ -1,5 +1,5 @@
-import type { Building } from '@/schema/schema';
 import type { EventWithCreator } from '@/actions/events';
+import type { Building } from '@/schema/schema';
 import type { DashboardCounts, DashboardTab, DotCalendarDay, WardBreakdownRow } from './types';
 
 export function buildingToTab(building: Building): DashboardTab {

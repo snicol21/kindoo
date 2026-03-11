@@ -1,10 +1,10 @@
+import '@/app/globals.css';
+import { Navbar } from '@/components/Navbar';
+import { Providers } from '@/providers/providers';
 import type { Metadata, Viewport } from 'next';
 import { Inter } from 'next/font/google';
-import { Suspense } from 'react';
 import NextTopLoader from 'nextjs-toploader';
-import { Providers } from '@/providers/providers';
-import { Navbar } from '@/components/Navbar';
-import '@/app/globals.css';
+import { Suspense } from 'react';
 
 const inter = Inter({
   subsets: ['latin'],

@@ -1,8 +1,8 @@
-import { NextResponse } from 'next/server';
-import { eq, inArray } from 'drizzle-orm';
 import { db } from '@/lib/db';
 import { publishLicenseJobEvent } from '@/lib/license-job-events';
 import { contacts, events, kindooLicenseJobs, users } from '@/schema/schema';
+import { eq, inArray } from 'drizzle-orm';
+import { NextResponse } from 'next/server';
 
 const DEFAULT_TIMEZONE = 'America/Denver';
 const EARLIEST_MINUTES = 5 * 60;

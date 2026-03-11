@@ -1,6 +1,6 @@
-import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { getWorkerHealth } from '@/lib/license-worker-health';
+import { NextResponse } from 'next/server';
 
 function getWorkerPollIntervalMs() {
   const parsed = Number.parseInt(process.env.KINDOO_WORKER_INTERVAL_MS ?? '60000', 10);

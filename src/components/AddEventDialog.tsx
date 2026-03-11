@@ -1,9 +1,7 @@
 'use client';
 
-import { useMemo, useRef, useEffect, useState } from 'react';
-import type { ChangeEvent } from 'react';
-import { useActionState } from 'react';
-import { useFormStatus } from 'react-dom';
+import { updateContact, type ContactSearchResult } from '@/actions/contacts';
+import { Button } from '@/components/_ui/button';
 import {
   Dialog,
   DialogContent,
@@ -12,7 +10,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/_ui/dialog';
-import { Button } from '@/components/_ui/button';
 import { Input } from '@/components/_ui/input';
 import { Label } from '@/components/_ui/label';
 import {
@@ -23,16 +20,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/_ui/select';
-import { Loader2 } from 'lucide-react';
 import { ContactMatchPopover, handleContactMatchKeyDown } from '@/components/ContactMatchPopover';
 import { MatchedContactBadge } from '@/components/MatchedContactBadge';
-import { useAddEvent } from '@/hooks/useEvents';
+import { UnsavedChangesDialog } from '@/components/UnsavedChangesDialog';
+import { useContactChangeState } from '@/hooks/useContactChangeState';
 import { useContactSearch } from '@/hooks/useContacts';
-import { updateContact, type ContactSearchResult } from '@/actions/contacts';
+import { useAddEvent } from '@/hooks/useEvents';
+import { getContactChangeState } from '@/lib/contact-linking';
+import { findExactContact, getContactSuggestions } from '@/lib/contact-matching';
 import type { Building, EventType, Ward } from '@/schema/schema';
 import { BUILDINGS, EVENT_TYPES, WARDS } from '@/schema/schema';
-import { formatPhone } from '@/utils/phoneUtils';
 import { getTodayYmd } from '@/utils/dateUtils';
+import { DESCRIPTION_MAX_LENGTH } from '@/utils/eventConstants';
+import { formatPhone } from '@/utils/phoneUtils';
 import {
   buildTimeOptions,
   EARLIEST_EVENT_MINUTES,
@@ -41,11 +41,10 @@ import {
   parseTimeToMinutes,
   TIME_SLOT_INTERVAL_MINUTES,
 } from '@/utils/timeUtils';
-import { DESCRIPTION_MAX_LENGTH } from '@/utils/eventConstants';
-import { getContactChangeState } from '@/lib/contact-linking';
-import { useContactChangeState } from '@/hooks/useContactChangeState';
-import { findExactContact, getContactSuggestions } from '@/lib/contact-matching';
-import { UnsavedChangesDialog } from '@/components/UnsavedChangesDialog';
+import { Loader2 } from 'lucide-react';
+import type { ChangeEvent } from 'react';
+import { useActionState, useEffect, useMemo, useRef, useState } from 'react';
+import { useFormStatus } from 'react-dom';
 
 const phoneDigits = (value?: string | null) => (value ?? '').replace(/\D/g, '');
 
@@ -180,10 +179,7 @@ export function AddEventDialog({
     const isToday = selectedEventDate === todayYmd;
     const now = new Date();
     const startMinutes = isToday
-      ? Math.max(
-          EARLIEST_EVENT_MINUTES,
-          Math.min(LATEST_EVENT_MINUTES, now.getHours() * 60)
-        )
+      ? Math.max(EARLIEST_EVENT_MINUTES, Math.min(LATEST_EVENT_MINUTES, now.getHours() * 60))
       : EARLIEST_EVENT_MINUTES;
     return buildTimeOptions(startMinutes, LATEST_EVENT_MINUTES, TIME_SLOT_INTERVAL_MINUTES);
   }, [selectedEventDate]);
@@ -606,7 +602,15 @@ export function AddEventDialog({
       setSelectedWard(fixedWard ?? (state.values?.ward as Ward | undefined) ?? '');
       setSelectedEventType((state.values?.eventType as EventType | undefined) ?? defaultEventType);
     }
-  }, [defaultBuilding, defaultEventType, fixedBuilding, fixedWard, open, state.values?.eventType, state.values?.ward]);
+  }, [
+    defaultBuilding,
+    defaultEventType,
+    fixedBuilding,
+    fixedWard,
+    open,
+    state.values?.eventType,
+    state.values?.ward,
+  ]);
 
   useEffect(() => {
     if (!open) return;
@@ -662,187 +666,116 @@ export function AddEventDialog({
           }}
         >
           <div className="-mx-4 min-h-0 flex-1 space-y-4 overflow-y-auto px-4 sm:-mx-6 sm:px-6">
-          {/* General error */}
-          {state.errors?.general && (
-            <div className="rounded-md bg-destructive/10 border border-destructive/20 p-3 text-sm text-destructive">
-              {state.errors.general}
-            </div>
-          )}
-
-          {/* Building */}
-          <div className="space-y-1.5">
-            <Label htmlFor="building">
-              Building <span className="text-destructive">*</span>
-            </Label>
-            <Select
-              name="building"
-              value={selectedBuilding}
-              onValueChange={(value) => {
-                if (fixedBuilding) return;
-                setSelectedBuilding(value as Building);
-              }}
-            >
-              <SelectTrigger
-                id="building"
-                className={state.errors?.building ? 'border-destructive' : ''}
-                disabled={!!fixedBuilding}
-              >
-                <SelectValue placeholder="Select a building…" />
-              </SelectTrigger>
-              <SelectContent>
-                {BUILDINGS.map((b) => (
-                  <SelectItem key={b} value={b}>
-                    {b}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {state.errors?.building && (
-              <p className="text-xs text-destructive">{state.errors.building}</p>
+            {/* General error */}
+            {state.errors?.general && (
+              <div className="rounded-md bg-destructive/10 border border-destructive/20 p-3 text-sm text-destructive">
+                {state.errors.general}
+              </div>
             )}
-            {fixedBuilding && (
-              <p className="text-xs text-muted-foreground">
-                Building is assigned by your ward.
-              </p>
-            )}
-          </div>
 
-          <div className="flex items-center gap-2 pt-5">
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              Contact
-            </h3>
-            <div className="h-px flex-1 bg-border/60" />
-          </div>
-
-          <div className="space-y-1.5">
-            <Label htmlFor="name">
-              Name <span className="text-destructive">*</span>
-            </Label>
-            <div className="relative">
-              <Input
-                ref={nameRef}
-                id="name"
-                name="name"
-                placeholder="First and last name"
-                defaultValue={state.values?.name}
-                className={`${state.errors?.name ? 'border-destructive' : ''} ${
-                  showLinkedState ? 'pr-24' : ''
-                }`}
-                autoComplete="new-password"
-                onFocus={() => setContactFocusField('name')}
-                onBlur={(event) => {
-                  if (nameMatchRef.current?.contains(event.relatedTarget as Node)) return;
-                  setContactFocusField(null);
+            {/* Building */}
+            <div className="space-y-1.5">
+              <Label htmlFor="building">
+                Building <span className="text-destructive">*</span>
+              </Label>
+              <Select
+                name="building"
+                value={selectedBuilding}
+                onValueChange={(value) => {
+                  if (fixedBuilding) return;
+                  setSelectedBuilding(value as Building);
                 }}
-                onKeyDown={handleContactMatchKeyDown({
-                  open: contactFocusField === 'name' && (!!matchCandidate || !!nameMatchCandidate),
-                  match: matchCandidate ?? nameMatchCandidate,
-                  onTabFocus: () => {
-                    window.setTimeout(() => {
-                      const firstOption = nameMatchRef.current?.querySelector<HTMLButtonElement>(
-                        'button[data-contact-option="true"]'
-                      );
-                      firstOption?.focus();
-                    }, 0);
-                  },
-                  onUseMatch: (contact) => {
-                    applyContact(contact);
-                    setMatchCandidate(null);
-                    setDismissedMatchId(null);
-                    focusNextAfterMatch(contact);
-                  },
-                })}
-                onChange={(event) => {
-                  if (!selectedContactId) {
-                    setSelectedContact(null);
+              >
+                <SelectTrigger
+                  id="building"
+                  className={state.errors?.building ? 'border-destructive' : ''}
+                  disabled={!!fixedBuilding}
+                >
+                  <SelectValue placeholder="Select a building…" />
+                </SelectTrigger>
+                <SelectContent>
+                  {BUILDINGS.map((b) => (
+                    <SelectItem key={b} value={b}>
+                      {b}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {state.errors?.building && (
+                <p className="text-xs text-destructive">{state.errors.building}</p>
+              )}
+              {fixedBuilding && (
+                <p className="text-xs text-muted-foreground">Building is assigned by your ward.</p>
+              )}
+            </div>
+
+            <div className="flex items-center gap-2 pt-5">
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Contact
+              </h3>
+              <div className="h-px flex-1 bg-border/60" />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="name">
+                Name <span className="text-destructive">*</span>
+              </Label>
+              <div className="relative">
+                <Input
+                  ref={nameRef}
+                  id="name"
+                  name="name"
+                  placeholder="First and last name"
+                  defaultValue={state.values?.name}
+                  className={`${state.errors?.name ? 'border-destructive' : ''} ${
+                    showLinkedState ? 'pr-24' : ''
+                  }`}
+                  autoComplete="new-password"
+                  onFocus={() => setContactFocusField('name')}
+                  onBlur={(event) => {
+                    if (nameMatchRef.current?.contains(event.relatedTarget as Node)) return;
+                    setContactFocusField(null);
+                  }}
+                  onKeyDown={handleContactMatchKeyDown({
+                    open:
+                      contactFocusField === 'name' && (!!matchCandidate || !!nameMatchCandidate),
+                    match: matchCandidate ?? nameMatchCandidate,
+                    onTabFocus: () => {
+                      window.setTimeout(() => {
+                        const firstOption = nameMatchRef.current?.querySelector<HTMLButtonElement>(
+                          'button[data-contact-option="true"]'
+                        );
+                        firstOption?.focus();
+                      }, 0);
+                    },
+                    onUseMatch: (contact) => {
+                      applyContact(contact);
+                      setMatchCandidate(null);
+                      setDismissedMatchId(null);
+                      focusNextAfterMatch(contact);
+                    },
+                  })}
+                  onChange={(event) => {
+                    if (!selectedContactId) {
+                      setSelectedContact(null);
+                    }
+                    setTypedName(event.target.value);
+                  }}
+                />
+                {showLinkedState && (
+                  <MatchedContactBadge update={contactChangeState.changed.name} />
+                )}
+                <ContactMatchPopover
+                  focusRef={nameMatchRef}
+                  open={
+                    contactFocusField === 'name' &&
+                    (searchingContacts || !!matchCandidate || !!nameMatchCandidate)
                   }
-                  setTypedName(event.target.value);
-                }}
-              />
-              {showLinkedState && <MatchedContactBadge update={contactChangeState.changed.name} />}
-              <ContactMatchPopover
-                focusRef={nameMatchRef}
-                open={
-                  contactFocusField === 'name' &&
-                  (searchingContacts || !!matchCandidate || !!nameMatchCandidate)
-                }
-                searching={searchingContacts}
-                matchCandidate={matchCandidate}
-                suggestedMatch={contactFocusField === 'name' ? nameMatchCandidate : null}
-                suggestedMatches={contactFocusField === 'name' ? nameMatchCandidates : []}
-                suggestedCount={contactFocusField === 'name' ? nameMatchCount : 0}
-                formatPhone={formatPhone}
-                onUseMatch={(contact) => {
-                  applyContact(contact);
-                  setMatchCandidate(null);
-                  setDismissedMatchId(null);
-                  focusNextAfterMatch(contact);
-                }}
-                onBlur={() => setContactFocusField(null)}
-                onTabNext={() => phoneRef.current?.focus()}
-                onTabPrev={() => nameRef.current?.focus()}
-              />
-            </div>
-            {state.errors?.name && <p className="text-xs text-destructive">{state.errors.name}</p>}
-          </div>
-
-          {/* Phone + Email row */}
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <div className="space-y-1.5">
-              <Label htmlFor="phone">Phone</Label>
-              <div className="relative">
-                <Input
-                  ref={phoneRef}
-                  id="phone"
-                  name="phone"
-                  type="tel"
-                  placeholder="(555) 000-0000"
-                  defaultValue={state.values?.phone}
-                  className={`${state.errors?.phone ? 'border-destructive' : ''} ${
-                    showLinkedState ? 'pr-24' : ''
-                  }`}
-                  autoComplete="new-password"
-                  onFocus={() => setContactFocusField('phone')}
-                  onBlur={(event) => {
-                    if (phoneMatchRef.current?.contains(event.relatedTarget as Node)) return;
-                    setContactFocusField(null);
-                  }}
-                  onKeyDown={handleContactMatchKeyDown({
-                    open: contactFocusField === 'phone' && (searchingContacts || !!matchCandidate),
-                    match: matchCandidate,
-                    onTabFocus: () => {
-                      window.setTimeout(() => {
-                        const firstOption = phoneMatchRef.current?.querySelector<HTMLButtonElement>(
-                          'button[data-contact-option="true"]'
-                        );
-                        firstOption?.focus();
-                      }, 0);
-                    },
-                    onUseMatch: (contact) => {
-                      applyContact(contact);
-                      setMatchCandidate(null);
-                      setDismissedMatchId(null);
-                      focusNextAfterMatch(contact);
-                    },
-                  })}
-                  onChange={(event) => {
-                    handlePhoneInput(event);
-                    if (!selectedContactId) {
-                      setSelectedContact(null);
-                    }
-                    setTypedPhone(event.target.value);
-                  }}
-                />
-                {showLinkedState && (
-                  <MatchedContactBadge update={contactChangeState.changed.phone} />
-                )}
-                <ContactMatchPopover
-                  focusRef={phoneMatchRef}
-                  open={contactFocusField === 'phone' && (searchingContacts || !!matchCandidate)}
                   searching={searchingContacts}
                   matchCandidate={matchCandidate}
-                  suggestedMatch={null}
-                  suggestedCount={0}
+                  suggestedMatch={contactFocusField === 'name' ? nameMatchCandidate : null}
+                  suggestedMatches={contactFocusField === 'name' ? nameMatchCandidates : []}
+                  suggestedCount={contactFocusField === 'name' ? nameMatchCount : 0}
                   formatPhone={formatPhone}
                   onUseMatch={(contact) => {
                     applyContact(contact);
@@ -851,305 +784,383 @@ export function AddEventDialog({
                     focusNextAfterMatch(contact);
                   }}
                   onBlur={() => setContactFocusField(null)}
-                  onTabNext={() => emailRef.current?.focus()}
-                  onTabPrev={() => phoneRef.current?.focus()}
+                  onTabNext={() => phoneRef.current?.focus()}
+                  onTabPrev={() => nameRef.current?.focus()}
                 />
               </div>
-              {state.errors?.phone && (
-                <p className="text-xs text-destructive">{state.errors.phone}</p>
+              {state.errors?.name && (
+                <p className="text-xs text-destructive">{state.errors.name}</p>
               )}
             </div>
 
-            <div className="space-y-1.5">
-              <Label htmlFor="email">Email</Label>
-              <div className="relative">
-                <Input
-                  ref={emailRef}
-                  id="email"
-                  name="email"
-                  type="email"
-                  placeholder="name@example.com"
-                  defaultValue={state.values?.email}
-                  className={`${state.errors?.email ? 'border-destructive' : ''} ${
-                    showLinkedState ? 'pr-24' : ''
-                  }`}
-                  autoComplete="new-password"
-                  onFocus={() => setContactFocusField('email')}
-                  onBlur={(event) => {
-                    if (emailMatchRef.current?.contains(event.relatedTarget as Node)) return;
-                    setContactFocusField(null);
-                  }}
-                  onKeyDown={handleContactMatchKeyDown({
-                    open: contactFocusField === 'email' && (searchingContacts || !!matchCandidate),
-                    match: matchCandidate,
-                    onTabFocus: () => {
-                      window.setTimeout(() => {
-                        const firstOption = emailMatchRef.current?.querySelector<HTMLButtonElement>(
-                          'button[data-contact-option="true"]'
-                        );
-                        firstOption?.focus();
-                      }, 0);
-                    },
-                    onUseMatch: (contact) => {
+            {/* Phone + Email row */}
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="phone">Phone</Label>
+                <div className="relative">
+                  <Input
+                    ref={phoneRef}
+                    id="phone"
+                    name="phone"
+                    type="tel"
+                    placeholder="(555) 000-0000"
+                    defaultValue={state.values?.phone}
+                    className={`${state.errors?.phone ? 'border-destructive' : ''} ${
+                      showLinkedState ? 'pr-24' : ''
+                    }`}
+                    autoComplete="new-password"
+                    onFocus={() => setContactFocusField('phone')}
+                    onBlur={(event) => {
+                      if (phoneMatchRef.current?.contains(event.relatedTarget as Node)) return;
+                      setContactFocusField(null);
+                    }}
+                    onKeyDown={handleContactMatchKeyDown({
+                      open:
+                        contactFocusField === 'phone' && (searchingContacts || !!matchCandidate),
+                      match: matchCandidate,
+                      onTabFocus: () => {
+                        window.setTimeout(() => {
+                          const firstOption =
+                            phoneMatchRef.current?.querySelector<HTMLButtonElement>(
+                              'button[data-contact-option="true"]'
+                            );
+                          firstOption?.focus();
+                        }, 0);
+                      },
+                      onUseMatch: (contact) => {
+                        applyContact(contact);
+                        setMatchCandidate(null);
+                        setDismissedMatchId(null);
+                        focusNextAfterMatch(contact);
+                      },
+                    })}
+                    onChange={(event) => {
+                      handlePhoneInput(event);
+                      if (!selectedContactId) {
+                        setSelectedContact(null);
+                      }
+                      setTypedPhone(event.target.value);
+                    }}
+                  />
+                  {showLinkedState && (
+                    <MatchedContactBadge update={contactChangeState.changed.phone} />
+                  )}
+                  <ContactMatchPopover
+                    focusRef={phoneMatchRef}
+                    open={contactFocusField === 'phone' && (searchingContacts || !!matchCandidate)}
+                    searching={searchingContacts}
+                    matchCandidate={matchCandidate}
+                    suggestedMatch={null}
+                    suggestedCount={0}
+                    formatPhone={formatPhone}
+                    onUseMatch={(contact) => {
                       applyContact(contact);
                       setMatchCandidate(null);
                       setDismissedMatchId(null);
                       focusNextAfterMatch(contact);
-                    },
-                  })}
-                  onChange={(event) => {
-                    if (!selectedContactId) {
-                      setSelectedContact(null);
-                    }
-                    setTypedEmail(event.target.value);
-                  }}
-                />
-                {showLinkedState && (
-                  <MatchedContactBadge update={contactChangeState.changed.email} />
+                    }}
+                    onBlur={() => setContactFocusField(null)}
+                    onTabNext={() => emailRef.current?.focus()}
+                    onTabPrev={() => phoneRef.current?.focus()}
+                  />
+                </div>
+                {state.errors?.phone && (
+                  <p className="text-xs text-destructive">{state.errors.phone}</p>
                 )}
-                <ContactMatchPopover
-                  focusRef={emailMatchRef}
-                  open={contactFocusField === 'email' && (searchingContacts || !!matchCandidate)}
-                  searching={searchingContacts}
-                  matchCandidate={matchCandidate}
-                  suggestedMatch={null}
-                  suggestedCount={0}
-                  formatPhone={formatPhone}
-                  onUseMatch={(contact) => {
-                    applyContact(contact);
-                    setMatchCandidate(null);
-                    setDismissedMatchId(null);
-                    focusNextAfterMatch(contact);
-                  }}
-                  onBlur={() => setContactFocusField(null)}
-                  onTabNext={() => wardTriggerRef.current?.focus()}
-                  onTabPrev={() => emailRef.current?.focus()}
-                />
               </div>
-              {state.errors?.email && (
-                <p className="text-xs text-destructive">{state.errors.email}</p>
-              )}
-            </div>
-          </div>
 
-          {/* Ward */}
-          <div className="space-y-1.5">
-            <Label htmlFor="ward">
-              Ward <span className="text-destructive">*</span>
-            </Label>
-            <Select
-              name="ward"
-              value={selectedWard}
-              onValueChange={(value) => {
-                if (fixedWard) return;
-                setSelectedWard(value as Ward);
-              }}
-            >
-              <SelectTrigger
-                id="ward"
-                ref={wardTriggerRef}
-                className={`relative ${state.errors?.ward ? 'border-destructive' : ''}`}
-                disabled={!!fixedWard}
+              <div className="space-y-1.5">
+                <Label htmlFor="email">Email</Label>
+                <div className="relative">
+                  <Input
+                    ref={emailRef}
+                    id="email"
+                    name="email"
+                    type="email"
+                    placeholder="name@example.com"
+                    defaultValue={state.values?.email}
+                    className={`${state.errors?.email ? 'border-destructive' : ''} ${
+                      showLinkedState ? 'pr-24' : ''
+                    }`}
+                    autoComplete="new-password"
+                    onFocus={() => setContactFocusField('email')}
+                    onBlur={(event) => {
+                      if (emailMatchRef.current?.contains(event.relatedTarget as Node)) return;
+                      setContactFocusField(null);
+                    }}
+                    onKeyDown={handleContactMatchKeyDown({
+                      open:
+                        contactFocusField === 'email' && (searchingContacts || !!matchCandidate),
+                      match: matchCandidate,
+                      onTabFocus: () => {
+                        window.setTimeout(() => {
+                          const firstOption =
+                            emailMatchRef.current?.querySelector<HTMLButtonElement>(
+                              'button[data-contact-option="true"]'
+                            );
+                          firstOption?.focus();
+                        }, 0);
+                      },
+                      onUseMatch: (contact) => {
+                        applyContact(contact);
+                        setMatchCandidate(null);
+                        setDismissedMatchId(null);
+                        focusNextAfterMatch(contact);
+                      },
+                    })}
+                    onChange={(event) => {
+                      if (!selectedContactId) {
+                        setSelectedContact(null);
+                      }
+                      setTypedEmail(event.target.value);
+                    }}
+                  />
+                  {showLinkedState && (
+                    <MatchedContactBadge update={contactChangeState.changed.email} />
+                  )}
+                  <ContactMatchPopover
+                    focusRef={emailMatchRef}
+                    open={contactFocusField === 'email' && (searchingContacts || !!matchCandidate)}
+                    searching={searchingContacts}
+                    matchCandidate={matchCandidate}
+                    suggestedMatch={null}
+                    suggestedCount={0}
+                    formatPhone={formatPhone}
+                    onUseMatch={(contact) => {
+                      applyContact(contact);
+                      setMatchCandidate(null);
+                      setDismissedMatchId(null);
+                      focusNextAfterMatch(contact);
+                    }}
+                    onBlur={() => setContactFocusField(null)}
+                    onTabNext={() => wardTriggerRef.current?.focus()}
+                    onTabPrev={() => emailRef.current?.focus()}
+                  />
+                </div>
+                {state.errors?.email && (
+                  <p className="text-xs text-destructive">{state.errors.email}</p>
+                )}
+              </div>
+            </div>
+
+            {/* Ward */}
+            <div className="space-y-1.5">
+              <Label htmlFor="ward">
+                Ward <span className="text-destructive">*</span>
+              </Label>
+              <Select
+                name="ward"
+                value={selectedWard}
+                onValueChange={(value) => {
+                  if (fixedWard) return;
+                  setSelectedWard(value as Ward);
+                }}
               >
-                <SelectValue placeholder="Select a ward…" />
-                {showLinkedState && (
-                  <MatchedContactBadge
-                    variant="select"
-                    as="div"
-                    update={contactChangeState.changed.ward}
-                  />
-                )}
-              </SelectTrigger>
-              <SelectContent>
-                {prioritizedWards.priority.map((ward) => (
-                  <SelectItem key={ward} value={ward}>
-                    {ward}
-                  </SelectItem>
-                ))}
-                {prioritizedWards.remaining.length > 0 && (
-                  <SelectSeparator className="border-t border-dashed border-muted-foreground/40" />
-                )}
-                {prioritizedWards.remaining.map((ward) => (
-                  <SelectItem key={ward} value={ward}>
-                    {ward}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {fixedWard && (
-              <p className="text-xs text-muted-foreground">Ward is assigned by your account role.</p>
-            )}
-            {state.errors?.ward && <p className="text-xs text-destructive">{state.errors.ward}</p>}
-          </div>
-
-          {showLinkedState && selectedContact && (
-            <div className={`rounded-md border p-3 text-xs ${linkedBannerTone}`}>
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <span>
-                  Linked to contact <span className="font-semibold">{selectedContact.name}</span>.
-                  {contactChangeState.changeSummary ? ` ${contactChangeState.changeSummary}` : ''}
-                </span>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="h-6 px-2 text-[11px]"
-                  onClick={() => {
-                    setDismissedMatchId(selectedContact.id);
-                    setMatchCandidate(null);
-                    clearSelectedContact();
-                    clearContactFormValues();
-                    nameRef.current?.focus();
-                  }}
+                <SelectTrigger
+                  id="ward"
+                  ref={wardTriggerRef}
+                  className={`relative ${state.errors?.ward ? 'border-destructive' : ''}`}
+                  disabled={!!fixedWard}
                 >
-                  Unlink
-                </Button>
-                {contactChangeState.identifierGuidance && (
-                  <span className={linkedBannerGuidanceTone}>
-                    {contactChangeState.identifierGuidance}
+                  <SelectValue placeholder="Select a ward…" />
+                  {showLinkedState && (
+                    <MatchedContactBadge
+                      variant="select"
+                      as="div"
+                      update={contactChangeState.changed.ward}
+                    />
+                  )}
+                </SelectTrigger>
+                <SelectContent>
+                  {prioritizedWards.priority.map((ward) => (
+                    <SelectItem key={ward} value={ward}>
+                      {ward}
+                    </SelectItem>
+                  ))}
+                  {prioritizedWards.remaining.length > 0 && (
+                    <SelectSeparator className="border-t border-dashed border-muted-foreground/40" />
+                  )}
+                  {prioritizedWards.remaining.map((ward) => (
+                    <SelectItem key={ward} value={ward}>
+                      {ward}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {fixedWard && (
+                <p className="text-xs text-muted-foreground">
+                  Ward is assigned by your account role.
+                </p>
+              )}
+              {state.errors?.ward && (
+                <p className="text-xs text-destructive">{state.errors.ward}</p>
+              )}
+            </div>
+
+            {showLinkedState && selectedContact && (
+              <div className={`rounded-md border p-3 text-xs ${linkedBannerTone}`}>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span>
+                    Linked to contact <span className="font-semibold">{selectedContact.name}</span>.
+                    {contactChangeState.changeSummary ? ` ${contactChangeState.changeSummary}` : ''}
                   </span>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 px-2 text-[11px]"
+                    onClick={() => {
+                      setDismissedMatchId(selectedContact.id);
+                      setMatchCandidate(null);
+                      clearSelectedContact();
+                      clearContactFormValues();
+                      nameRef.current?.focus();
+                    }}
+                  >
+                    Unlink
+                  </Button>
+                  {contactChangeState.identifierGuidance && (
+                    <span className={linkedBannerGuidanceTone}>
+                      {contactChangeState.identifierGuidance}
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
+
+            <div className="flex items-center gap-2 pt-5">
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Event
+              </h3>
+              <div className="h-px flex-1 bg-border/60" />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>
+                Event type <span className="text-destructive">*</span>
+              </Label>
+              <div className="flex flex-nowrap gap-1 overflow-x-auto pb-1 sm:gap-2">
+                {EVENT_TYPES.map((eventType) => (
+                  <label
+                    key={eventType}
+                    className={`inline-flex shrink-0 cursor-pointer items-center justify-center gap-1 rounded-md border px-1.5 py-1 text-[11px] sm:justify-start sm:gap-2 sm:px-3 sm:py-1.5 sm:text-sm whitespace-nowrap ${
+                      selectedEventType === eventType
+                        ? 'border-primary bg-primary/5 text-foreground'
+                        : 'border-border text-muted-foreground'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="eventType"
+                      value={eventType}
+                      checked={selectedEventType === eventType}
+                      onChange={() => setSelectedEventType(eventType)}
+                      className="h-3 w-3 sm:h-3.5 sm:w-3.5"
+                    />
+                    <span>{eventType}</span>
+                  </label>
+                ))}
+              </div>
+              {state.errors?.eventType && (
+                <p className="text-xs text-destructive">{state.errors.eventType}</p>
+              )}
+            </div>
+
+            {/* Date + Time row */}
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <div className="space-y-1.5 min-w-0 sm:col-span-1">
+                <Label htmlFor="eventDate">
+                  Date <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  ref={eventDateRef}
+                  id="eventDate"
+                  name="eventDate"
+                  type="date"
+                  value={selectedEventDate}
+                  min={minEventDate}
+                  autoComplete="off"
+                  className={state.errors?.eventDate ? 'border-destructive' : ''}
+                  onChange={(event) => setSelectedEventDate(event.target.value)}
+                />
+                {state.errors?.eventDate && (
+                  <p className="text-xs text-destructive">{state.errors.eventDate}</p>
+                )}
+              </div>
+              <div className="space-y-1.5 min-w-0 sm:col-span-1">
+                <Label htmlFor="startTime">
+                  Start <span className="text-destructive">*</span>
+                </Label>
+                <Select
+                  name="startTime"
+                  value={selectedStartTime}
+                  onValueChange={setSelectedStartTime}
+                >
+                  <SelectTrigger
+                    id="startTime"
+                    className={state.errors?.startTime ? 'border-destructive' : ''}
+                  >
+                    <SelectValue placeholder="Select start time" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {timeOptions.map((time) => (
+                      <SelectItem key={time} value={time}>
+                        {formatTime(time)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {state.errors?.startTime && (
+                  <p className="text-xs text-destructive">{state.errors.startTime}</p>
+                )}
+              </div>
+              <div className="space-y-1.5 min-w-0 sm:col-span-1">
+                <Label htmlFor="endTime">
+                  End <span className="text-destructive">*</span>
+                </Label>
+                <Select name="endTime" value={selectedEndTime} onValueChange={setSelectedEndTime}>
+                  <SelectTrigger
+                    id="endTime"
+                    className={state.errors?.endTime ? 'border-destructive' : ''}
+                  >
+                    <SelectValue placeholder="Select end time" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {timeOptions.map((time) => (
+                      <SelectItem key={time} value={time}>
+                        {formatTime(time)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {state.errors?.endTime && (
+                  <p className="text-xs text-destructive">{state.errors.endTime}</p>
                 )}
               </div>
             </div>
-          )}
 
-          <div className="flex items-center gap-2 pt-5">
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              Event
-            </h3>
-            <div className="h-px flex-1 bg-border/60" />
-          </div>
-
-          <div className="space-y-1.5">
-            <Label>
-              Event type <span className="text-destructive">*</span>
-            </Label>
-            <div className="flex flex-nowrap gap-1 overflow-x-auto pb-1 sm:gap-2">
-              {EVENT_TYPES.map((eventType) => (
-                <label
-                  key={eventType}
-                  className={`inline-flex shrink-0 cursor-pointer items-center justify-center gap-1 rounded-md border px-1.5 py-1 text-[11px] sm:justify-start sm:gap-2 sm:px-3 sm:py-1.5 sm:text-sm whitespace-nowrap ${
-                    selectedEventType === eventType
-                      ? 'border-primary bg-primary/5 text-foreground'
-                      : 'border-border text-muted-foreground'
-                  }`}
-                >
-                  <input
-                    type="radio"
-                    name="eventType"
-                    value={eventType}
-                    checked={selectedEventType === eventType}
-                    onChange={() => setSelectedEventType(eventType)}
-                    className="h-3 w-3 sm:h-3.5 sm:w-3.5"
-                  />
-                  <span>{eventType}</span>
-                </label>
-              ))}
-            </div>
-            {state.errors?.eventType && (
-              <p className="text-xs text-destructive">{state.errors.eventType}</p>
-            )}
-          </div>
-
-          {/* Date + Time row */}
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <div className="space-y-1.5 min-w-0 sm:col-span-1">
-              <Label htmlFor="eventDate">
-                Date <span className="text-destructive">*</span>
+            {/* Description */}
+            <div className="space-y-1.5">
+              <Label htmlFor="description">
+                Event Description <span className="text-destructive">*</span>
               </Label>
               <Input
-                ref={eventDateRef}
-                id="eventDate"
-                name="eventDate"
-                type="date"
-                value={selectedEventDate}
-                min={minEventDate}
+                id="description"
+                name="description"
+                placeholder="Short description (e.g., Wedding reception or Birthday party)"
+                maxLength={DESCRIPTION_MAX_LENGTH}
+                value={descriptionValue}
+                onChange={(event) => setDescriptionValue(event.target.value)}
                 autoComplete="off"
-                className={state.errors?.eventDate ? 'border-destructive' : ''}
-                onChange={(event) => setSelectedEventDate(event.target.value)}
+                className={state.errors?.description ? 'border-destructive' : ''}
               />
-              {state.errors?.eventDate && (
-                <p className="text-xs text-destructive">{state.errors.eventDate}</p>
+              <p className="text-xs text-muted-foreground">
+                {descriptionValue.length}/{DESCRIPTION_MAX_LENGTH} characters
+              </p>
+              {state.errors?.description && (
+                <p className="text-xs text-destructive">{state.errors.description}</p>
               )}
             </div>
-            <div className="space-y-1.5 min-w-0 sm:col-span-1">
-              <Label htmlFor="startTime">
-                Start <span className="text-destructive">*</span>
-              </Label>
-              <Select
-                name="startTime"
-                value={selectedStartTime}
-                onValueChange={setSelectedStartTime}
-              >
-                <SelectTrigger
-                  id="startTime"
-                  className={state.errors?.startTime ? 'border-destructive' : ''}
-                >
-                  <SelectValue placeholder="Select start time" />
-                </SelectTrigger>
-                <SelectContent>
-                  {timeOptions.map((time) => (
-                    <SelectItem key={time} value={time}>
-                      {formatTime(time)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {state.errors?.startTime && (
-                <p className="text-xs text-destructive">{state.errors.startTime}</p>
-              )}
-            </div>
-            <div className="space-y-1.5 min-w-0 sm:col-span-1">
-              <Label htmlFor="endTime">
-                End <span className="text-destructive">*</span>
-              </Label>
-              <Select
-                name="endTime"
-                value={selectedEndTime}
-                onValueChange={setSelectedEndTime}
-              >
-                <SelectTrigger
-                  id="endTime"
-                  className={state.errors?.endTime ? 'border-destructive' : ''}
-                >
-                  <SelectValue placeholder="Select end time" />
-                </SelectTrigger>
-                <SelectContent>
-                  {timeOptions.map((time) => (
-                    <SelectItem key={time} value={time}>
-                      {formatTime(time)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {state.errors?.endTime && (
-                <p className="text-xs text-destructive">{state.errors.endTime}</p>
-              )}
-            </div>
-          </div>
-
-          {/* Description */}
-          <div className="space-y-1.5">
-            <Label htmlFor="description">
-              Event Description <span className="text-destructive">*</span>
-            </Label>
-            <Input
-              id="description"
-              name="description"
-              placeholder="Short description (e.g., Wedding reception or Birthday party)"
-              maxLength={DESCRIPTION_MAX_LENGTH}
-              value={descriptionValue}
-              onChange={(event) => setDescriptionValue(event.target.value)}
-              autoComplete="off"
-              className={state.errors?.description ? 'border-destructive' : ''}
-            />
-            <p className="text-xs text-muted-foreground">
-              {descriptionValue.length}/{DESCRIPTION_MAX_LENGTH} characters
-            </p>
-            {state.errors?.description && (
-              <p className="text-xs text-destructive">{state.errors.description}</p>
-            )}
-          </div>
           </div>
 
           <DialogFooter className="border-t pt-3">

@@ -1,15 +1,15 @@
-import { auth } from '@/lib/auth';
-import { isAdminEmail } from '@/lib/admin';
-import { redirect } from 'next/navigation';
-import { Button } from '@/components/_ui/button';
-import type { Metadata } from 'next';
 import { listUsers } from '@/actions/auth';
-import Link from 'next/link';
-import { ArrowLeft } from 'lucide-react';
+import { Button } from '@/components/_ui/button';
 import { AdminUsersPageClient } from '@/components/AdminUsersClient/AdminUsersPageClient';
 import { PageContainer } from '@/components/PageContainer';
-import type { UserRole } from '@/schema/schema';
+import { isAdminEmail } from '@/lib/admin';
+import { auth } from '@/lib/auth';
 import { canAccessUserAdmin } from '@/lib/permissions';
+import type { UserRole } from '@/schema/schema';
+import { ArrowLeft } from 'lucide-react';
+import type { Metadata } from 'next';
+import Link from 'next/link';
+import { redirect } from 'next/navigation';
 
 export const metadata: Metadata = {
   title: 'User Admin',
@@ -20,7 +20,9 @@ export default async function AdminUsersPage() {
   const email = session?.user?.email ?? null;
   const currentUserId = session?.user?.id ?? null;
   const currentUserWard = session?.user?.ward ?? '1st Ward';
-  const currentUserRole: UserRole = isAdminEmail(email) ? 'admin' : ((session?.user?.role ?? 'ward_user') as UserRole);
+  const currentUserRole: UserRole = isAdminEmail(email)
+    ? 'admin'
+    : ((session?.user?.role ?? 'ward_user') as UserRole);
 
   if (!email || !canAccessUserAdmin(currentUserRole)) {
     redirect('/auth/signin');

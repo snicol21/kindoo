@@ -1,6 +1,5 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import { Button } from '@/components/_ui/button';
 import {
   DropdownMenu,
@@ -18,10 +17,11 @@ import {
   TableRow,
 } from '@/components/_ui/table';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/_ui/tooltip';
-import { Copy, Mail, MoreVertical, Pencil, Phone, Trash2 } from 'lucide-react';
 import type { ManagedUser } from '@/components/AdminUsersClient/types';
-import type { UserRole } from '@/schema/schema';
 import { ROLE_LABELS, canManageUser } from '@/lib/permissions';
+import type { UserRole } from '@/schema/schema';
+import { Copy, Mail, MoreVertical, Pencil, Phone, Trash2 } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
 type UsersTableProps = {
@@ -87,80 +87,82 @@ export function UsersTable({
                         (currentUserRole !== 'ward_manager' || user.ward === currentUserWard);
                       return (
                         <>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="truncate text-sm font-semibold">
-                        {user.name?.trim() || 'No name set'}
-                      </span>
-                      <span className="rounded-full border border-border px-2 py-0.5 text-xs">
-                        {ROLE_LABELS[user.role]}
-                      </span>
-                      <span className="text-xs text-muted-foreground">• {user.ward || '—'}</span>
-                    </div>
-                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                      <Mail className="h-3.5 w-3.5 shrink-0" />
-                      <div className="flex min-w-0 items-center gap-1.5">
-                        <a
-                          href={`mailto:${user.email}`}
-                          className="max-w-44 truncate text-muted-foreground hover:underline"
-                          title={user.email}
-                        >
-                          {user.email}
-                        </a>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-5 w-5 p-0"
-                          aria-label={`Copy email for ${user.email}`}
-                          onClick={async () => {
-                            try {
-                              await navigator.clipboard.writeText(user.email ?? '');
-                              toast.success('Email copied.');
-                            } catch {
-                              toast.error('Failed to copy.');
-                            }
-                          }}
-                        >
-                          <Copy className="h-3.5 w-3.5" />
-                        </Button>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                      <Phone className="h-3.5 w-3.5 shrink-0" />
-                      {user.phone ? (
-                        <div className="flex min-w-0 items-center gap-1.5">
-                          <a
-                            href={`tel:${user.phone.replace(/\D/g, '')}`}
-                            className="max-w-44 truncate hover:text-foreground hover:underline"
-                            title={user.phone}
-                          >
-                            {user.phone}
-                          </a>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-5 w-5 p-0"
-                            aria-label={`Copy phone for ${user.email}`}
-                            onClick={async () => {
-                              try {
-                                await navigator.clipboard.writeText(user.phone ?? '');
-                                toast.success('Phone copied.');
-                              } catch {
-                                toast.error('Failed to copy.');
-                              }
-                            }}
-                          >
-                            <Copy className="h-3.5 w-3.5" />
-                          </Button>
-                        </div>
-                      ) : (
-                        <span className="text-muted-foreground/50">—</span>
-                      )}
-                    </div>
-                    {!canManage && user.id !== currentUserId && (
-                      <p className="w-fit rounded-sm bg-yellow-200/35 px-1.5 py-0.5 text-xs italic text-yellow-900/80 dark:bg-yellow-300/20 dark:text-yellow-100/85">
-                        No permission to manage this user.
-                      </p>
-                    )}
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="truncate text-sm font-semibold">
+                              {user.name?.trim() || 'No name set'}
+                            </span>
+                            <span className="rounded-full border border-border px-2 py-0.5 text-xs">
+                              {ROLE_LABELS[user.role]}
+                            </span>
+                            <span className="text-xs text-muted-foreground">
+                              • {user.ward || '—'}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                            <Mail className="h-3.5 w-3.5 shrink-0" />
+                            <div className="flex min-w-0 items-center gap-1.5">
+                              <a
+                                href={`mailto:${user.email}`}
+                                className="max-w-44 truncate text-muted-foreground hover:underline"
+                                title={user.email}
+                              >
+                                {user.email}
+                              </a>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-5 w-5 p-0"
+                                aria-label={`Copy email for ${user.email}`}
+                                onClick={async () => {
+                                  try {
+                                    await navigator.clipboard.writeText(user.email ?? '');
+                                    toast.success('Email copied.');
+                                  } catch {
+                                    toast.error('Failed to copy.');
+                                  }
+                                }}
+                              >
+                                <Copy className="h-3.5 w-3.5" />
+                              </Button>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                            <Phone className="h-3.5 w-3.5 shrink-0" />
+                            {user.phone ? (
+                              <div className="flex min-w-0 items-center gap-1.5">
+                                <a
+                                  href={`tel:${user.phone.replace(/\D/g, '')}`}
+                                  className="max-w-44 truncate hover:text-foreground hover:underline"
+                                  title={user.phone}
+                                >
+                                  {user.phone}
+                                </a>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-5 w-5 p-0"
+                                  aria-label={`Copy phone for ${user.email}`}
+                                  onClick={async () => {
+                                    try {
+                                      await navigator.clipboard.writeText(user.phone ?? '');
+                                      toast.success('Phone copied.');
+                                    } catch {
+                                      toast.error('Failed to copy.');
+                                    }
+                                  }}
+                                >
+                                  <Copy className="h-3.5 w-3.5" />
+                                </Button>
+                              </div>
+                            ) : (
+                              <span className="text-muted-foreground/50">—</span>
+                            )}
+                          </div>
+                          {!canManage && user.id !== currentUserId && (
+                            <p className="w-fit rounded-sm bg-yellow-200/35 px-1.5 py-0.5 text-xs italic text-yellow-900/80 dark:bg-yellow-300/20 dark:text-yellow-100/85">
+                              No permission to manage this user.
+                            </p>
+                          )}
                         </>
                       );
                     })()}
@@ -189,7 +191,8 @@ export function UsersTable({
                             <DropdownMenuItem
                               disabled={
                                 !canManageUser(currentUserRole, user.role) ||
-                                (currentUserRole === 'ward_manager' && user.ward !== currentUserWard)
+                                (currentUserRole === 'ward_manager' &&
+                                  user.ward !== currentUserWard)
                               }
                               onSelect={() => onOpenEditAction(user)}
                             >
@@ -201,7 +204,8 @@ export function UsersTable({
                               className="text-destructive focus:text-destructive"
                               disabled={
                                 !canManageUser(currentUserRole, user.role) ||
-                                (currentUserRole === 'ward_manager' && user.ward !== currentUserWard)
+                                (currentUserRole === 'ward_manager' &&
+                                  user.ward !== currentUserWard)
                               }
                               onSelect={() => onOpenDeleteAction(user)}
                             >

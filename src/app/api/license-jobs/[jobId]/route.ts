@@ -1,8 +1,8 @@
-import { NextResponse } from 'next/server';
-import { eq } from 'drizzle-orm';
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { kindooLicenseJobs } from '@/schema/schema';
+import { eq } from 'drizzle-orm';
+import { NextResponse } from 'next/server';
 
 function getWorkerPollIntervalMs() {
   const parsed = Number.parseInt(process.env.KINDOO_WORKER_INTERVAL_MS ?? '60000', 10);

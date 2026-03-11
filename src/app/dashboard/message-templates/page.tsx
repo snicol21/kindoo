@@ -1,12 +1,12 @@
+import { getMessageTemplates } from '@/actions/message-templates';
+import { MessageTemplatesEditor } from '@/components/MessageTemplatesEditor';
+import { PageContainer } from '@/components/PageContainer';
+import { Button } from '@/components/_ui/button';
+import { DEFAULT_MESSAGE_TEMPLATES } from '@/lib/message-templates';
+import { ArrowLeft } from 'lucide-react';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { ArrowLeft } from 'lucide-react';
-import { MessageTemplatesEditor } from '@/components/MessageTemplatesEditor';
-import { Button } from '@/components/_ui/button';
-import { DEFAULT_MESSAGE_TEMPLATES } from '@/lib/message-templates';
-import { getMessageTemplates } from '@/actions/message-templates';
-import { PageContainer } from '@/components/PageContainer';
 
 export const metadata: Metadata = {
   title: 'Message Templates',
