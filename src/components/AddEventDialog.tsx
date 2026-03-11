@@ -109,10 +109,10 @@ function SubmitButton() {
       {pending ? (
         <>
           <Loader2 className="h-4 w-4 animate-spin" />
-          Adding Event…
+          Adding event…
         </>
       ) : (
-        'Add Event'
+        'Add event'
       )}
     </Button>
   );
@@ -403,7 +403,7 @@ export function AddEventDialog({
         errors.ward = 'You can only create events for your assigned ward.';
       }
       if (!eventType || !EVENT_TYPES.includes(eventType)) {
-        errors.eventType = 'Please select an event type.';
+        errors.eventType = 'Please select a type.';
       }
       if (!name?.trim()) {
         errors.name = 'Name is required.';
@@ -650,7 +650,7 @@ export function AddEventDialog({
     <Dialog open={open} onOpenChange={(nextOpen) => !nextOpen && handleRequestClose()}>
       <DialogContent className="flex flex-col overflow-hidden sm:max-w-3xl">
         <DialogHeader>
-          <DialogTitle>Add New Event</DialogTitle>
+          <DialogTitle>Add new event</DialogTitle>
           <DialogDescription>
             Fill in the event details below. All fields marked with * are required.
           </DialogDescription>
@@ -1037,7 +1037,7 @@ export function AddEventDialog({
 
             <div className="space-y-1.5">
               <Label>
-                Event type <span className="text-destructive">*</span>
+                Type <span className="text-destructive">*</span>
               </Label>
               <div className="flex flex-nowrap gap-1 overflow-x-auto pb-1 sm:gap-2">
                 {EVENT_TYPES.map((eventType) => (
@@ -1142,7 +1142,7 @@ export function AddEventDialog({
             {/* Description */}
             <div className="space-y-1.5">
               <Label htmlFor="description">
-                Event Description <span className="text-destructive">*</span>
+                Description <span className="text-destructive">*</span>
               </Label>
               <Input
                 id="description"

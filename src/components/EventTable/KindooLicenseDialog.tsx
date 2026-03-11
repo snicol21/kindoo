@@ -643,7 +643,7 @@ export function KindooLicenseDialog({
         }}
       >
         <DialogHeader>
-          <DialogTitle>Kindoo License</DialogTitle>
+          <DialogTitle>Kindoo license</DialogTitle>
           <DialogDescription>Automated license request details for this event.</DialogDescription>
         </DialogHeader>
 

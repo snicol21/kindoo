@@ -12,7 +12,7 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 
 export const metadata: Metadata = {
-  title: 'User Admin',
+  title: 'User admin',
 };
 
 export default async function AdminUsersPage() {

@@ -37,7 +37,7 @@ export function DashboardEventsHeader({
           <div className="flex w-full sm:w-auto">
             <Button onClick={onAddEventAction} className="flex-1 gap-2 rounded-r-none sm:flex-none">
               <Plus className="h-4 w-4" />
-              Add Event
+              Add event
             </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

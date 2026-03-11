@@ -497,7 +497,7 @@ export function EditEventDialog({
           </div>
 
           <div className="space-y-1.5">
-            <Label>Event type</Label>
+            <Label>Type</Label>
             <div className="flex flex-nowrap gap-1 overflow-x-auto pb-1 sm:gap-2">
               {EVENT_TYPES.map((eventType) => (
                 <label

@@ -55,7 +55,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </Suspense>
             <main className="flex-1 min-h-[calc(100vh-4rem)]">{children}</main>
             <footer className="border-t bg-muted/20">
-              <div className="container mx-auto max-w-7xl px-4 py-4 text-xs leading-relaxed text-muted-foreground text-center sm:text-left">
+              <div className="container mx-auto max-w-7xl px-4 py-4 text-xs leading-relaxed text-muted-foreground text-center">
                 <p>
                   Independent local utility.{' '}
                   <span className="block sm:inline">

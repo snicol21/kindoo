@@ -4,7 +4,7 @@ import type { EventWithCreator } from '@/actions/events';
 import { Card, CardDescription, CardHeader } from '@/components/_ui/card';
 import type { UserRole } from '@/schema/schema';
 import { WARDS } from '@/schema/schema';
-import { ChevronLeft, ChevronRight, Pause, Play } from 'lucide-react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { DashboardCounts, DotCalendarDay } from './types';
@@ -25,11 +25,10 @@ type BreakdownMode = 'ward' | 'eventType' | 'creator';
 const BREAKDOWN_MODES: BreakdownMode[] = ['ward', 'eventType', 'creator'];
 
 const BREAKDOWN_LABELS: Record<BreakdownMode, string> = {
-  ward: 'By Ward',
-  eventType: 'By Event Type',
-  creator: 'By Creator',
+  ward: 'By ward',
+  eventType: 'By event type',
+  creator: 'By creator',
 };
-const AUTO_ROTATE_PAUSE_MS = 20_000;
 const STATS_CONTENT_HEIGHT_CLASS = 'h-[150px] lg:h-[125px]';
 
 function parsePreviewNumber(value: string | null, fallback: number, min: number, max: number) {
@@ -49,14 +48,12 @@ export function DashboardStats({
   weekdayLabels,
 }: DashboardStatsProps) {
   const searchParams = useSearchParams();
-  const [mobileView, setMobileView] = useState<MobileStatView>('event-totals');
+  const [mobileView, setMobileView] = useState<MobileStatView>('next-4-weeks');
   const availableBreakdownModes = useMemo<BreakdownMode[]>(() => {
     const isWardScopedUser = currentUserRole === 'ward_manager' || currentUserRole === 'ward_user';
     return isWardScopedUser ? ['eventType', 'creator'] : BREAKDOWN_MODES;
   }, [currentUserRole]);
   const [breakdownMode, setBreakdownMode] = useState<BreakdownMode>(availableBreakdownModes[0]);
-  const [autoRotateEnabled, setAutoRotateEnabled] = useState(false);
-  const [pauseAutoRotateUntil, setPauseAutoRotateUntil] = useState(0);
   const [calendarPage, setCalendarPage] = useState(0);
   const breakdownTouchStartX = useRef<number | null>(null);
   const breakdownTouchStartY = useRef<number | null>(null);
@@ -151,36 +148,9 @@ export function DashboardStats({
     return () => cancelAnimationFrame(frameId);
   }, [upcomingEvents]);
 
-  useEffect(() => {
-    const intervalId = window.setInterval(() => {
-      if (!autoRotateEnabled) {
-        return;
-      }
-
-      if (Date.now() < pauseAutoRotateUntil) {
-        return;
-      }
-
-      setBreakdownMode((prev) => {
-        const currentIndex = availableBreakdownModes.indexOf(prev);
-        const nextIndex = (currentIndex + 1) % availableBreakdownModes.length;
-        return availableBreakdownModes[nextIndex];
-      });
-    }, 7500);
-
-    return () => window.clearInterval(intervalId);
-  }, [autoRotateEnabled, pauseAutoRotateUntil, availableBreakdownModes]);
-
   const fullCalendarPages = Math.floor(dotCalendarDays.length / 28);
   const calendarPages = Math.max(1, fullCalendarPages);
   const maxCalendarPage = calendarPages - 1;
-  const pageStartIndex = calendarPage * 28;
-  const pageDays = dotCalendarDays.slice(pageStartIndex, pageStartIndex + 28);
-  const startLabel = pageDays[0] ? formatShortDate(pageDays[0].ymd) : '-';
-  const endLabel = pageDays[pageDays.length - 1]
-    ? formatShortDate(pageDays[pageDays.length - 1].ymd)
-    : '-';
-  const next4WeeksLabel = `Next 4 weeks (${startLabel} - ${endLabel})`;
   const canGoPrev = calendarPage > 0;
   const nextPageStartIndex = (calendarPage + 1) * 28;
   const canGoNext =
@@ -265,7 +235,6 @@ export function DashboardStats({
       if (!canCycleBreakdown) {
         return;
       }
-      setPauseAutoRotateUntil(Date.now() + AUTO_ROTATE_PAUSE_MS);
       setBreakdownMode((prev) => {
         const currentIndex = availableBreakdownModes.indexOf(prev);
         const safeIndex = currentIndex >= 0 ? currentIndex : 0;
@@ -397,8 +366,7 @@ export function DashboardStats({
           </div>
         </div>
 
-        <div className="grid grid-cols-[1fr_auto_1fr] items-center pb-0.5 lg:absolute lg:inset-x-0 lg:-bottom-4 lg:pb-0">
-          <span aria-hidden="true" />
+        <div className="flex items-center justify-center pb-0.5 lg:absolute lg:inset-x-0 lg:-bottom-1 lg:pb-0">
           <div className="flex items-center justify-center gap-1.5">
             {availableBreakdownModes.map((mode) => {
               const active = mode === breakdownMode;
@@ -409,33 +377,15 @@ export function DashboardStats({
                   aria-label={`Show ${BREAKDOWN_LABELS[mode]}`}
                   className={`h-2 w-2 rounded-full transition-all ${
                     active
-                      ? 'bg-emerald-500 scale-105'
+                      ? 'bg-gray-500 scale-105'
                       : 'bg-muted-foreground/35 hover:bg-muted-foreground/55'
                   }`}
                   onClick={() => {
                     setBreakdownMode(mode);
-                    setPauseAutoRotateUntil(Date.now() + AUTO_ROTATE_PAUSE_MS);
                   }}
                 />
               );
             })}
-          </div>
-          <div className="flex items-center justify-end">
-            <button
-              type="button"
-              className="inline-flex h-6 w-6 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
-              aria-label={
-                autoRotateEnabled ? 'Pause breakdown auto-rotate' : 'Play breakdown auto-rotate'
-              }
-              title={autoRotateEnabled ? 'Pause auto-rotate' : 'Play auto-rotate'}
-              onClick={() => setAutoRotateEnabled((prev) => !prev)}
-            >
-              {autoRotateEnabled ? (
-                <Pause className="h-3.5 w-3.5" />
-              ) : (
-                <Play className="h-3.5 w-3.5" />
-              )}
-            </button>
           </div>
         </div>
       </div>
@@ -532,13 +482,13 @@ export function DashboardStats({
               <button
                 type="button"
                 className={`flex-1 rounded px-2 py-1 text-xs font-medium transition-colors ${
-                  mobileView === 'by-ward'
+                  mobileView === 'next-4-weeks'
                     ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300'
                     : 'text-muted-foreground hover:text-foreground'
                 }`}
-                onClick={() => setMobileView('by-ward')}
+                onClick={() => setMobileView('next-4-weeks')}
               >
-                {BREAKDOWN_LABELS[breakdownMode]}
+                Next 4 Weeks
               </button>
               <button
                 type="button"
@@ -549,18 +499,18 @@ export function DashboardStats({
                 }`}
                 onClick={() => setMobileView('event-totals')}
               >
-                Event Totals
+                Events
               </button>
               <button
                 type="button"
                 className={`flex-1 rounded px-2 py-1 text-xs font-medium transition-colors ${
-                  mobileView === 'next-4-weeks'
+                  mobileView === 'by-ward'
                     ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300'
                     : 'text-muted-foreground hover:text-foreground'
                 }`}
-                onClick={() => setMobileView('next-4-weeks')}
+                onClick={() => setMobileView('by-ward')}
               >
-                Next 4 Weeks
+                {BREAKDOWN_LABELS[breakdownMode]}
               </button>
             </div>
             <div className="border-t border-border/60" />
@@ -579,13 +529,13 @@ export function DashboardStats({
 
       <div className="hidden grid-cols-1 gap-4 lg:grid lg:grid-cols-3">
         <Card className="overflow-hidden">
-          <CardHeader className="flex h-full min-h-0 flex-col pt-3 pb-1">
+          <CardHeader className="relative flex h-full min-h-0 flex-col pt-3 pb-1">
             <CardDescription className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground/80">
-              {BREAKDOWN_LABELS[breakdownMode]}
+              Next 4 Weeks
             </CardDescription>
             <div className="mt-2 border-t border-border/60" />
-            <div className={`${STATS_CONTENT_HEIGHT_CLASS} flex min-h-0`}>
-              {renderBreakdownCard()}
+            <div className={`${STATS_CONTENT_HEIGHT_CLASS} flex items-center`}>
+              {renderNext4Weeks()}
             </div>
           </CardHeader>
         </Card>
@@ -603,13 +553,13 @@ export function DashboardStats({
         </Card>
 
         <Card className="overflow-hidden">
-          <CardHeader className="flex h-full min-h-0 flex-col py-3">
+          <CardHeader className="flex h-full min-h-0 flex-col pt-3 pb-1">
             <CardDescription className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground/80">
-              {next4WeeksLabel}
+              {BREAKDOWN_LABELS[breakdownMode]}
             </CardDescription>
             <div className="mt-2 border-t border-border/60" />
-            <div className={`${STATS_CONTENT_HEIGHT_CLASS} mt-2 flex items-center`}>
-              {renderNext4Weeks()}
+            <div className={`${STATS_CONTENT_HEIGHT_CLASS} flex min-h-0`}>
+              {renderBreakdownCard()}
             </div>
           </CardHeader>
         </Card>

@@ -10,7 +10,7 @@ import { redirect } from 'next/navigation';
 import { connection } from 'next/server';
 
 export const metadata: Metadata = {
-  title: 'Message Templates',
+  title: 'Message templates',
 };
 
 export default async function MessageTemplatesPage() {

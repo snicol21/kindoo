@@ -4,7 +4,7 @@ import { AlertTriangle } from 'lucide-react';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 
-export const metadata: Metadata = { title: 'Auth Error' };
+export const metadata: Metadata = { title: 'Auth error' };
 
 export default function AuthErrorPage() {
   return (
@@ -21,7 +21,7 @@ export default function AuthErrorPage() {
             Something went wrong during sign in. Please try again.
           </p>
           <Button asChild>
-            <Link href="/auth/signin">Back to Sign In</Link>
+            <Link href="/auth/signin">Back to sign in</Link>
           </Button>
         </CardContent>
       </Card>

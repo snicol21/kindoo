@@ -44,7 +44,7 @@ function MessageBubbleSection({ label, message, onCopyAction }: MessageBubbleSec
           <div className="text-foreground/90">{message}</div>
         </div>
       </div>
-      <Button variant="secondary" size="sm" className="ml-[22px] self-start" onClick={onCopyAction}>
+      <Button variant="secondary" size="sm" className="ml-5.5 self-start" onClick={onCopyAction}>
         <Copy className="mr-2 h-4 w-4" />
         Copy Message
       </Button>

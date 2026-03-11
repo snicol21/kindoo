@@ -1143,7 +1143,7 @@ export function EventTable({
               )}
               {!isCompactView && (
                 <>
-                  <TableHead className="w-60">Contact Info</TableHead>
+                  <TableHead className="w-60">Contact info</TableHead>
                   <TableHead className="w-35">Created</TableHead>
                   <TableHead className="w-30">Actions</TableHead>
                 </>
@@ -1721,6 +1721,7 @@ export function EventTable({
                             <Button
                               variant="ghost"
                               size="icon"
+                              className="text-muted-foreground hover:text-destructive focus-visible:text-destructive"
                               aria-label={`Delete ${event.contactName}`}
                               disabled={isOptimistic || deletingId === event.id || !onDelete}
                               onClick={() => setPendingDeleteEvent(event)}
@@ -1728,7 +1729,7 @@ export function EventTable({
                               {deletingId === event.id ? (
                                 <Loader2 className="h-4 w-4 animate-spin" />
                               ) : (
-                                <Trash2 className="h-4 w-4 text-destructive" />
+                                <Trash2 className="h-4 w-4" />
                               )}
                             </Button>
                           </TooltipTrigger>

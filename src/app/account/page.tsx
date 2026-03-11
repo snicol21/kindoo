@@ -21,7 +21,7 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 
 export const metadata: Metadata = {
-  title: 'Account Settings',
+  title: 'Account settings',
 };
 
 interface AccountPageProps {

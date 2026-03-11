@@ -216,7 +216,7 @@ export function DashboardClient({
         />
 
         <DashboardEventsHeader
-          title={`${activeBuildingName} Events`}
+          title={`${activeBuildingName} events`}
           subtitle={activeBuildingSubtitle}
           onAddEventAction={() => openDialogFor(tabToBuilding(activeTab))}
           onImportCsvAction={() => setImportOpen(true)}

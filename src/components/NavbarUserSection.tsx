@@ -82,7 +82,7 @@ export async function NavbarUserSection() {
               <DropdownMenuItem asChild>
                 <Link href="/account" className="gap-2 cursor-pointer">
                   <Settings className="h-4 w-4" />
-                  Account Settings
+                  Account settings
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
@@ -100,7 +100,7 @@ export async function NavbarUserSection() {
                 <DropdownMenuItem asChild>
                   <Link href="/admin/users" className="gap-2 cursor-pointer">
                     <Shield className="h-4 w-4" />
-                    User Admin
+                    User admin
                   </Link>
                 </DropdownMenuItem>
               )}
@@ -117,7 +117,7 @@ export async function NavbarUserSection() {
                     className="flex w-full items-center gap-2 text-destructive focus:text-destructive"
                   >
                     <LogOut className="h-4 w-4" />
-                    Sign Out
+                    Sign out
                   </button>
                 </form>
               </DropdownMenuItem>
@@ -128,7 +128,7 @@ export async function NavbarUserSection() {
         <>
           <ThemeToggle />
           <Button asChild size="sm">
-            <Link href="/auth/signin">Sign In</Link>
+            <Link href="/auth/signin">Sign in</Link>
           </Button>
         </>
       )}

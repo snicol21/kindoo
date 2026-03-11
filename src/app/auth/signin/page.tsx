@@ -9,7 +9,7 @@ import { redirect } from 'next/navigation';
 import { connection } from 'next/server';
 
 export const metadata: Metadata = {
-  title: 'Sign In',
+  title: 'Sign in',
 };
 
 interface SignInPageProps {

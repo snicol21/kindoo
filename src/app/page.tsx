@@ -40,17 +40,17 @@ export default async function HomePage() {
           {[
             {
               icon: Building2,
-              title: 'Two Buildings',
+              title: 'Two buildings',
               desc: 'Separate event lists for Stake Center and Maples Building.',
             },
             {
               icon: Shield,
-              title: 'Private & Secure',
+              title: 'Private & secure',
               desc: 'Authentication required. Only your events are visible.',
             },
             {
               icon: CalendarDays,
-              title: 'Easy Tracking',
+              title: 'Easy tracking',
               desc: 'Add events with contact info and descriptions instantly.',
             },
           ].map(({ icon: Icon, title, desc }) => (
@@ -69,7 +69,7 @@ export default async function HomePage() {
         {/* CTA */}
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
           <Button asChild size="lg">
-            <Link href="/auth/signin">Sign In to Get Started</Link>
+            <Link href="/auth/signin">Sign in to get started</Link>
           </Button>
         </div>
 

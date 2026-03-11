@@ -239,6 +239,7 @@ export function UsersTable({
                               <Button
                                 size="icon"
                                 variant="ghost"
+                                className="text-muted-foreground hover:text-destructive focus-visible:text-destructive"
                                 aria-label={`Delete ${user.email}`}
                                 disabled={
                                   !canManageUser(currentUserRole, user.role) ||
@@ -247,7 +248,7 @@ export function UsersTable({
                                 }
                                 onClick={() => onOpenDeleteAction(user)}
                               >
-                                <Trash2 className="h-4 w-4 text-destructive" />
+                                <Trash2 className="h-4 w-4" />
                               </Button>
                             </TooltipTrigger>
                             <TooltipContent>Delete user</TooltipContent>

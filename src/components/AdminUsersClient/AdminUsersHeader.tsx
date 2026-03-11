@@ -18,7 +18,7 @@ export function AdminUsersHeader({ onCreateUserAction }: AdminUsersHeaderProps) 
       <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
         <Button onClick={onCreateUserAction} className="gap-2">
           <Plus className="h-4 w-4" />
-          Create User
+          Create user
         </Button>
       </div>
     </CardHeader>
