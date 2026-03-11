@@ -176,3 +176,23 @@ html {
   /* Optional: stable both-edges if you have centered content and want symmetric gutters */
   /* scrollbar-gutter: stable both-edges; */
 }
+
+/* Improve perceived responsiveness for touch interactions on mobile browsers. */
+button,
+[role='button'],
+a,
+input[type='button'],
+input[type='submit'],
+input[type='reset'],
+[data-radix-collection-item] {
+  touch-action: manipulation;
+}
+
+@media (hover: none) {
+  button,
+  [role='button'],
+  a,
+  [data-radix-collection-item] {
+    transition-duration: 0ms !important;
+  }
+}
