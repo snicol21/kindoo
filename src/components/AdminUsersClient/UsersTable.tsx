@@ -72,8 +72,8 @@ export function UsersTable({
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-80">User</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
+              <TableHead>User</TableHead>
+              <TableHead className="text-right md:w-px md:whitespace-nowrap">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -87,14 +87,14 @@ export function UsersTable({
                         (currentUserRole !== 'ward_manager' || user.ward === currentUserWard);
                       return (
                         <>
-                          <div className="flex flex-wrap items-center gap-2">
-                            <span className="truncate text-sm font-semibold">
+                          <div className="flex min-w-0 flex-wrap items-center gap-2 whitespace-normal md:flex-nowrap md:whitespace-nowrap">
+                            <span className="min-w-0 truncate text-sm font-semibold">
                               {user.name?.trim() || 'No name set'}
                             </span>
-                            <span className="rounded-full border border-border px-2 py-0.5 text-xs">
+                            <span className="inline-flex h-5.5 w-fit items-center gap-1.5 rounded-full px-2 text-[11px] leading-none font-semibold transition-colors hover:opacity-90 border border-blue-200 bg-blue-100/80 dark:border-blue-700/60 dark:bg-blue-900/30">
                               {ROLE_LABELS[user.role]}
                             </span>
-                            <span className="text-xs text-muted-foreground">
+                            <span className="hidden text-xs text-muted-foreground md:inline">
                               • {user.ward || '—'}
                             </span>
                           </div>
@@ -168,7 +168,7 @@ export function UsersTable({
                     })()}
                   </div>
                 </TableCell>
-                <TableCell className="text-right">
+                <TableCell className="text-right md:w-px md:whitespace-nowrap">
                   {user.id === currentUserId ? (
                     <span className="inline-flex rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
                       You
