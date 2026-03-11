@@ -7,12 +7,14 @@ import { ArrowLeft } from 'lucide-react';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
+import { connection } from 'next/server';
 
 export const metadata: Metadata = {
   title: 'Message Templates',
 };
 
 export default async function MessageTemplatesPage() {
+  await connection();
   const result = await getMessageTemplates();
   if (!result.success && result.error === 'Not authenticated.') {
     redirect('/auth/signin');
