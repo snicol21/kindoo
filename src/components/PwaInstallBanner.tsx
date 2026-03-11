@@ -1,7 +1,8 @@
 'use client';
 
 import { Button } from '@/components/_ui/button';
-import { useEffect, useMemo, useState } from 'react';
+import { Lightbulb } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
 type BannerMode = 'none' | 'prompt' | 'ios';
 
@@ -67,16 +68,6 @@ export function PwaInstallBanner() {
     };
   }, []);
 
-  const description = useMemo(() => {
-    if (mode === 'ios') {
-      return 'Install DigitalFob from Safari: tap Share, then Add to Home Screen.';
-    }
-    if (mode === 'prompt') {
-      return 'Install DigitalFob for faster launch and an app-like experience.';
-    }
-    return '';
-  }, [mode]);
-
   if (mode === 'none') {
     return null;
   }
@@ -103,10 +94,32 @@ export function PwaInstallBanner() {
   };
 
   return (
-    <div className="fixed inset-x-3 bottom-3 z-60 md:inset-x-auto md:right-4 md:bottom-4 md:w-100">
+    <div className="fixed inset-x-3 bottom-3 z-60 md:inset-x-auto md:right-4 md:bottom-4 md:w-[20rem]">
       <div className="rounded-xl border border-border bg-background/95 p-3 shadow-lg backdrop-blur supports-backdrop-filter:bg-background/80">
-        <p className="text-sm font-medium">Install DigitalFob</p>
-        <p className="mt-1 text-xs text-muted-foreground">{description}</p>
+        <div className="flex items-center gap-2">
+          <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-yellow-100 text-yellow-700 dark:bg-yellow-500/20 dark:text-yellow-300">
+            <Lightbulb className="h-3.5 w-3.5" />
+          </span>
+          <p className="text-sm font-medium">Install DigitalFob</p>
+        </div>
+
+        {mode === 'ios' && (
+          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+            Add to Home Screen on iPhone:
+            <br />
+            tap <span className="font-medium text-foreground">Share</span>, then{' '}
+            <span className="font-medium text-foreground">Add to Home Screen</span>.
+          </p>
+        )}
+
+        {mode === 'prompt' && (
+          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+            Install this app for faster access,
+            <br />
+            right from your home screen.
+          </p>
+        )}
+
         <div className="mt-3 flex items-center justify-end gap-2">
           <Button size="sm" variant="ghost" onClick={dismiss}>
             Not now
