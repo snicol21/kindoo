@@ -1,7 +1,8 @@
 import 'dotenv/config';
-import { hostname } from 'node:os';
 import { randomUUID } from 'node:crypto';
+import { hostname } from 'node:os';
 import {
+  consumeAutomationRunLog,
   createAutomationRuntime,
   disposeAutomationRuntime,
   runAutomation,
@@ -59,13 +60,14 @@ async function requestJson(path, method = 'POST', body = undefined) {
   return payload;
 }
 
-async function markJobFailed(jobId, details) {
+async function markJobFailed(jobId, details, runLog = '') {
   await requestJson(`/api/license-jobs/${jobId}/fail`, 'POST', {
     details: String(details).slice(0, 4000),
+    runLog: String(runLog).slice(0, 120000),
   });
 }
 
-async function markJobCompleted(jobId, result) {
+async function markJobCompleted(jobId, result, runLog = '') {
   const completionType =
     typeof result?.completionType === 'string'
       ? result.completionType
@@ -80,6 +82,7 @@ async function markJobCompleted(jobId, result) {
     statusDetails,
     durationMs: result?.durationMs,
     sessionReused: result?.sessionReused,
+    runLog: String(runLog).slice(0, 120000),
   });
 }
 
@@ -131,7 +134,7 @@ async function runOneCycle() {
 
       if (validationError) {
         console.error(`[worker:${WORKER_ID}] job ${job.id} invalid payload: ${validationError}`);
-        await markJobFailed(job.id, validationError);
+        await markJobFailed(job.id, validationError, consumeAutomationRunLog(requestId));
         continue;
       }
 
@@ -140,7 +143,7 @@ async function runOneCycle() {
           sharedRuntime = await createAutomationRuntime(requestId);
         }
         const result = await runAutomation(payload, requestId, sharedRuntime);
-        await markJobCompleted(job.id, result);
+        await markJobCompleted(job.id, result, consumeAutomationRunLog(requestId));
         console.log(`[worker:${WORKER_ID}] job ${job.id} completed`, {
           completionType: result?.completionType ?? 'temporary-license-created',
           sessionReused: result?.sessionReused,
@@ -162,7 +165,7 @@ async function runOneCycle() {
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Automation run failed.';
         console.error(`[worker:${WORKER_ID}] job ${job.id} failed: ${message}`);
-        await markJobFailed(job.id, message);
+        await markJobFailed(job.id, message, consumeAutomationRunLog(requestId));
         cycleStats.failed += 1;
 
         // If the page/context got into a bad state, rebuild runtime for remaining jobs.

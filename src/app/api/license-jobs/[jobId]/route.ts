@@ -32,6 +32,7 @@ export async function GET(_request: Request, context: { params: Promise<{ jobId:
       lastError: kindooLicenseJobs.lastError,
       completionType: kindooLicenseJobs.completionType,
       statusDetails: kindooLicenseJobs.statusDetails,
+      runLog: kindooLicenseJobs.runLog,
       durationMs: kindooLicenseJobs.durationMs,
       sessionReused: kindooLicenseJobs.sessionReused,
       claimedAt: kindooLicenseJobs.claimedAt,

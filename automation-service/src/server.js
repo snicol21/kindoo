@@ -1,6 +1,8 @@
 import 'dotenv/config';
 import express from 'express';
 import { randomUUID } from 'node:crypto';
+import { mkdir, writeFile } from 'node:fs/promises';
+import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { chromium } from 'playwright';
 
@@ -14,6 +16,32 @@ const TIMEOUT_MS = Number.parseInt(process.env.PLAYWRIGHT_TIMEOUT_MS ?? '30000',
 const RETRY_COUNT = Number.parseInt(process.env.PLAYWRIGHT_RETRY_COUNT ?? '3', 10);
 const RETRY_DELAY_MS = Number.parseInt(process.env.PLAYWRIGHT_RETRY_DELAY_MS ?? '300', 10);
 const RUN_TIMEOUT_MS = Number.parseInt(process.env.PLAYWRIGHT_RUN_TIMEOUT_MS ?? '120000', 10);
+const MAX_LOG_LINES_PER_RUN = 1500;
+
+const automationRunLogs = new Map();
+
+function serializeLogExtra(extra) {
+  try {
+    return JSON.stringify(extra);
+  } catch {
+    return '[unserializable-extra]';
+  }
+}
+
+function appendAutomationRunLog(requestId, line) {
+  const existing = automationRunLogs.get(requestId) ?? [];
+  existing.push(line);
+  if (existing.length > MAX_LOG_LINES_PER_RUN) {
+    existing.splice(0, existing.length - MAX_LOG_LINES_PER_RUN);
+  }
+  automationRunLogs.set(requestId, existing);
+}
+
+export function consumeAutomationRunLog(requestId) {
+  const lines = automationRunLogs.get(requestId) ?? [];
+  automationRunLogs.delete(requestId);
+  return lines.join('\n');
+}
 
 function requireEnv(name) {
   const value = process.env[name];
@@ -37,20 +65,29 @@ function parseTimeParts(timeString) {
   return { hour12, minute, period };
 }
 
-async function clickOptional(locator) {
+async function clickOptional(locator, timeoutMs = 1500) {
   try {
-    await locator.click();
+    const target = locator.first();
+    await target.waitFor({ state: 'visible', timeout: timeoutMs });
+    await target.click({ timeout: timeoutMs });
+    return true;
   } catch {
     // Optional step; ignore if missing.
+    return false;
   }
 }
 
 function logAutomation(requestId, message, extra = undefined) {
+  const timestamp = new Date().toISOString();
+  const prefix = `[${timestamp}] [automation:${requestId}] ${message}`;
+
   if (extra) {
     console.log(`[automation:${requestId}] ${message}`, extra);
+    appendAutomationRunLog(requestId, `${prefix} ${serializeLogExtra(extra)}`);
     return;
   }
   console.log(`[automation:${requestId}] ${message}`);
+  appendAutomationRunLog(requestId, prefix);
 }
 
 async function runStep(requestId, label, action) {
@@ -168,7 +205,7 @@ async function fillDateTimeRow(page, labelText, dateValue, timeValue) {
   });
 }
 
-async function selectAccessRule(page, kindooAccessRule) {
+async function selectAccessRule(page, kindooAccessRule, requestId) {
   const rule = (kindooAccessRule ?? '').trim();
   if (!rule) {
     return;
@@ -179,10 +216,119 @@ async function selectAccessRule(page, kindooAccessRule) {
     throw new Error(`Invalid KINDOO_ACCESS_RULE: ${rule}`);
   }
 
-  await clickOptional(page.getByText('Access rule', { exact: true }));
-  await clickOptional(page.getByText('Next'));
-  await clickOptional(page.getByText(rule));
-  await clickOptional(page.getByText('SAVE').nth(1));
+  const rulePattern =
+    rule === 'STAKE CENTER - LIMITED'
+      ? /stake\s*center\s*-\s*limited/i
+      : /maples\s*building\s*-\s*limited/i;
+
+  // The flow is a little dynamic in Kindoo, so we allow a couple of navigation
+  // paths into the access-rule screen, but we require the actual rule + save.
+  const ruleOption = page.getByText(rulePattern).first();
+
+  const canSeeRuleNow = await ruleOption
+    .waitFor({ state: 'visible', timeout: 1500 })
+    .then(() => true)
+    .catch(() => false);
+
+  if (!canSeeRuleNow) {
+    const clickedAccessRuleTab = await clickOptional(
+      page.getByText('Access rule', { exact: true }),
+      3000
+    );
+    const clickedNext =
+      (await clickOptional(page.getByRole('button', { name: /^Next$/i }), 3000)) ||
+      (await clickOptional(page.getByText('Next', { exact: true }), 3000));
+
+    logAutomation(requestId, 'access rule navigation attempted', {
+      clickedAccessRuleTab,
+      clickedNext,
+    });
+  }
+
+  let clickedRule = false;
+  for (let attempt = 1; attempt <= 3 && !clickedRule; attempt += 1) {
+    const clickedRuleRow = await clickFirstVisible(
+      [
+        page.locator('div[tabindex="0"]', { hasText: rulePattern }),
+        page.locator('div[role="button"]', { hasText: rulePattern }),
+      ],
+      3000
+    );
+
+    if (clickedRuleRow) {
+      clickedRule = true;
+      break;
+    }
+
+    const ruleMatches = page.getByText(rulePattern);
+    const matchCount = await ruleMatches.count();
+    for (let i = 0; i < Math.min(matchCount, 40); i += 1) {
+      const match = ruleMatches.nth(i);
+      const visible = await match.isVisible().catch(() => false);
+      if (!visible) {
+        continue;
+      }
+
+      const selectableRow = match.locator('xpath=ancestor::div[@tabindex="0"][1]').first();
+      const rowVisible = await selectableRow.isVisible().catch(() => false);
+
+      if (rowVisible) {
+        await selectableRow.click({ timeout: 5000, force: true });
+      } else {
+        await match.click({ timeout: 5000, force: true });
+      }
+
+      clickedRule = true;
+      break;
+    }
+
+    if (!clickedRule) {
+      await page.mouse.wheel(0, 800).catch(() => undefined);
+      await page.waitForTimeout(350);
+    }
+  }
+
+  if (!clickedRule) {
+    const ruleTotalMatches = await page
+      .getByText(rulePattern)
+      .count()
+      .catch(() => 0);
+    await captureDebugArtifacts(page, requestId, 'access-rule-not-visible');
+    throw new Error(
+      `Access rule option not visible for selection: ${rule} (matches=${ruleTotalMatches}).`
+    );
+  }
+
+  let clickedSave = false;
+  const saveCandidates = [
+    page.getByRole('button', { name: /^SAVE$/i }),
+    page.getByText('SAVE', { exact: true }),
+  ];
+
+  for (const candidate of saveCandidates) {
+    const count = await candidate.count().catch(() => 0);
+    for (let i = 0; i < count; i += 1) {
+      const control = candidate.nth(i);
+      const visible = await control.isVisible().catch(() => false);
+      if (!visible) {
+        continue;
+      }
+
+      await control.click({ timeout: 5000, force: true });
+      clickedSave = true;
+      break;
+    }
+
+    if (clickedSave) {
+      break;
+    }
+  }
+
+  if (!clickedSave) {
+    throw new Error('Access rule SAVE button not visible after selecting rule.');
+  }
+
+  logAutomation(requestId, 'access rule saved', { rule });
 }
 
 async function checkAlreadyInvited(page, requestId, email) {
@@ -203,6 +349,82 @@ async function checkAlreadyInvited(page, requestId, email) {
   await page.getByText('Ok', { exact: true }).click();
   logAutomation(requestId, 'user already invited', { email });
   return true;
+}
+
+async function waitForPostLoginReady(page, requestId, timeoutMs = TIMEOUT_MS) {
+  const startedAt = Date.now();
+  let lastUrl = page.url();
+  let nonLoginIterations = 0;
+
+  while (Date.now() - startedAt < timeoutMs) {
+    await page.waitForLoadState('domcontentloaded', { timeout: 3000 }).catch(() => undefined);
+
+    const currentUrl = page.url();
+    if (currentUrl && currentUrl !== lastUrl) {
+      logAutomation(requestId, 'post-login redirect observed', { from: lastUrl, to: currentUrl });
+      lastUrl = currentUrl;
+    }
+
+    const loginVisible = await isLoginScreenVisible(page);
+    if (!loginVisible) {
+      nonLoginIterations += 1;
+      if (await isUsersMenuVisible(page)) {
+        return;
+      }
+      if (await isAddUserFormVisible(page)) {
+        return;
+      }
+      // If login is gone for a few checks, proceed and force a navigation to home.
+      if (nonLoginIterations >= 3) {
+        return;
+      }
+    } else {
+      nonLoginIterations = 0;
+    }
+
+    await page.waitForTimeout(250);
+  }
+
+  throw new Error('Login did not reach an authenticated page before timeout.');
+}
+
+async function captureDebugArtifacts(page, requestId, label) {
+  try {
+    const safeLabel = String(label).replace(/[^a-zA-Z0-9-_]/g, '-');
+    const debugDir = join(process.cwd(), '.playwright', 'debug');
+    await mkdir(debugDir, { recursive: true });
+
+    const screenshotPath = join(debugDir, `${requestId}-${safeLabel}.png`);
+    const htmlPath = join(debugDir, `${requestId}-${safeLabel}.html`);
+    const metaPath = join(debugDir, `${requestId}-${safeLabel}.json`);
+
+    await page.screenshot({ path: screenshotPath, fullPage: true }).catch(() => undefined);
+    const html = await page.content().catch(() => '');
+    await writeFile(htmlPath, html, 'utf8').catch(() => undefined);
+    await writeFile(
+      metaPath,
+      JSON.stringify(
+        {
+          requestId,
+          label,
+          capturedAt: new Date().toISOString(),
+          url: page.url(),
+          title: await page.title().catch(() => null),
+        },
+        null,
+        2
+      ),
+      'utf8'
+    ).catch(() => undefined);
+
+    logAutomation(requestId, 'debug artifacts captured', {
+      screenshotPath,
+      htmlPath,
+      metaPath,
+    });
+  } catch {
+    // Best effort only.
+  }
 }
 
 async function performLogin({
@@ -258,8 +480,35 @@ async function performLogin({
     await page.getByRole('button', { name: 'Verify' }).click();
   });
 
-  await page.waitForURL(/web\.kindoo\.tech/i, { timeout: TIMEOUT_MS });
-  await page.waitForLoadState('domcontentloaded');
+  await runStep(requestId, 'login-complete', async () => {
+    try {
+      await page.waitForURL(/web\.kindoo\.tech/i, {
+        timeout: Math.min(TIMEOUT_MS, 20000),
+        waitUntil: 'domcontentloaded',
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown waitForURL error.';
+      const firstLine = message.split('\n')[0]?.trim() || message;
+      const isExpectedRedirectChurn =
+        /ERR_ABORTED|frame was detached|Execution context was destroyed/i.test(message);
+
+      if (isExpectedRedirectChurn) {
+        logAutomation(requestId, 'waitForURL interrupted by OAuth redirect churn; using fallback');
+      } else {
+        logAutomation(requestId, 'waitForURL after Verify did not settle; falling back', {
+          message: firstLine,
+        });
+      }
+    }
+
+    await waitForPostLoginReady(page, requestId, TIMEOUT_MS);
+
+    // Land on a deterministic entry page before continuing navigation.
+    await page.goto(kindooUrl, { waitUntil: 'domcontentloaded' });
+    await page.waitForLoadState('networkidle', { timeout: 5000 }).catch(() => undefined);
+    logAutomation(requestId, 'post-login home navigation complete', { url: page.url() });
+  });
+
   logAutomation(requestId, 'login flow completed');
 
   if (!page.url().startsWith(kindooUrl)) {
@@ -304,33 +553,226 @@ async function isAddUserFormVisible(page) {
   return false;
 }
 
-async function openAddUserFlow(page, requestId) {
-  if (await isAddUserFormVisible(page)) {
+async function isUsersMenuVisible(page) {
+  const candidates = [
+    page.getByText('Users', { exact: true }).first(),
+    page.getByRole('button', { name: /^Users$/i }).first(),
+    page.getByRole('link', { name: /^Users$/i }).first(),
+  ];
+
+  for (const candidate of candidates) {
+    try {
+      await candidate.waitFor({ state: 'visible', timeout: 1200 });
+      return true;
+    } catch {
+      // Try next candidate.
+    }
+  }
+
+  return false;
+}
+
+async function waitForKindooShell(page, timeoutMs = 15000) {
+  const startedAt = Date.now();
+
+  while (Date.now() - startedAt < timeoutMs) {
+    if (await isAddUserFormVisible(page)) {
+      return true;
+    }
+
+    if (await isUsersMenuVisible(page)) {
+      return true;
+    }
+
+    await page.waitForTimeout(250);
+  }
+
+  return false;
+}
+
+async function enterSiteFromMySites(page, requestId) {
+  const mySitesHeader = page.getByText('My sites', { exact: true }).first();
+  const onMySites = await mySitesHeader
+    .waitFor({ state: 'visible', timeout: 2000 })
+    .then(() => true)
+    .catch(() => false);
+
+  if (!onMySites) {
+    return false;
+  }
+
+  logAutomation(requestId, 'detected My sites page; entering site card');
+
+  const clickableSiteCardCandidates = [
+    // Preferred: target the known site name and click its clickable card container.
+    page
+      .getByText('West Jordan Utah Maples Stake', { exact: true })
+      .first()
+      .locator('xpath=ancestor::div[@tabindex="0"][1]'),
+    page
+      .getByText(/West Jordan Utah Maples Stake/i)
+      .first()
+      .locator('xpath=ancestor::div[@tabindex="0"][1]'),
+    // Fallback: any visible site card with manager text.
+    page.locator('div[tabindex="0"]', { hasText: 'You are a manager of this site' }).first(),
+    // Last fallback: first visible site card.
+    page.locator('div[tabindex="0"]').first(),
+  ];
+
+  for (const candidate of clickableSiteCardCandidates) {
+    try {
+      await candidate.waitFor({ state: 'visible', timeout: 2500 });
+      await candidate.click({ timeout: 5000, force: true });
+      await page.waitForTimeout(700);
+
+      if (await isUsersMenuVisible(page)) {
+        logAutomation(requestId, 'entered site card and found Users menu');
+        return true;
+      }
+    } catch {
+      // Try next candidate.
+    }
+  }
+
+  return false;
+}
+
+async function waitForAddUserForm(page, timeoutMs = 12000) {
+  const startedAt = Date.now();
+  while (Date.now() - startedAt < timeoutMs) {
+    if (await isAddUserFormVisible(page)) {
+      return true;
+    }
+    await page.waitForTimeout(250);
+  }
+
+  return false;
+}
+
+async function clickFirstVisible(candidates, timeoutMs = 4000) {
+  for (const candidate of candidates) {
+    try {
+      const target = candidate.first();
+      await target.waitFor({ state: 'visible', timeout: timeoutMs });
+      await target.click({ timeout: timeoutMs });
+      return true;
+    } catch {
+      // Try next candidate.
+    }
+  }
+
+  return false;
+}
+
+async function openAddUserFlow(page, requestId, kindooUrl) {
+  let shellReady = await waitForKindooShell(page, 12000);
+  if (!shellReady) {
+    const enteredSite = await enterSiteFromMySites(page, requestId);
+    if (enteredSite) {
+      shellReady = await waitForKindooShell(page, 12000);
+    }
+  }
+
+  if (!shellReady) {
+    logAutomation(requestId, 'kindoo shell not ready after login; forcing home navigation');
+    await page.goto(kindooUrl, { waitUntil: 'domcontentloaded' });
+
+    if (!(await waitForKindooShell(page, 4000))) {
+      const enteredSite = await enterSiteFromMySites(page, requestId);
+      if (enteredSite) {
+        shellReady = await waitForKindooShell(page, Math.min(TIMEOUT_MS, 15000));
+      }
+    }
+
+    if (!shellReady) {
+      shellReady = await waitForKindooShell(page, Math.min(TIMEOUT_MS, 15000));
+    }
+  }
+
+  if (!shellReady) {
+    await captureDebugArtifacts(page, requestId, 'kindoo-shell-not-ready');
+    throw new Error('Kindoo shell did not become ready (Users/Add User not visible).');
+  }
+
+  if (await waitForAddUserForm(page, 2000)) {
     logAutomation(requestId, 'add user form already visible');
     return;
   }
 
-  logAutomation(requestId, 'opening stake/account selector');
-  const stakeSelector = page.getByText('West Jordan Utah Maples Stake', { exact: true });
-  await stakeSelector.waitFor({ state: 'visible', timeout: 1500 });
-  await stakeSelector.click();
+  const usersAlreadyVisible = await isUsersMenuVisible(page);
+  if (!usersAlreadyVisible) {
+    logAutomation(requestId, 'opening stake/account selector');
+    const clickedAccountSelector = await clickFirstVisible(
+      [
+        page.getByText('West Jordan Utah Maples Stake', { exact: true }),
+        page.getByText(/West Jordan Utah Maples Stake/i),
+        page.getByRole('button', { name: /maples stake|west jordan|stake/i }),
+        page.getByText(/stake/i),
+      ],
+      10000
+    );
+    logAutomation(requestId, 'account selector click attempted', { clickedAccountSelector });
+    await page.waitForTimeout(400);
+  }
 
   logAutomation(requestId, 'opening users menu');
-  const usersMenu = page.getByText('Users', { exact: true });
-  await usersMenu.waitFor({ state: 'visible', timeout: 1500 });
-  await usersMenu.click();
+  let clickedUsersMenu = await clickFirstVisible(
+    [
+      page.getByText('Users', { exact: true }),
+      page.getByRole('button', { name: /^Users$/i }),
+      page.getByRole('link', { name: /^Users$/i }),
+      page.getByText(/users/i),
+    ],
+    10000
+  );
+
+  if (!clickedUsersMenu) {
+    logAutomation(requestId, 'users menu not found; reloading kindoo home and retrying');
+    await page.goto(kindooUrl, { waitUntil: 'domcontentloaded' });
+    await waitForKindooShell(page, 12000);
+    clickedUsersMenu = await clickFirstVisible(
+      [
+        page.getByText('Users', { exact: true }),
+        page.getByRole('button', { name: /^Users$/i }),
+        page.getByRole('link', { name: /^Users$/i }),
+        page.getByText(/users/i),
+      ],
+      10000
+    );
+  }
+
+  if (!clickedUsersMenu) {
+    throw new Error('Unable to open Users menu.');
+  }
 
   logAutomation(requestId, 'opening add users action');
-  const addUsers = page.getByText('Add Users', { exact: true });
-  await addUsers.waitFor({ state: 'visible', timeout: 1500 });
-  await addUsers.click();
+  const clickedAddUsers = await clickFirstVisible(
+    [
+      page.getByText('Add Users', { exact: true }),
+      page.getByRole('button', { name: /^Add Users$/i }),
+      page.getByRole('link', { name: /^Add Users$/i }),
+      page.getByText(/add users/i),
+    ],
+    6000
+  );
+  if (!clickedAddUsers) {
+    throw new Error('Unable to open Add Users action.');
+  }
 
   logAutomation(requestId, 'selecting single user option');
-  const singleUserOption = page.getByText('Add a single user', { exact: true });
-  await singleUserOption.waitFor({ state: 'visible', timeout: 1500 });
-  await singleUserOption.click();
+  const clickedSingleUser = await clickFirstVisible(
+    [
+      page.getByText('Add a single user', { exact: true }),
+      page.getByRole('button', { name: /add a single user/i }),
+      page.getByText(/single user/i),
+    ],
+    6000
+  );
+  if (!clickedSingleUser) {
+    throw new Error('Unable to choose Add a single user option.');
+  }
 
-  if (!(await isAddUserFormVisible(page))) {
+  if (!(await waitForAddUserForm(page, Math.min(TIMEOUT_MS, 15000)))) {
     throw new Error('Unable to open the Add User form.');
   }
 }
@@ -462,7 +904,7 @@ export async function runAutomation(payload, requestId, runtime = null) {
       }
 
       await runStep(requestId, 'open-add-user-flow', async () => {
-        await openAddUserFlow(page, requestId);
+        await openAddUserFlow(page, requestId, kindooUrl);
       });
 
       await runStep(requestId, 'fill-user-email', async () => {
@@ -500,7 +942,7 @@ export async function runAutomation(payload, requestId, runtime = null) {
         await clickOptional(page.getByText('Yes'));
       });
       await runStep(requestId, 'select-access-rule', async () => {
-        await selectAccessRule(page, payload.kindooAccessRule);
+        await selectAccessRule(page, payload.kindooAccessRule, requestId);
       });
 
       logAutomation(requestId, 'automation run completed');

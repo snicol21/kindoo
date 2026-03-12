@@ -42,6 +42,7 @@ type LicenseJobSummary = {
   attempts: number;
   completionType?: string | null;
   statusDetails?: string | null;
+  runLog?: string | null;
   durationMs?: number | null;
   sessionReused?: boolean | null;
   lastError?: string | null;
@@ -299,6 +300,7 @@ export function KindooLicenseDialog({
   const [hasAppliedCompletion, setHasAppliedCompletion] = useState(false);
   const [workerHealth, setWorkerHealth] = useState<WorkerHealthSummary | null>(null);
   const [nowMs, setNowMs] = useState<number | null>(null);
+  const [isRunLogOpen, setIsRunLogOpen] = useState(false);
 
   useEffect(() => {
     submitKindooLicenseStatusRef.current = submitKindooLicenseStatusAction;
@@ -314,6 +316,7 @@ export function KindooLicenseDialog({
       setIsRetrying(false);
       setHasAppliedCompletion(false);
       setWorkerHealth(null);
+      setIsRunLogOpen(false);
     }
   }, [licenseEvent]);
 
@@ -559,6 +562,8 @@ export function KindooLicenseDialog({
   const trimmedFailureMessage = latestFailureMessage
     ? `${latestFailureMessage.slice(0, 140)}${latestFailureMessage.length > 140 ? '…' : ''}`
     : null;
+  const latestRunLog = latestJob?.runLog?.trim() ?? null;
+  const hasRunLog = !!latestRunLog;
 
   const countdownToScheduledMs =
     scheduledDateTime && nowMs !== null ? scheduledDateTime.getTime() - nowMs : null;
@@ -792,6 +797,29 @@ export function KindooLicenseDialog({
                         ? `Failure: ${trimmedFailureMessage}`
                         : 'Status details are available on the scheduled job record.'}
                     </div>
+
+                    {hasRunLog && (
+                      <div className="border-t border-border/60 px-4 py-3">
+                        <div className="flex items-center justify-between gap-3">
+                          <p className="text-xs font-medium text-foreground">Automation run log</p>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="h-7 px-2 text-xs"
+                            onClick={() => setIsRunLogOpen((open) => !open)}
+                          >
+                            {isRunLogOpen ? 'Hide logs' : 'View logs'}
+                          </Button>
+                        </div>
+
+                        {isRunLogOpen && (
+                          <pre className="mt-3 max-h-64 overflow-auto rounded-md border border-slate-800 bg-slate-950 p-3 text-[11px] leading-relaxed text-slate-100">
+                            {latestRunLog}
+                          </pre>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </section>
 

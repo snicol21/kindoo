@@ -44,6 +44,10 @@ export async function POST(request: Request, context: { params: Promise<{ jobId:
   }
 
   const details = String(body.details ?? 'Automation failed.').slice(0, 4000);
+  const runLog =
+    String(body.runLog ?? '')
+      .trim()
+      .slice(0, 120000) || null;
   const nowDate = new Date();
 
   const [job] = await db
@@ -53,6 +57,7 @@ export async function POST(request: Request, context: { params: Promise<{ jobId:
       lastError: details,
       completionType: null,
       statusDetails: null,
+      runLog,
       durationMs: null,
       sessionReused: null,
       updatedAt: nowDate,

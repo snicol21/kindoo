@@ -75,6 +75,7 @@ export async function POST(request: Request) {
       lastError: 'Recovered from stale processing lock.',
       completionType: null,
       statusDetails: null,
+      runLog: null,
       durationMs: null,
       sessionReused: null,
     })
@@ -121,6 +122,7 @@ export async function POST(request: Request) {
         attempts: sql`${kindooLicenseJobs.attempts} + 1`,
         completionType: null,
         statusDetails: null,
+        runLog: null,
         durationMs: null,
         sessionReused: null,
       })

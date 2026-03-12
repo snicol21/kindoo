@@ -234,6 +234,7 @@ export const kindooLicenseJobs = sqliteTable(
       enum: KINDOO_LICENSE_COMPLETION_TYPES,
     }).$type<KindooLicenseCompletionType>(),
     statusDetails: text('status_details'),
+    runLog: text('run_log'),
     durationMs: integer('duration_ms'),
     sessionReused: integer('session_reused', { mode: 'boolean' }),
     claimedAt: integer('claimed_at', { mode: 'timestamp' }),

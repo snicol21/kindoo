@@ -53,6 +53,10 @@ export async function POST(request: Request, context: { params: Promise<{ jobId:
     String(body.statusDetails ?? '')
       .trim()
       .slice(0, 4000) || null;
+  const runLog =
+    String(body.runLog ?? '')
+      .trim()
+      .slice(0, 120000) || null;
   const durationMsRaw = Number(body.durationMs);
   const durationMs = Number.isFinite(durationMsRaw) && durationMsRaw >= 0 ? durationMsRaw : null;
   const sessionReused =
@@ -72,6 +76,7 @@ export async function POST(request: Request, context: { params: Promise<{ jobId:
       lastError: null,
       completionType,
       statusDetails,
+      runLog,
       durationMs,
       sessionReused,
     })
@@ -82,6 +87,7 @@ export async function POST(request: Request, context: { params: Promise<{ jobId:
       requestedByUserId: kindooLicenseJobs.requestedByUserId,
       completionType: kindooLicenseJobs.completionType,
       statusDetails: kindooLicenseJobs.statusDetails,
+      runLog: kindooLicenseJobs.runLog,
       durationMs: kindooLicenseJobs.durationMs,
       sessionReused: kindooLicenseJobs.sessionReused,
     });
@@ -120,6 +126,7 @@ export async function POST(request: Request, context: { params: Promise<{ jobId:
     eventId: job.eventId,
     completionType: job.completionType,
     statusDetails: job.statusDetails,
+    runLog: job.runLog,
     durationMs: job.durationMs,
     sessionReused: job.sessionReused,
   });

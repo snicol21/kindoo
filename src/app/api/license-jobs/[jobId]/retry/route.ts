@@ -51,6 +51,7 @@ export async function POST(_request: Request, context: { params: Promise<{ jobId
       lastError: null,
       completionType: null,
       statusDetails: null,
+      runLog: null,
       durationMs: null,
       sessionReused: null,
       updatedAt: nowDate,
