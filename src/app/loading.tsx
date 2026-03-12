@@ -1,8 +1,6 @@
-import Image from 'next/image';
-
 export default function Loading() {
   return (
-    <div className="relative flex min-h-[calc(100vh-4rem)] items-center justify-center overflow-hidden bg-background px-4 text-foreground">
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-background px-4 text-foreground">
       <div
         className="pointer-events-none absolute inset-0 opacity-70"
         aria-hidden="true"
@@ -18,7 +16,15 @@ export default function Loading() {
           <div className="absolute inset-0 animate-spin rounded-3xl border-2 border-primary/20 border-t-primary" />
           <div className="absolute inset-2 animate-pulse rounded-3xl border border-primary/30" />
           <div className="grid h-14 w-14 animate-pulse animation-duration-[1.2s] place-items-center rounded-2xl border border-border bg-card shadow-sm">
-            <Image src="/icons/favicon.svg" alt="DigitalFob" width={28} height={28} />
+            <img
+              src="/icons/favicon.svg"
+              alt="DigitalFob"
+              width={28}
+              height={28}
+              loading="eager"
+              decoding="sync"
+              fetchPriority="high"
+            />
           </div>
         </div>
       </div>

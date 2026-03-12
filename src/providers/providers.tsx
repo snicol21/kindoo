@@ -4,7 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { ThemeProvider } from 'next-themes';
 import type { ReactNode } from 'react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Toaster } from 'sonner';
 
 interface ProvidersProps {
@@ -25,6 +25,15 @@ export function Providers({ children }: ProvidersProps) {
         },
       })
   );
+
+  useEffect(() => {
+    const bootLoader = document.getElementById('boot-loader');
+    if (!bootLoader) return;
+
+    bootLoader.classList.add('opacity-0', 'transition-opacity', 'duration-200');
+    const timer = window.setTimeout(() => bootLoader.remove(), 220);
+    return () => window.clearTimeout(timer);
+  }, []);
 
   return (
     <QueryClientProvider client={queryClient}>

@@ -69,6 +69,28 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" suppressHydrationWarning className={inter.variable}>
       <body className="font-inter antialiased bg-background text-foreground min-h-screen flex flex-col">
+        <div
+          id="boot-loader"
+          aria-label="Loading application"
+          className="fixed inset-0 z-[100] grid place-items-center bg-background text-foreground"
+        >
+          <div className="relative grid h-24 w-24 place-items-center">
+            <div className="absolute inset-1 animate-ping rounded-3xl border border-primary/35" />
+            <div className="absolute inset-0 animate-spin rounded-3xl border-2 border-primary/20 border-t-primary" />
+            <div className="absolute inset-2 animate-pulse rounded-3xl border border-primary/30" />
+            <div className="grid h-14 w-14 animate-pulse animation-duration-[1.2s] place-items-center rounded-2xl border border-border bg-card shadow-sm">
+              <img
+                src="/icons/favicon.svg"
+                alt="DigitalFob"
+                width={28}
+                height={28}
+                loading="eager"
+                decoding="sync"
+                fetchPriority="high"
+              />
+            </div>
+          </div>
+        </div>
         <NextTopLoader color="#2563eb" height={3} showSpinner={false} />
         <Suspense fallback={<NavbarSkeleton />}>
           <Providers>
