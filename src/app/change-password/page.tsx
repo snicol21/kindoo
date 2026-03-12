@@ -8,7 +8,6 @@ import { PageContainer } from '@/components/PageContainer';
 import { PasswordInputWithCount } from '@/components/PasswordInputWithCount';
 import { auth, signOut } from '@/lib/auth';
 import type { Metadata } from 'next';
-import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 
 export const metadata: Metadata = {
@@ -63,7 +62,6 @@ export default async function ForcedPasswordPage({ searchParams }: ForcedPasswor
                   redirect(`/change-password?error=${msg}`);
                 }
 
-                revalidatePath('/', 'layout');
                 redirect('/dashboard');
               }}
               className="space-y-4"
