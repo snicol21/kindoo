@@ -5,9 +5,9 @@ import {
   type MessageTemplateKey,
   type MessageTemplateMap,
 } from '@/lib/message-templates';
-import { formatDate, formatDateNoYear } from '@/utils/dateUtils';
+import { formatDate, formatDateNoYear, toLocalDateTime } from '@/utils/dateUtils';
 import { formatPhone } from '@/utils/phoneUtils';
-import { formatTime, formatTimeRange, parseTimeToMinutes } from '@/utils/timeUtils';
+import { formatTime, formatTimeRange, minutesToTime, parseTimeToMinutes } from '@/utils/timeUtils';
 
 function formatLicenseDate(ymd: string) {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(ymd);
@@ -26,20 +26,33 @@ function formatLicenseTime(minutes: number) {
   return `${hours12}:${String(mins).padStart(2, '0')} ${period}`;
 }
 
-export function getLicenseTimes(event: EventWithCreator) {
+function getLicenseWindowMinutes(event: EventWithCreator) {
   const startMinutes = parseTimeToMinutes(event.startTime);
   const endMinutes = parseTimeToMinutes(event.endTime);
   if (startMinutes === null || endMinutes === null) return null;
   const earliestMinutes = 5 * 60;
   const latestMinutes = 23 * 60;
-  const start = Math.max(earliestMinutes, startMinutes - 120);
-  const end = Math.min(latestMinutes, endMinutes + 120);
+  return {
+    start: Math.max(earliestMinutes, startMinutes - 120),
+    end: Math.min(latestMinutes, endMinutes + 120),
+  };
+}
+
+export function getLicenseTimes(event: EventWithCreator) {
+  const window = getLicenseWindowMinutes(event);
+  if (!window) return null;
   return {
     startDate: formatLicenseDate(event.eventDate),
-    startTime: formatLicenseTime(start),
+    startTime: formatLicenseTime(window.start),
     endDate: formatLicenseDate(event.eventDate),
-    endTime: formatLicenseTime(end),
+    endTime: formatLicenseTime(window.end),
   };
+}
+
+export function getLicenseWindowEndTimestamp(event: EventWithCreator) {
+  const window = getLicenseWindowMinutes(event);
+  if (!window) return Number.NaN;
+  return toLocalDateTime(event.eventDate, minutesToTime(window.end));
 }
 
 function getFirstName(fullName: string) {

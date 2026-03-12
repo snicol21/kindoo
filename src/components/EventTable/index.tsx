@@ -31,7 +31,11 @@ import { findExactContact, getContactSuggestions } from '@/lib/contact-matching'
 import type { Building, EventType, Ward } from '@/schema/schema';
 import { formatDate, getDaysUntil, getDaysUntilValue, toLocalDateTime } from '@/utils/dateUtils';
 import { DESCRIPTION_MAX_LENGTH } from '@/utils/eventConstants';
-import { getLicenseTimes, renderMessageTemplate } from '@/utils/eventTemplateUtils';
+import {
+  getLicenseTimes,
+  getLicenseWindowEndTimestamp,
+  renderMessageTemplate,
+} from '@/utils/eventTemplateUtils';
 import { formatPhone } from '@/utils/phoneUtils';
 import { formatTimeRange, validateTimeWindow } from '@/utils/timeUtils';
 import {
@@ -1186,6 +1190,7 @@ export function EventTable({
                 !isOptimistic && (hasLicenseStatus || isLicenseOutcomeLoading);
               const isDayOfEvent = getDaysUntilValue(event.eventDate) === 0;
               const eventEnded = toLocalDateTime(event.eventDate, event.endTime) < Date.now();
+              const licenseWindowEnded = getLicenseWindowEndTimestamp(event) < Date.now();
               const dueAtMs = getAutoScheduleDueTimestamp(event.eventDate, event.startTime);
               const hasValidDueAt = Number.isFinite(dueAtMs);
               const msUntilDue = hasValidDueAt && nowMs !== null ? dueAtMs - nowMs : null;
@@ -1205,7 +1210,7 @@ export function EventTable({
                   licenseOutcome === 'Scheduled for license');
               const shouldShowPastSchedulingWindowPassed =
                 eventEnded && !!licenseOutcome && PAST_SCHEDULE_WINDOW_OUTCOMES.has(licenseOutcome);
-              const shouldShowExpiredLicense = !!event.kindooLicenseCreated && eventEnded;
+              const shouldShowExpiredLicense = !!event.kindooLicenseCreated && licenseWindowEnded;
               const shouldShowPastExistingLicenseLabel =
                 eventEnded && licenseOutcome === 'Active license already existed';
               const displayedOutcome = shouldShowExpiredLicense
