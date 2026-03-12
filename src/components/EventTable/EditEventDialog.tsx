@@ -125,7 +125,7 @@ export function EditEventDialog({
 }: EditEventDialogProps) {
   type Snapshot = Record<string, string>;
   const initialSnapshotRef = useRef<Snapshot | null>(null);
-  const wasOpenRef = useRef(false);
+  const snapshotCapturedRef = useRef(false);
   const [showDiscardDialog, setShowDiscardDialog] = useState(false);
   const isNameFocus = contactFocusField === 'name';
   const isPhoneFocus = contactFocusField === 'phone';
@@ -216,18 +216,26 @@ export function EditEventDialog({
     onCloseAction();
   };
 
+  // Reset snapshot tracking when dialog closes
   useEffect(() => {
     if (!open) {
-      wasOpenRef.current = false;
+      snapshotCapturedRef.current = false;
       initialSnapshotRef.current = null;
-      return;
     }
-    if (wasOpenRef.current) return;
-    const snapshot = getCurrentSnapshot();
-    const snapshotReady = !!(snapshot.eventDate && snapshot.startTime && snapshot.endTime);
-    if (!snapshotReady) return;
-    initialSnapshotRef.current = snapshot;
-    wasOpenRef.current = true;
+  }, [open]);
+
+  // Capture the initial snapshot once all prop values have settled
+  // For EditEventDialog the values come from the parent so they may
+  // arrive one render after open=true — we wait until the key fields
+  // are non-empty before locking in the snapshot.
+  useEffect(() => {
+    if (!open || snapshotCapturedRef.current) return;
+
+    // Don't capture until the essential fields are populated by the parent
+    if (!editEventDate || !editStartTime || !editEndTime) return;
+
+    initialSnapshotRef.current = getCurrentSnapshot();
+    snapshotCapturedRef.current = true;
   }, [
     open,
     editBuilding,

@@ -125,7 +125,7 @@ export function CloneEventDialog({
 }: CloneEventDialogProps) {
   type Snapshot = Record<string, string>;
   const initialSnapshotRef = useRef<Snapshot | null>(null);
-  const wasOpenRef = useRef(false);
+  const snapshotCapturedRef = useRef(false);
   const [showDiscardDialog, setShowDiscardDialog] = useState(false);
   const isNameFocus = contactFocusField === 'name';
   const isPhoneFocus = contactFocusField === 'phone';
@@ -216,18 +216,25 @@ export function CloneEventDialog({
     onCloseAction();
   };
 
+  // Reset snapshot tracking when dialog closes
   useEffect(() => {
     if (!open) {
-      wasOpenRef.current = false;
+      snapshotCapturedRef.current = false;
       initialSnapshotRef.current = null;
-      return;
     }
-    if (wasOpenRef.current) return;
-    const snapshot = getCurrentSnapshot();
-    const snapshotReady = !!(snapshot.eventDate && snapshot.startTime && snapshot.endTime);
-    if (!snapshotReady) return;
-    initialSnapshotRef.current = snapshot;
-    wasOpenRef.current = true;
+  }, [open]);
+
+  // Capture the initial snapshot once all prop values have settled.
+  // Props arrive from the parent so they may not be populated on the
+  // very first render after open=true — wait until key fields are non-empty.
+  useEffect(() => {
+    if (!open || snapshotCapturedRef.current) return;
+
+    // Don't capture until the essential fields are populated by the parent
+    if (!cloneEventDate || !cloneStartTime || !cloneEndTime) return;
+
+    initialSnapshotRef.current = getCurrentSnapshot();
+    snapshotCapturedRef.current = true;
   }, [
     open,
     cloneBuilding,

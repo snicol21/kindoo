@@ -121,6 +121,7 @@ export function AddEventDialog({
   type Snapshot = Record<string, string>;
   const formRef = useRef<HTMLFormElement>(null);
   const initialSnapshotRef = useRef<Snapshot | null>(null);
+  const snapshotCapturedRef = useRef(false);
   const justSubmittedRef = useRef(false);
   const wasOpenRef = useRef(false);
   const [showDiscardDialog, setShowDiscardDialog] = useState(false);
@@ -195,7 +196,9 @@ export function AddEventDialog({
     const initial = initialSnapshotRef.current;
     if (!initial) return false;
     const current = getCurrentSnapshot();
-    return Object.entries(initial).some(([key, value]) => value !== current[key]);
+    return Object.entries(initial).some(
+      ([key, value]) => value !== current[key as keyof typeof current]
+    );
   };
 
   const handleRequestClose = () => {
@@ -299,20 +302,37 @@ export function AddEventDialog({
     }
   }, [fixedWard]);
 
+  // Handle dialog open/close — reset snapshot tracking on close
   useEffect(() => {
-    if (open && !wasOpenRef.current) {
-      initialSnapshotRef.current = getCurrentSnapshot({
-        building: fixedBuilding ?? defaultBuilding,
-        ward: fixedWard ?? (state.values?.ward as Ward | undefined) ?? '',
-        eventType: state.values?.eventType ?? defaultEventType,
-      });
-      justSubmittedRef.current = false;
-    }
     if (!open) {
+      snapshotCapturedRef.current = false;
+      initialSnapshotRef.current = null;
       wasOpenRef.current = false;
       return;
     }
+    justSubmittedRef.current = false;
     wasOpenRef.current = true;
+  }, [open]);
+
+  // Capture the initial snapshot AFTER all default values have settled
+  useEffect(() => {
+    if (!open || snapshotCapturedRef.current) return;
+    // Wait until time/date defaults are actually set before capturing
+    if (!selectedStartTime || !selectedEndTime || !selectedEventDate) return;
+    initialSnapshotRef.current = getCurrentSnapshot();
+    snapshotCapturedRef.current = true;
+  }, [
+    open,
+    selectedStartTime,
+    selectedEndTime,
+    selectedEventDate,
+    selectedBuilding,
+    selectedWard,
+    selectedEventType,
+  ]);
+
+  useEffect(() => {
+    if (!open) return;
 
     const match = findExactContact(matchingContacts, {
       name: typedName,
@@ -334,10 +354,7 @@ export function AddEventDialog({
 
     setMatchCandidate(match);
   }, [
-    defaultBuilding,
     dismissedMatchId,
-    fixedBuilding,
-    fixedWard,
     matchingContacts,
     open,
     selectedContactId,
@@ -383,7 +400,6 @@ export function AddEventDialog({
 
       const errors: FormState['errors'] = {};
 
-      // Validate
       if (!building || !BUILDINGS.includes(building)) {
         errors.building = 'Please select a building.';
       } else if (fixedBuilding && building !== fixedBuilding) {
@@ -466,7 +482,6 @@ export function AddEventDialog({
         };
       }
 
-      // Submit via React Query mutation (handles optimistic + toast)
       try {
         const normalizedFormEmail = email?.trim().toLowerCase() ?? '';
         const normalizedFormPhone = phoneDigits(formattedPhone ?? '');
