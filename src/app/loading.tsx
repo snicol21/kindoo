@@ -18,7 +18,7 @@ export default function Loading() {
 
   return (
     <div
-      className="fixed inset-0 mt-17 -mb-17 pb-17 z-100 grid place-items-center overflow-hidden bg-background px-4 text-foreground"
+      className="fixed inset-0 mt-17 -mb-17 pb-25 z-100 grid place-items-center overflow-hidden bg-background px-4 text-foreground"
       style={{ zIndex: 9998 }}
     >
       <LoaderVisual />
