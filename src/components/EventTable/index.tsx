@@ -474,7 +474,15 @@ export function EventTable({
     const connectStream = () => {
       if (typeof EventSource === 'undefined') return;
       eventSource?.close();
-      eventSource = new EventSource('/api/license-jobs/stream');
+      try {
+        eventSource = new EventSource('/api/license-jobs/stream');
+      } catch {
+        // Service worker/network edge cases can throw synchronously.
+        // Keep polling fallback active instead of crashing the dashboard.
+        eventSource = null;
+        scheduleReconnect();
+        return;
+      }
       eventSource.addEventListener('license-job-updated', (rawEvent) => {
         try {
           const parsed = JSON.parse((rawEvent as MessageEvent).data ?? '{}') as {
