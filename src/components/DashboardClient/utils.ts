@@ -109,39 +109,52 @@ export function getTodayYmd() {
 
 export function buildDashboardCounts(
   stakeCenterEvents: EventWithCreator[],
-  maplesEvents: EventWithCreator[],
-  stakeUpcoming: EventWithCreator[],
-  maplesUpcoming: EventWithCreator[]
+  maplesEvents: EventWithCreator[]
 ): DashboardCounts {
-  const stakePending = stakeUpcoming.filter((event) => isPendingAutomation(event)).length;
-  const maplesPending = maplesUpcoming.filter((event) => isPendingAutomation(event)).length;
-  const stakeActive = stakeUpcoming.filter((event) => event.kindooLicenseCreated).length;
-  const maplesActive = maplesUpcoming.filter((event) => event.kindooLicenseCreated).length;
-  const stakeFuture = stakeUpcoming.length - stakePending - stakeActive;
-  const maplesFuture = maplesUpcoming.length - maplesPending - maplesActive;
-  const stakePast = stakeCenterEvents.length - stakeUpcoming.length;
-  const maplesPast = maplesEvents.length - maplesUpcoming.length;
+  const classify = (events: EventWithCreator[]) => {
+    let pending = 0;
+    let active = 0;
+    let upcoming = 0;
+    let past = 0;
+
+    for (const event of events) {
+      if (isPastEvent(event.eventDate, event.endTime)) {
+        past += 1;
+      } else if (event.kindooLicenseCreated) {
+        active += 1;
+      } else if (isPendingAutomation(event)) {
+        pending += 1;
+      } else {
+        upcoming += 1;
+      }
+    }
+
+    return { pending, active, upcoming, past };
+  };
+
+  const stake = classify(stakeCenterEvents);
+  const maples = classify(maplesEvents);
 
   return {
     pendingLicense: {
-      stake: stakePending,
-      maples: maplesPending,
-      total: stakePending + maplesPending,
+      stake: stake.pending,
+      maples: maples.pending,
+      total: stake.pending + maples.pending,
     },
     activeLicense: {
-      stake: stakeActive,
-      maples: maplesActive,
-      total: stakeActive + maplesActive,
+      stake: stake.active,
+      maples: maples.active,
+      total: stake.active + maples.active,
     },
     upcoming: {
-      stake: stakeFuture,
-      maples: maplesFuture,
-      total: stakeFuture + maplesFuture,
+      stake: stake.upcoming,
+      maples: maples.upcoming,
+      total: stake.upcoming + maples.upcoming,
     },
     past: {
-      stake: stakePast,
-      maples: maplesPast,
-      total: stakePast + maplesPast,
+      stake: stake.past,
+      maples: maples.past,
+      total: stake.past + maples.past,
     },
   };
 }
@@ -213,9 +226,24 @@ export function buildDotCalendarDays(activeUpcoming: EventWithCreator[]): DotCal
   const today = new Date();
   const start = new Date(today.getFullYear(), today.getMonth(), today.getDate());
   start.setDate(start.getDate() - start.getDay());
+
+  const maxEventDateMs = activeUpcoming.reduce((maxMs, event) => {
+    const date = parseYmdToDate(event.eventDate);
+    if (!date) return maxMs;
+    const ms = date.getTime();
+    return ms > maxMs ? ms : maxMs;
+  }, start.getTime());
+
+  const endInclusive = new Date(maxEventDateMs);
+  endInclusive.setDate(endInclusive.getDate() + (6 - endInclusive.getDay()));
+
+  const diffMs = endInclusive.getTime() - start.getTime();
+  const diffDays = Math.max(0, Math.floor(diffMs / (1000 * 60 * 60 * 24)) + 1);
+  const totalDays = Math.max(28, Math.ceil(diffDays / 28) * 28);
+
   const days: DotCalendarDay[] = [];
 
-  for (let i = 0; i < 28; i += 1) {
+  for (let i = 0; i < totalDays; i += 1) {
     const date = new Date(start);
     date.setDate(start.getDate() + i);
     const ymd = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(

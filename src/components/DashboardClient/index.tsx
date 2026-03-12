@@ -16,6 +16,7 @@ import {
   buildDotCalendarDays,
   buildingToTab,
   isOutsideDashboardWindow,
+  isPastEvent,
   normalizeTab,
   tabToBuilding,
 } from '@/components/DashboardClient/utils';
@@ -29,6 +30,7 @@ import {
   useUpdateEvent,
 } from '@/hooks/useEvents';
 import type { Building } from '@/schema/schema';
+import { ChevronDown, ChevronRight } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 
 const buildEventSearchHaystack = (event: EventWithCreator) =>
@@ -62,6 +64,11 @@ export function DashboardClient({
   fixedBuildingForWardUsers,
   defaultEventType,
 }: DashboardClientProps) {
+  type BulkDeleteTarget = {
+    building: Building;
+    section: 'main' | 'past';
+  };
+
   const fixedTabForWardUsers = fixedBuildingForWardUsers
     ? buildingToTab(fixedBuildingForWardUsers)
     : null;
@@ -74,8 +81,12 @@ export function DashboardClient({
   );
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedStakeIds, setSelectedStakeIds] = useState<string[]>([]);
+  const [selectedStakePastIds, setSelectedStakePastIds] = useState<string[]>([]);
   const [selectedMaplesIds, setSelectedMaplesIds] = useState<string[]>([]);
-  const [bulkDeleteTarget, setBulkDeleteTarget] = useState<Building | null>(null);
+  const [selectedMaplesPastIds, setSelectedMaplesPastIds] = useState<string[]>([]);
+  const [bulkDeleteTarget, setBulkDeleteTarget] = useState<BulkDeleteTarget | null>(null);
+  const [showStakePastEvents, setShowStakePastEvents] = useState(false);
+  const [showMaplesPastEvents, setShowMaplesPastEvents] = useState(false);
 
   const {
     data: stakeCenterEvents = [],
@@ -97,39 +108,79 @@ export function DashboardClient({
   const addEvent = useAddEvent();
   const setKindooLicenseCreated = useSetKindooLicenseCreated();
 
-  const stakeUpcoming = useMemo(
-    () => stakeCenterEvents.filter((event) => !isOutsideDashboardWindow(event.eventDate)),
+  const stakeMainEvents = useMemo(
+    () =>
+      stakeCenterEvents.filter(
+        (event) =>
+          !isPastEvent(event.eventDate, event.endTime) || !isOutsideDashboardWindow(event.eventDate)
+      ),
     [stakeCenterEvents]
   );
 
-  const maplesUpcoming = useMemo(
-    () => maplesEvents.filter((event) => !isOutsideDashboardWindow(event.eventDate)),
+  const maplesMainEvents = useMemo(
+    () =>
+      maplesEvents.filter(
+        (event) =>
+          !isPastEvent(event.eventDate, event.endTime) || !isOutsideDashboardWindow(event.eventDate)
+      ),
+    [maplesEvents]
+  );
+
+  const stakePastEvents = useMemo(
+    () =>
+      stakeCenterEvents.filter(
+        (event) =>
+          isPastEvent(event.eventDate, event.endTime) && isOutsideDashboardWindow(event.eventDate)
+      ),
+    [stakeCenterEvents]
+  );
+
+  const maplesPastEvents = useMemo(
+    () =>
+      maplesEvents.filter(
+        (event) =>
+          isPastEvent(event.eventDate, event.endTime) && isOutsideDashboardWindow(event.eventDate)
+      ),
     [maplesEvents]
   );
 
   const normalizedSearch = searchQuery.trim().toLowerCase();
 
   const filteredStakeUpcoming = useMemo(() => {
-    if (!normalizedSearch) return stakeUpcoming;
-    return stakeUpcoming.filter((event) =>
+    if (!normalizedSearch) return stakeMainEvents;
+    return stakeMainEvents.filter((event) =>
       buildEventSearchHaystack(event).includes(normalizedSearch)
     );
-  }, [normalizedSearch, stakeUpcoming]);
+  }, [normalizedSearch, stakeMainEvents]);
 
   const filteredMaplesUpcoming = useMemo(() => {
-    if (!normalizedSearch) return maplesUpcoming;
-    return maplesUpcoming.filter((event) =>
+    if (!normalizedSearch) return maplesMainEvents;
+    return maplesMainEvents.filter((event) =>
       buildEventSearchHaystack(event).includes(normalizedSearch)
     );
-  }, [normalizedSearch, maplesUpcoming]);
+  }, [normalizedSearch, maplesMainEvents]);
+
+  const filteredStakePast = useMemo(() => {
+    if (!normalizedSearch) return stakePastEvents;
+    return stakePastEvents.filter((event) =>
+      buildEventSearchHaystack(event).includes(normalizedSearch)
+    );
+  }, [normalizedSearch, stakePastEvents]);
+
+  const filteredMaplesPast = useMemo(() => {
+    if (!normalizedSearch) return maplesPastEvents;
+    return maplesPastEvents.filter((event) =>
+      buildEventSearchHaystack(event).includes(normalizedSearch)
+    );
+  }, [normalizedSearch, maplesPastEvents]);
 
   const dashboardCounts = useMemo(
-    () => buildDashboardCounts(stakeCenterEvents, maplesEvents, stakeUpcoming, maplesUpcoming),
-    [maplesEvents, maplesUpcoming, stakeCenterEvents, stakeUpcoming]
+    () => buildDashboardCounts(stakeCenterEvents, maplesEvents),
+    [maplesEvents, stakeCenterEvents]
   );
 
   const activeBuildingKey = activeTab === 'maples-building' ? 'maples' : 'stake';
-  const activeUpcoming = activeTab === 'maples-building' ? maplesUpcoming : stakeUpcoming;
+  const activeUpcoming = activeTab === 'maples-building' ? maplesMainEvents : stakeMainEvents;
   const activeBuildingName = activeTab === 'maples-building' ? 'Maples Building' : 'Stake Center';
   const activeBuildingSubtitle =
     activeTab === 'maples-building'
@@ -139,14 +190,24 @@ export function DashboardClient({
   const dotCalendarDays = useMemo(() => buildDotCalendarDays(activeUpcoming), [activeUpcoming]);
 
   useEffect(() => {
-    const upcomingIds = new Set(stakeUpcoming.map((event) => event.id));
+    const upcomingIds = new Set(filteredStakeUpcoming.map((event) => event.id));
     setSelectedStakeIds((prev) => prev.filter((id) => upcomingIds.has(id)));
-  }, [stakeUpcoming]);
+  }, [filteredStakeUpcoming]);
 
   useEffect(() => {
-    const upcomingIds = new Set(maplesUpcoming.map((event) => event.id));
+    const pastIds = new Set(filteredStakePast.map((event) => event.id));
+    setSelectedStakePastIds((prev) => prev.filter((id) => pastIds.has(id)));
+  }, [filteredStakePast]);
+
+  useEffect(() => {
+    const upcomingIds = new Set(filteredMaplesUpcoming.map((event) => event.id));
     setSelectedMaplesIds((prev) => prev.filter((id) => upcomingIds.has(id)));
-  }, [maplesUpcoming]);
+  }, [filteredMaplesUpcoming]);
+
+  useEffect(() => {
+    const pastIds = new Set(filteredMaplesPast.map((event) => event.id));
+    setSelectedMaplesPastIds((prev) => prev.filter((id) => pastIds.has(id)));
+  }, [filteredMaplesPast]);
 
   useEffect(() => {
     if (fixedTabForWardUsers && activeTab !== fixedTabForWardUsers) {
@@ -176,21 +237,41 @@ export function DashboardClient({
   };
 
   const selectedCount =
-    bulkDeleteTarget === 'Stake Center'
-      ? selectedStakeIds.length
-      : bulkDeleteTarget === 'Maples Building'
-        ? selectedMaplesIds.length
+    bulkDeleteTarget?.building === 'Stake Center'
+      ? bulkDeleteTarget.section === 'past'
+        ? selectedStakePastIds.length
+        : selectedStakeIds.length
+      : bulkDeleteTarget?.building === 'Maples Building'
+        ? bulkDeleteTarget.section === 'past'
+          ? selectedMaplesPastIds.length
+          : selectedMaplesIds.length
         : 0;
 
   const confirmBulkDelete = async () => {
-    if (bulkDeleteTarget === 'Stake Center' && selectedStakeIds.length > 0) {
-      await bulkDeleteStakeCenterEvents.mutateAsync(selectedStakeIds);
-      setSelectedStakeIds([]);
+    if (bulkDeleteTarget?.building === 'Stake Center') {
+      const idsToDelete =
+        bulkDeleteTarget.section === 'past' ? selectedStakePastIds : selectedStakeIds;
+      if (idsToDelete.length > 0) {
+        await bulkDeleteStakeCenterEvents.mutateAsync(idsToDelete);
+        if (bulkDeleteTarget.section === 'past') {
+          setSelectedStakePastIds([]);
+        } else {
+          setSelectedStakeIds([]);
+        }
+      }
     }
 
-    if (bulkDeleteTarget === 'Maples Building' && selectedMaplesIds.length > 0) {
-      await bulkDeleteMaplesEvents.mutateAsync(selectedMaplesIds);
-      setSelectedMaplesIds([]);
+    if (bulkDeleteTarget?.building === 'Maples Building') {
+      const idsToDelete =
+        bulkDeleteTarget.section === 'past' ? selectedMaplesPastIds : selectedMaplesIds;
+      if (idsToDelete.length > 0) {
+        await bulkDeleteMaplesEvents.mutateAsync(idsToDelete);
+        if (bulkDeleteTarget.section === 'past') {
+          setSelectedMaplesPastIds([]);
+        } else {
+          setSelectedMaplesIds([]);
+        }
+      }
     }
 
     setBulkDeleteTarget(null);
@@ -207,8 +288,8 @@ export function DashboardClient({
         className="space-y-4"
       >
         <DashboardTabsHeader
-          stakeCount={stakeUpcoming.length}
-          maplesCount={maplesUpcoming.length}
+          stakeCount={stakeMainEvents.length}
+          maplesCount={maplesMainEvents.length}
           searchValue={searchQuery}
           onSearchChangeAction={setSearchQuery}
           canToggleBuildings={canToggleBuildings}
@@ -251,8 +332,54 @@ export function DashboardClient({
               setKindooLicenseCreated.mutateAsync(input).then(() => undefined)
             }
             bulkDeletePending={bulkDeleteStakeCenterEvents.isPending}
-            onOpenBulkDeleteAction={() => setBulkDeleteTarget('Stake Center')}
+            onOpenBulkDeleteAction={() =>
+              setBulkDeleteTarget({ building: 'Stake Center', section: 'main' })
+            }
           />
+
+          <div className="mt-4 rounded-md border border-border/70 bg-card/60">
+            <button
+              type="button"
+              onClick={() => setShowStakePastEvents((prev) => !prev)}
+              className="flex w-full items-center justify-between px-3 py-2 text-left text-sm font-medium hover:bg-muted/50"
+            >
+              <span>Past events ({filteredStakePast.length})</span>
+              {showStakePastEvents ? (
+                <ChevronDown className="h-4 w-4 text-muted-foreground" />
+              ) : (
+                <ChevronRight className="h-4 w-4 text-muted-foreground" />
+              )}
+            </button>
+
+            {showStakePastEvents && (
+              <div className="border-t border-border/70 p-3">
+                <EventsTabPanel
+                  events={filteredStakePast}
+                  isLoading={scLoading}
+                  isError={scError}
+                  building="Stake Center"
+                  messageTemplates={messageTemplates}
+                  searchQuery={searchQuery}
+                  emptyStateTitle="No past events"
+                  emptyStateMessage="Historical events will appear here once they move outside the current 4-week window."
+                  onDeleteAction={(eventId) =>
+                    deleteStakeCenterEvent.mutateAsync(eventId).then(() => undefined)
+                  }
+                  selectedIds={selectedStakePastIds}
+                  onSelectionChangeAction={setSelectedStakePastIds}
+                  onEditAction={(input) => updateEvent.mutateAsync(input).then(() => undefined)}
+                  onCloneAction={(input) => addEvent.mutateAsync(input).then(() => undefined)}
+                  onSetKindooLicenseCreatedAction={(input) =>
+                    setKindooLicenseCreated.mutateAsync(input).then(() => undefined)
+                  }
+                  bulkDeletePending={bulkDeleteStakeCenterEvents.isPending}
+                  onOpenBulkDeleteAction={() =>
+                    setBulkDeleteTarget({ building: 'Stake Center', section: 'past' })
+                  }
+                />
+              </div>
+            )}
+          </div>
         </TabsContent>
 
         <TabsContent value="maples-building">
@@ -274,8 +401,54 @@ export function DashboardClient({
               setKindooLicenseCreated.mutateAsync(input).then(() => undefined)
             }
             bulkDeletePending={bulkDeleteMaplesEvents.isPending}
-            onOpenBulkDeleteAction={() => setBulkDeleteTarget('Maples Building')}
+            onOpenBulkDeleteAction={() =>
+              setBulkDeleteTarget({ building: 'Maples Building', section: 'main' })
+            }
           />
+
+          <div className="mt-4 rounded-md border border-border/70 bg-card/60">
+            <button
+              type="button"
+              onClick={() => setShowMaplesPastEvents((prev) => !prev)}
+              className="flex w-full items-center justify-between px-3 py-2 text-left text-sm font-medium hover:bg-muted/50"
+            >
+              <span>Past events ({filteredMaplesPast.length})</span>
+              {showMaplesPastEvents ? (
+                <ChevronDown className="h-4 w-4 text-muted-foreground" />
+              ) : (
+                <ChevronRight className="h-4 w-4 text-muted-foreground" />
+              )}
+            </button>
+
+            {showMaplesPastEvents && (
+              <div className="border-t border-border/70 p-3">
+                <EventsTabPanel
+                  events={filteredMaplesPast}
+                  isLoading={mbLoading}
+                  isError={mbError}
+                  building="Maples Building"
+                  messageTemplates={messageTemplates}
+                  searchQuery={searchQuery}
+                  emptyStateTitle="No past events"
+                  emptyStateMessage="Historical events will appear here once they move outside the current 4-week window."
+                  onDeleteAction={(eventId) =>
+                    deleteMaplesEvent.mutateAsync(eventId).then(() => undefined)
+                  }
+                  selectedIds={selectedMaplesPastIds}
+                  onSelectionChangeAction={setSelectedMaplesPastIds}
+                  onEditAction={(input) => updateEvent.mutateAsync(input).then(() => undefined)}
+                  onCloneAction={(input) => addEvent.mutateAsync(input).then(() => undefined)}
+                  onSetKindooLicenseCreatedAction={(input) =>
+                    setKindooLicenseCreated.mutateAsync(input).then(() => undefined)
+                  }
+                  bulkDeletePending={bulkDeleteMaplesEvents.isPending}
+                  onOpenBulkDeleteAction={() =>
+                    setBulkDeleteTarget({ building: 'Maples Building', section: 'past' })
+                  }
+                />
+              </div>
+            )}
+          </div>
         </TabsContent>
       </Tabs>
 

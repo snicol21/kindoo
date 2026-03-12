@@ -84,6 +84,8 @@ const PERSIST_PENDING_OUTCOMES = new Set([
   'Scheduled for license',
 ]);
 
+const PAST_SCHEDULE_WINDOW_OUTCOMES = new Set(['Auto-schedule pending', 'Scheduled for license']);
+
 function getLicenseOutcomeVisual(outcome: string) {
   const queuedBadge = {
     textClassName: 'text-blue-700 dark:text-blue-300',
@@ -169,6 +171,10 @@ function getLicenseOutcomeVisual(outcome: string) {
   }
 
   if (outcome === 'License expired') {
+    return expiredBadge;
+  }
+
+  if (outcome === 'Scheduling window passed') {
     return expiredBadge;
   }
 
@@ -1197,10 +1203,14 @@ export function EventTable({
                 !!licenseOutcome &&
                 (licenseOutcome === 'Auto-schedule pending' ||
                   licenseOutcome === 'Scheduled for license');
+              const shouldShowPastSchedulingWindowPassed =
+                eventEnded && !!licenseOutcome && PAST_SCHEDULE_WINDOW_OUTCOMES.has(licenseOutcome);
               const shouldShowExpiredLicense = !!event.kindooLicenseCreated && eventEnded;
               const displayedOutcome = shouldShowExpiredLicense
                 ? 'License expired'
-                : licenseOutcome;
+                : shouldShowPastSchedulingWindowPassed
+                  ? 'Scheduling window passed'
+                  : licenseOutcome;
               const licenseOutcomeLabel = shouldUseCountdownAsOutcomeLabel
                 ? msUntilDue !== null && msUntilDue > 0
                   ? `License schedules in ${formatCountdownMs(msUntilDue)}`

@@ -14,6 +14,8 @@ type EventsTabPanelProps = {
   building: Building;
   messageTemplates: MessageTemplateMap;
   searchQuery?: string;
+  emptyStateTitle?: string;
+  emptyStateMessage?: string;
   selectedIds: string[];
   onSelectionChangeAction: (nextIds: string[]) => void;
   onDeleteAction: (eventId: string) => Promise<void>;
@@ -34,6 +36,8 @@ export function EventsTabPanel({
   building,
   messageTemplates,
   searchQuery,
+  emptyStateTitle,
+  emptyStateMessage,
   selectedIds,
   onSelectionChangeAction,
   onDeleteAction,
@@ -67,9 +71,9 @@ export function EventsTabPanel({
             isLoading={isLoading}
             isError={isError}
             building={building}
-            emptyStateTitle={isSearching ? 'No matching events' : undefined}
+            emptyStateTitle={isSearching ? 'No matching events' : emptyStateTitle}
             emptyStateMessage={
-              isSearching ? 'Try a different search or clear the filter.' : undefined
+              isSearching ? 'Try a different search or clear the filter.' : emptyStateMessage
             }
             messageTemplates={messageTemplates}
             onDelete={onDeleteAction}

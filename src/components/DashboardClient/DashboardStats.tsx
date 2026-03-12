@@ -176,7 +176,7 @@ export function DashboardStats({
     return () => cancelAnimationFrame(frameId);
   }, [upcomingEvents]);
 
-  const fullCalendarPages = Math.floor(dotCalendarDays.length / 28);
+  const fullCalendarPages = Math.ceil(dotCalendarDays.length / 28);
   const calendarPages = Math.max(1, fullCalendarPages);
   const maxCalendarPage = calendarPages - 1;
   const canGoPrev = calendarPage > 0;
