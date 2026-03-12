@@ -144,8 +144,10 @@
   --font-mono: ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, 'Liberation Mono', monospace;
 }
 
-* {
-  border-color: var(--color-border);
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
 }
 
 body {

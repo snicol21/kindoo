@@ -1,3 +1,4 @@
+import { listAccessRequests } from '@/actions/access-requests';
 import { listUsers } from '@/actions/auth';
 import { Button } from '@/components/_ui/button';
 import { AdminUsersPageClient } from '@/components/AdminUsersClient/AdminUsersPageClient';
@@ -30,6 +31,8 @@ export default async function AdminUsersPage() {
 
   const usersResult = await listUsers();
   const managedUsers = usersResult.success ? (usersResult.data ?? []) : [];
+  const requestsResult = await listAccessRequests();
+  const accessRequests = requestsResult.success ? (requestsResult.data ?? []) : [];
 
   return (
     <PageContainer width="narrow" className="space-y-6">
@@ -38,6 +41,7 @@ export default async function AdminUsersPage() {
         currentUserId={currentUserId ?? ''}
         currentUserRole={currentUserRole}
         currentUserWard={currentUserWard}
+        accessRequests={accessRequests}
       />
       <div>
         <Button asChild variant="ghost" size="sm" className="gap-2">

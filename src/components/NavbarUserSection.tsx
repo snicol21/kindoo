@@ -1,3 +1,4 @@
+import { getPendingAccessRequestCount } from '@/actions/access-requests';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/_ui/avatar';
 import { Button } from '@/components/_ui/button';
 import {
@@ -18,6 +19,7 @@ import Link from 'next/link';
 
 export async function NavbarUserSection() {
   const session = await auth();
+  const isForcedPasswordMode = !!session?.user?.mustChangePassword;
 
   const userInitials = session?.user?.name
     ? session.user.name
@@ -33,6 +35,12 @@ export async function NavbarUserSection() {
       ? 'admin'
       : ((session.user.role ?? 'ward_user') as UserRole)
     : null;
+
+  const canAccessAdmin =
+    !isForcedPasswordMode && displayRole ? canAccessUserAdmin(displayRole) : false;
+  const pendingResult = canAccessAdmin ? await getPendingAccessRequestCount() : null;
+  const pendingCount = pendingResult?.success ? (pendingResult.data?.count ?? 0) : 0;
+  const pendingCountLabel = pendingCount > 9 ? '9+' : String(pendingCount);
 
   return (
     <div className="flex items-center gap-3">
@@ -58,6 +66,12 @@ export async function NavbarUserSection() {
                   />
                   <AvatarFallback className="text-xs font-semibold">{userInitials}</AvatarFallback>
                 </Avatar>
+                {pendingCount > 0 && (
+                  <span
+                    className="absolute right-0 top-0 z-10 h-3 w-3 rounded-full bg-amber-500 ring-2 ring-background shadow-sm"
+                    aria-hidden="true"
+                  />
+                )}
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
@@ -73,38 +87,58 @@ export async function NavbarUserSection() {
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem asChild>
-                <Link href="/dashboard" className="gap-2 cursor-pointer">
-                  <LayoutDashboard className="h-4 w-4" />
-                  Dashboard
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link href="/account" className="gap-2 cursor-pointer">
-                  <Settings className="h-4 w-4" />
-                  Account settings
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link href="/dashboard/message-templates" className="gap-2 cursor-pointer">
-                  <MessageSquare className="h-4 w-4" />
-                  Message templates
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              {canAccessUserAdmin(
-                isAdminEmail(session.user.email ?? null)
-                  ? 'admin'
-                  : ((session.user.role ?? 'ward_user') as UserRole)
-              ) && (
-                <DropdownMenuItem asChild>
-                  <Link href="/admin/users" className="gap-2 cursor-pointer">
-                    <Shield className="h-4 w-4" />
-                    User admin
-                  </Link>
-                </DropdownMenuItem>
+              {isForcedPasswordMode ? (
+                <>
+                  <DropdownMenuItem asChild>
+                    <Link href="/change-password" className="gap-2 cursor-pointer">
+                      <Settings className="h-4 w-4" />
+                      Change temporary password
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                </>
+              ) : (
+                <>
+                  <DropdownMenuItem asChild>
+                    <Link href="/dashboard" className="gap-2 cursor-pointer">
+                      <LayoutDashboard className="h-4 w-4" />
+                      Dashboard
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/account" className="gap-2 cursor-pointer">
+                      <Settings className="h-4 w-4" />
+                      Account settings
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/dashboard/message-templates" className="gap-2 cursor-pointer">
+                      <MessageSquare className="h-4 w-4" />
+                      Message templates
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  {canAccessAdmin && (
+                    <DropdownMenuItem asChild>
+                      <Link
+                        href="/admin/users"
+                        className="flex w-full items-center justify-between gap-2 cursor-pointer"
+                      >
+                        <span className="flex items-center gap-2">
+                          <Shield className="h-4 w-4" />
+                          User admin
+                        </span>
+                        {pendingCount > 0 && (
+                          <span className="inline-flex h-5 w-fit min-w-5 shrink-0 items-center justify-center rounded-full border border-amber-600 bg-amber-500 px-1.5 text-[10px] font-semibold leading-none text-white dark:border-amber-500 dark:bg-amber-500 dark:text-white">
+                            {pendingCountLabel} Pending
+                          </span>
+                        )}
+                      </Link>
+                    </DropdownMenuItem>
+                  )}
+                  <DropdownMenuSeparator />
+                </>
               )}
-              <DropdownMenuSeparator />
               <DropdownMenuItem asChild>
                 <form
                   action={async () => {

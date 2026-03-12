@@ -15,4 +15,21 @@ export interface AdminUsersClientProps {
   currentUserRole: UserRole;
   currentUserWard: string;
   searchQuery?: string;
+  accessRequests?: AccessRequestListItem[];
 }
+
+export type AccessRequestListItem = {
+  id: string;
+  email: string;
+  name: string;
+  phone: string;
+  ward: Ward;
+  comments: string | null;
+  requestedRole: UserRole | null;
+  status: 'pending' | 'approved' | 'denied';
+  createdAt: Date;
+  reviewedAt: Date | null;
+  reviewedByName: string | null;
+  reviewedByEmail: string | null;
+  reviewNote: string | null;
+};

@@ -13,6 +13,7 @@ export function AdminUsersPageClient({
   currentUserId,
   currentUserRole,
   currentUserWard,
+  accessRequests = [],
 }: AdminUsersClientProps) {
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -39,6 +40,7 @@ export function AdminUsersPageClient({
         currentUserRole={currentUserRole}
         currentUserWard={currentUserWard}
         searchQuery={searchQuery}
+        accessRequests={accessRequests}
       />
     </div>
   );

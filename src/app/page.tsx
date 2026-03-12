@@ -80,9 +80,12 @@ export default async function HomePage() {
         </div>
 
         {/* CTA */}
-        <div className="flex justify-center">
+        <div className="flex flex-col items-center justify-center gap-3 sm:flex-row">
           <Button asChild size="lg">
-            <Link href="/auth/signin">Sign in to get started</Link>
+            <Link href="/auth/signin">Sign in</Link>
+          </Button>
+          <Button asChild size="lg" variant="outline">
+            <Link href="/request-access">Request access to get started</Link>
           </Button>
         </div>
 

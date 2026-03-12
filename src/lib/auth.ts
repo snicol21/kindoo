@@ -57,6 +57,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           id: user.id,
           email: user.email,
           name: user.name ?? null,
+          mustChangePassword: user.mustChangePassword,
         };
       },
     }),
@@ -72,20 +73,41 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     authorized({ auth, request: { nextUrl } }) {
       const isLoggedIn = !!auth?.user;
       const isOnDashboard = nextUrl.pathname.startsWith('/dashboard');
+      const isOnAdmin = nextUrl.pathname.startsWith('/admin');
+      const isOnAccount = nextUrl.pathname.startsWith('/account');
+      const isOnForcedPasswordPage = nextUrl.pathname.startsWith('/change-password');
 
-      if (isOnDashboard) {
+      if (isLoggedIn && auth?.user?.mustChangePassword && !isOnForcedPasswordPage) {
+        return Response.redirect(new URL('/change-password', nextUrl));
+      }
+
+      if (isOnDashboard || isOnAdmin || isOnAccount || isOnForcedPasswordPage) {
         if (isLoggedIn) return true;
         return false; // Redirect unauthenticated to sign-in
       }
 
       return true;
     },
-    jwt({ token, user }) {
+    async jwt({ token, user }) {
       if (user) {
         token.id = user.id;
         token.name = user.name;
         token.email = user.email;
+        token.mustChangePassword = user.mustChangePassword;
       }
+
+      if (token.id) {
+        const existing = await db
+          .select({ mustChangePassword: users.mustChangePassword })
+          .from(users)
+          .where(eq(users.id, token.id as string))
+          .limit(1);
+        const currentUser = existing[0];
+        if (currentUser) {
+          token.mustChangePassword = currentUser.mustChangePassword;
+        }
+      }
+
       return token;
     },
     async session({ session, user, token }) {
@@ -107,6 +129,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             session.user.ward = currentUser.ward;
             session.user.phone = currentUser.phone;
             session.user.image = currentUser.image ?? null;
+            session.user.mustChangePassword = currentUser.mustChangePassword;
 
             if (isAdminEmail(currentUser.email) && currentUser.role !== 'admin') {
               await db.update(users).set({ role: 'admin' }).where(eq(users.id, currentUser.id));
@@ -123,6 +146,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
 // Extend next-auth types
 declare module 'next-auth' {
+  interface User {
+    mustChangePassword?: boolean;
+  }
+
   interface Session {
     user: {
       id: string;
@@ -132,6 +159,7 @@ declare module 'next-auth' {
       role?: UserRole;
       ward?: string;
       phone?: string;
+      mustChangePassword?: boolean;
     };
   }
 }

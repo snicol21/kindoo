@@ -29,6 +29,9 @@ export const WARD_BUILDING: Record<Ward, Building> = {
 export const USER_ROLES = ['admin', 'stake_manager', 'ward_manager', 'ward_user'] as const;
 export type UserRole = (typeof USER_ROLES)[number];
 
+export const ACCESS_REQUEST_STATUSES = ['pending', 'approved', 'denied'] as const;
+export type AccessRequestStatus = (typeof ACCESS_REQUEST_STATUSES)[number];
+
 export const EVENT_TYPES = ['Private', 'Ward', 'Stake', 'Special'] as const;
 export type EventType = (typeof EVENT_TYPES)[number];
 
@@ -41,6 +44,7 @@ export const users = sqliteTable('user', {
   name: text('name'),
   email: text('email').unique().notNull(),
   passwordHash: text('password_hash'),
+  mustChangePassword: integer('must_change_password', { mode: 'boolean' }).notNull().default(false),
   role: text('role', { enum: USER_ROLES }).notNull().$type<UserRole>().default('ward_user'),
   ward: text('ward', { enum: WARDS }).notNull().$type<Ward>().default('1st Ward'),
   phone: text('phone').notNull().default('0000000000'),
@@ -56,6 +60,40 @@ export const users = sqliteTable('user', {
     .notNull()
     .default(sql`(unixepoch())`),
 });
+
+export const accessRequests = sqliteTable(
+  'access_request',
+  {
+    id: text('id')
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    email: text('email').notNull(),
+    name: text('name').notNull(),
+    phone: text('phone').notNull(),
+    ward: text('ward', { enum: WARDS }).notNull().$type<Ward>(),
+    comments: text('comments'),
+    requestedRole: text('requested_role', { enum: USER_ROLES }).$type<UserRole>(),
+    status: text('status', { enum: ACCESS_REQUEST_STATUSES })
+      .notNull()
+      .$type<AccessRequestStatus>()
+      .default('pending'),
+    reviewedAt: integer('reviewed_at', { mode: 'timestamp' }),
+    reviewedByUserId: text('reviewed_by_user_id').references(() => users.id, {
+      onDelete: 'set null',
+    }),
+    reviewNote: text('review_note'),
+    createdAt: integer('created_at', { mode: 'timestamp' })
+      .notNull()
+      .default(sql`(unixepoch())`),
+    updatedAt: integer('updated_at', { mode: 'timestamp' })
+      .notNull()
+      .default(sql`(unixepoch())`),
+  },
+  (table) => ({
+    statusCreatedIdx: index('access_request_status_created_idx').on(table.status, table.createdAt),
+    emailStatusIdx: index('access_request_email_status_idx').on(table.email, table.status),
+  })
+);
 
 // ─── Contacts Table ──────────────────────────────────────────────────────────
 
@@ -236,6 +274,9 @@ export const licenseWorkerHeartbeats = sqliteTable(
 
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
+
+export type AccessRequest = typeof accessRequests.$inferSelect;
+export type NewAccessRequest = typeof accessRequests.$inferInsert;
 
 export type Event = typeof events.$inferSelect;
 export type NewEvent = typeof events.$inferInsert;

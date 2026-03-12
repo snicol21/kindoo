@@ -11,7 +11,6 @@ import {
 } from '@/components/_ui/dialog';
 import { Input } from '@/components/_ui/input';
 import { Label } from '@/components/_ui/label';
-import { PasswordInput } from '@/components/_ui/password-input';
 import {
   Select,
   SelectContent,
@@ -28,20 +27,20 @@ type CreateUserDialogProps = {
   onOpenChangeAction: (open: boolean) => void;
   createEmail: string;
   createName: string;
-  createPassword: string;
   createRole: UserRole;
   createWard: Ward;
   createPhone: string;
+  sendCredentialsEmail: boolean;
   wardOptions: readonly Ward[];
   allowedRoles: UserRole[];
   fixedWard?: Ward;
   createPending: boolean;
   onCreateEmailAction: (value: string) => void;
   onCreateNameAction: (value: string) => void;
-  onCreatePasswordAction: (value: string) => void;
   onCreateRoleAction: (value: UserRole) => void;
   onCreateWardAction: (value: Ward) => void;
   onCreatePhoneAction: (value: string) => void;
+  onSendCredentialsEmailAction: (value: boolean) => void;
   onSubmitAction: () => void;
 };
 
@@ -50,20 +49,20 @@ export function CreateUserDialog({
   onOpenChangeAction,
   createEmail,
   createName,
-  createPassword,
   createRole,
   createWard,
   createPhone,
+  sendCredentialsEmail,
   wardOptions,
   allowedRoles,
   fixedWard,
   createPending,
   onCreateEmailAction,
   onCreateNameAction,
-  onCreatePasswordAction,
   onCreateRoleAction,
   onCreateWardAction,
   onCreatePhoneAction,
+  onSendCredentialsEmailAction,
   onSubmitAction,
 }: CreateUserDialogProps) {
   return (
@@ -71,7 +70,9 @@ export function CreateUserDialog({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Create user</DialogTitle>
-          <DialogDescription>Add a new account with a temporary password.</DialogDescription>
+          <DialogDescription>
+            Add a new account. A temporary password will be generated automatically.
+          </DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
           <div>
@@ -93,18 +94,6 @@ export function CreateUserDialog({
               value={createName}
               onChange={(event) => onCreateNameAction(event.target.value)}
             />
-          </div>
-          <div>
-            <Label htmlFor="create-password">Temporary password</Label>
-            <PasswordInput
-              id="create-password"
-              value={createPassword}
-              onChange={(event) => onCreatePasswordAction(event.target.value)}
-            />
-            <div className="mt-1 flex items-center justify-between text-xs text-muted-foreground">
-              <span>Minimum 12 characters</span>
-              <span>{createPassword.length}/12</span>
-            </div>
           </div>
           <div>
             <Label htmlFor="create-phone">Phone</Label>
@@ -160,6 +149,15 @@ export function CreateUserDialog({
               </SelectContent>
             </Select>
           </div>
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              className="h-4 w-4 rounded border-input"
+              checked={sendCredentialsEmail}
+              onChange={(event) => onSendCredentialsEmailAction(event.target.checked)}
+            />
+            Send temporary credentials by email
+          </label>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChangeAction(false)}>

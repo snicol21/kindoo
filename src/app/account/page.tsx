@@ -29,6 +29,7 @@ interface AccountPageProps {
     updated?: string;
     nameUpdated?: string;
     imageUpdated?: string;
+    forcePasswordChange?: string;
     error?: string;
   }>;
 }
@@ -60,13 +61,15 @@ export default async function AccountPage({ searchParams }: AccountPageProps) {
 
   const message = params.error
     ? decodeURIComponent(params.error)
-    : params.imageUpdated === '1'
-      ? 'Profile photo updated.'
-      : params.nameUpdated === '1'
-        ? 'Name updated.'
-        : params.updated === '1'
-          ? 'Password updated.'
-          : null;
+    : params.forcePasswordChange === '1'
+      ? 'You must change your temporary password before using the app.'
+      : params.imageUpdated === '1'
+        ? 'Profile photo updated.'
+        : params.nameUpdated === '1'
+          ? 'Name updated.'
+          : params.updated === '1'
+            ? 'Password updated.'
+            : null;
 
   const userInitials = session?.user?.name
     ? session.user.name

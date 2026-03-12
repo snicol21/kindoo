@@ -11,7 +11,6 @@ import {
 } from '@/components/_ui/dialog';
 import { Input } from '@/components/_ui/input';
 import { Label } from '@/components/_ui/label';
-import { PasswordInput } from '@/components/_ui/password-input';
 import {
   Select,
   SelectContent,
@@ -32,10 +31,9 @@ type EditUserDialogProps = {
   editName: string;
   editRole: UserRole;
   editWard: Ward;
-  newPassword: string;
-  confirmPassword: string;
   pending: boolean;
-  canEditNameAndPassword: boolean;
+  sendCredentialsPending: boolean;
+  canEditAccountDetails: boolean;
   canEditRole: boolean;
   canEditWard: boolean;
   wardOptions: readonly Ward[];
@@ -46,8 +44,7 @@ type EditUserDialogProps = {
   onEditNameAction: (value: string) => void;
   onEditRoleAction: (value: UserRole) => void;
   onEditWardAction: (value: Ward) => void;
-  onNewPasswordAction: (value: string) => void;
-  onConfirmPasswordAction: (value: string) => void;
+  onSendCredentialsAction: () => void;
   onSubmitAction: () => void;
 };
 
@@ -59,10 +56,9 @@ export function EditUserDialog({
   editName,
   editRole,
   editWard,
-  newPassword,
-  confirmPassword,
   pending,
-  canEditNameAndPassword,
+  sendCredentialsPending,
+  canEditAccountDetails,
   canEditRole,
   canEditWard,
   wardOptions,
@@ -73,8 +69,7 @@ export function EditUserDialog({
   onEditNameAction,
   onEditRoleAction,
   onEditWardAction,
-  onNewPasswordAction,
-  onConfirmPasswordAction,
+  onSendCredentialsAction,
   onSubmitAction,
 }: EditUserDialogProps) {
   return (
@@ -93,7 +88,7 @@ export function EditUserDialog({
               id="edit-user-name"
               value={editName}
               placeholder="Name"
-              disabled={!canEditNameAndPassword}
+              disabled={!canEditAccountDetails}
               onChange={(event) => onEditNameAction(event.target.value)}
             />
           </div>
@@ -105,7 +100,7 @@ export function EditUserDialog({
               type="email"
               value={editEmail}
               placeholder="user@example.com"
-              disabled={!canEditNameAndPassword}
+              disabled={!canEditAccountDetails}
               onChange={(event) => onEditEmailAction(event.target.value)}
             />
           </div>
@@ -116,7 +111,7 @@ export function EditUserDialog({
               id="edit-user-phone"
               value={editPhone}
               required
-              disabled={!canEditNameAndPassword}
+              disabled={!canEditAccountDetails}
               onValueChange={onEditPhoneAction}
             />
           </div>
@@ -168,27 +163,21 @@ export function EditUserDialog({
             <div className="h-px flex-1 bg-border/60" />
           </div>
 
-          <div>
-            <Label htmlFor="edit-user-password">New password</Label>
-            <PasswordInput
-              id="edit-user-password"
-              value={newPassword}
-              disabled={!canEditNameAndPassword}
-              onChange={(event) => onNewPasswordAction(event.target.value)}
-            />
+          <div className="rounded-md border border-border/70 bg-muted/30 p-3">
+            <p className="text-sm font-medium">Credentials email</p>
             <p className="mt-1 text-xs text-muted-foreground">
-              Leave blank to keep existing password.
+              Automatically generate a temporary password and email it to the user.
             </p>
-          </div>
-
-          <div>
-            <Label htmlFor="edit-user-confirm-password">Confirm password</Label>
-            <PasswordInput
-              id="edit-user-confirm-password"
-              value={confirmPassword}
-              disabled={!canEditNameAndPassword || !newPassword}
-              onChange={(event) => onConfirmPasswordAction(event.target.value)}
-            />
+            <div className="mt-3">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={onSendCredentialsAction}
+                disabled={sendCredentialsPending || !editUser || !canEditAccountDetails}
+              >
+                {sendCredentialsPending ? 'Sending credentials...' : 'Send new credentials email'}
+              </Button>
+            </div>
           </div>
         </div>
         <DialogFooter className="border-t pt-3">

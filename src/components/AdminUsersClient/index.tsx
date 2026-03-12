@@ -2,15 +2,16 @@
 
 import {
   adminDeleteUser,
+  adminSendUserCredentials,
   adminSetUserEmail,
   adminSetUserName,
-  adminSetUserPassword,
   adminSetUserPhone,
   adminSetUserRole,
   adminSetUserWard,
   createUser,
 } from '@/actions/auth';
 import { Card, CardContent } from '@/components/_ui/card';
+import { AccessRequestsTable } from '@/components/AdminUsersClient/AccessRequestsTable';
 import { AdminUsersHeader } from '@/components/AdminUsersClient/AdminUsersHeader';
 import { CreateUserDialog } from '@/components/AdminUsersClient/CreateUserDialog';
 import { DeleteUserDialog } from '@/components/AdminUsersClient/DeleteUserDialog';
@@ -33,6 +34,7 @@ export function AdminUsersClient({
   currentUserRole,
   currentUserWard,
   searchQuery = '',
+  accessRequests = [],
 }: AdminUsersClientProps) {
   const router = useRouter();
 
@@ -46,21 +48,20 @@ export function AdminUsersClient({
   const [createPending, setCreatePending] = useState(false);
   const [createEmail, setCreateEmail] = useState('');
   const [createName, setCreateName] = useState('');
-  const [createPassword, setCreatePassword] = useState('');
   const [createRole, setCreateRole] = useState<UserRole>('ward_user');
   const [createWard, setCreateWard] = useState<Ward>(currentUserWard as Ward);
   const [createPhone, setCreatePhone] = useState('');
+  const [sendCredentialsEmail, setSendCredentialsEmail] = useState(true);
 
   const [editOpen, setEditOpen] = useState(false);
   const [editPending, setEditPending] = useState(false);
+  const [sendCredentialsPending, setSendCredentialsPending] = useState(false);
   const [editUser, setEditUser] = useState<ManagedUser | null>(null);
   const [editEmail, setEditEmail] = useState('');
   const [editPhone, setEditPhone] = useState('');
   const [editName, setEditName] = useState('');
   const [editRole, setEditRole] = useState<UserRole>('ward_user');
   const [editWard, setEditWard] = useState<Ward>(currentUserWard as Ward);
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
 
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deletePending, setDeletePending] = useState(false);
@@ -69,10 +70,10 @@ export function AdminUsersClient({
   const resetCreateForm = () => {
     setCreateEmail('');
     setCreateName('');
-    setCreatePassword('');
     setCreateRole('ward_user');
     setCreateWard(currentUserWard as Ward);
     setCreatePhone('');
+    setSendCredentialsEmail(true);
   };
 
   const canManageTargetUser = (user: ManagedUser) => {
@@ -94,8 +95,6 @@ export function AdminUsersClient({
     setEditName(user.name ?? '');
     setEditRole(user.role);
     setEditWard(user.ward);
-    setNewPassword('');
-    setConfirmPassword('');
     setEditOpen(true);
   };
 
@@ -110,7 +109,7 @@ export function AdminUsersClient({
 
   const assignableRoles = useMemo(
     () =>
-      (['admin', 'stake_manager', 'ward_manager', 'ward_user'] as UserRole[]).filter((role) =>
+      (['ward_user', 'ward_manager', 'stake_manager', 'admin'] as UserRole[]).filter((role) =>
         canAssignRole(currentUserRole, role)
       ),
     [currentUserRole]
@@ -145,10 +144,10 @@ export function AdminUsersClient({
       const result = await createUser({
         email: createEmail,
         name: createName,
-        password: createPassword,
         role: createRole,
         ward: createWard,
         phone: createPhone,
+        sendCredentialsEmail,
       });
 
       if (!result.success) {
@@ -156,10 +155,16 @@ export function AdminUsersClient({
         return;
       }
 
-      toast.success('User created.');
+      if (result.data?.emailWarning) {
+        toast.warning(result.data.emailWarning);
+      } else {
+        toast.success('User created and credentials email sent.');
+      }
       setCreateOpen(false);
       resetCreateForm();
       router.refresh();
+    } catch {
+      toast.error('Unexpected server error while creating user. Please try again.');
     } finally {
       setCreatePending(false);
     }
@@ -175,17 +180,8 @@ export function AdminUsersClient({
       const changedName = (editName.trim() || '') !== (editUser.name?.trim() || '');
       const changedRole = editRole !== editUser.role;
       const changedWard = editWard !== editUser.ward;
-      const wantsPasswordUpdate =
-        newPassword.trim().length > 0 || confirmPassword.trim().length > 0;
 
-      if (
-        !changedEmail &&
-        !changedPhone &&
-        !changedName &&
-        !changedRole &&
-        !changedWard &&
-        !wantsPasswordUpdate
-      ) {
+      if (!changedEmail && !changedPhone && !changedName && !changedRole && !changedWard) {
         setEditOpen(false);
         return;
       }
@@ -230,23 +226,11 @@ export function AdminUsersClient({
         }
       }
 
-      if (wantsPasswordUpdate) {
-        const passwordResult = await adminSetUserPassword({
-          userId: editUser.id,
-          password: newPassword,
-          confirmPassword,
-        });
-        if (!passwordResult.success) {
-          toast.error(passwordResult.error ?? 'Failed to update password.');
-          return;
-        }
-      }
-
       toast.success('User updated.');
       setEditOpen(false);
-      setNewPassword('');
-      setConfirmPassword('');
       router.refresh();
+    } catch {
+      toast.error('Unexpected server error while updating user. Please try again.');
     } finally {
       setEditPending(false);
     }
@@ -266,13 +250,54 @@ export function AdminUsersClient({
       toast.success('User deleted.');
       setDeleteOpen(false);
       router.refresh();
+    } catch {
+      toast.error('Unexpected server error while deleting user. Please try again.');
     } finally {
       setDeletePending(false);
     }
   };
 
+  const handleSendEditUserCredentials = async () => {
+    if (!editUser) return;
+
+    setSendCredentialsPending(true);
+    try {
+      const result = await adminSendUserCredentials({ userId: editUser.id });
+
+      if (!result.success) {
+        toast.error(result.error ?? 'Failed to send credentials email.');
+        return;
+      }
+
+      if (result.data?.emailWarning) {
+        toast.warning(result.data.emailWarning);
+      } else {
+        toast.success('New credentials email sent.');
+      }
+
+      setEditOpen(false);
+      router.refresh();
+    } catch {
+      toast.error('Unexpected server error while sending credentials. Please try again.');
+    } finally {
+      setSendCredentialsPending(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
+      <Card>
+        <CardContent className="pt-6">
+          <div className="mb-4">
+            <h2 className="text-base font-semibold">Access requests</h2>
+            <p className="text-sm text-muted-foreground">
+              Review and approve incoming requests before account creation.
+            </p>
+          </div>
+          <AccessRequestsTable requests={accessRequests} currentUserRole={currentUserRole} />
+        </CardContent>
+      </Card>
+
       <Card>
         <AdminUsersHeader onCreateUserAction={() => setCreateOpen(true)} />
         <CardContent>
@@ -292,20 +317,20 @@ export function AdminUsersClient({
         onOpenChangeAction={setCreateOpen}
         createEmail={createEmail}
         createName={createName}
-        createPassword={createPassword}
         createRole={createRole}
         createWard={createWard}
         createPhone={createPhone}
+        sendCredentialsEmail={sendCredentialsEmail}
         wardOptions={WARDS}
         allowedRoles={assignableRoles}
         fixedWard={currentUserRole === 'ward_manager' ? (currentUserWard as Ward) : undefined}
         createPending={createPending}
         onCreateEmailAction={setCreateEmail}
         onCreateNameAction={setCreateName}
-        onCreatePasswordAction={setCreatePassword}
         onCreateRoleAction={setCreateRole}
         onCreateWardAction={setCreateWard}
         onCreatePhoneAction={setCreatePhone}
+        onSendCredentialsEmailAction={setSendCredentialsEmail}
         onSubmitAction={handleCreateUser}
       />
 
@@ -317,10 +342,9 @@ export function AdminUsersClient({
         editName={editName}
         editRole={editRole}
         editWard={editWard}
-        newPassword={newPassword}
-        confirmPassword={confirmPassword}
         pending={editPending}
-        canEditNameAndPassword={!!editUser && canManageTargetUser(editUser)}
+        sendCredentialsPending={sendCredentialsPending}
+        canEditAccountDetails={!!editUser && canManageTargetUser(editUser)}
         canEditRole={canEditRoleField}
         canEditWard={canEditWardField}
         wardOptions={editWardOptions}
@@ -331,8 +355,7 @@ export function AdminUsersClient({
         onEditNameAction={setEditName}
         onEditRoleAction={setEditRole}
         onEditWardAction={setEditWard}
-        onNewPasswordAction={setNewPassword}
-        onConfirmPasswordAction={setConfirmPassword}
+        onSendCredentialsAction={handleSendEditUserCredentials}
         onSubmitAction={handleSaveEditUser}
       />
 

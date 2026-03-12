@@ -5,6 +5,7 @@ import { PasswordInput } from '@/components/_ui/password-input';
 import { auth, signIn } from '@/lib/auth';
 import type { Metadata } from 'next';
 import Image from 'next/image';
+import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { connection } from 'next/server';
 
@@ -89,11 +90,24 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
               <Button type="submit" className="w-full">
                 Sign in
               </Button>
+              <p className="text-xs text-center text-muted-foreground">
+                <Link href="/auth/forgot-password" className="underline underline-offset-2">
+                  Forgot password?
+                </Link>
+              </p>
             </form>
 
             <p className="text-xs text-center text-muted-foreground">
-              This is a private application.
-              <wbr /> Access is restricted to authorized users only.
+              <span className="block">This is a private application.</span>
+              <span className="block">Access is restricted to authorized users only.</span>
+            </p>
+
+            <p className="text-xs text-center text-muted-foreground">
+              Need access?{' '}
+              <Link href="/request-access" className="underline underline-offset-2">
+                Submit a request
+              </Link>
+              .
             </p>
           </CardContent>
         </Card>
