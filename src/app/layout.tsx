@@ -2,6 +2,7 @@ import '@/app/globals.css';
 import { BootLoader } from '@/components/BootLoader';
 import { Navbar } from '@/components/Navbar';
 import { PwaInstallBanner } from '@/components/PwaInstallBanner';
+import { ServiceWorkerCleanup } from '@/components/ServiceWorkerCleanup';
 import { Providers } from '@/providers/providers';
 import type { Metadata, Viewport } from 'next';
 import { Inter } from 'next/font/google';
@@ -70,6 +71,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" suppressHydrationWarning className={inter.variable}>
       <body className="font-inter antialiased bg-background text-foreground min-h-screen flex flex-col">
+        <ServiceWorkerCleanup />
         <BootLoader />
         <NextTopLoader color="#2563eb" height={3} showSpinner={false} />
         <Suspense fallback={<NavbarSkeleton />}>

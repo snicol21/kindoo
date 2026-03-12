@@ -10,7 +10,6 @@ import {
   DropdownMenuTrigger,
 } from '@/components/_ui/dropdown-menu';
 import { PwaBadgeSync } from '@/components/PwaBadgeSync';
-import { ResetOfflineCacheMenuItem } from '@/components/ResetOfflineCacheMenuItem';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { isAdminEmail } from '@/lib/admin';
 import { auth, signOut } from '@/lib/auth';
@@ -155,7 +154,6 @@ export async function NavbarUserSection() {
                           )}
                         </Link>
                       </DropdownMenuItem>
-                      <ResetOfflineCacheMenuItem />
                     </>
                   )}
                   <DropdownMenuSeparator />

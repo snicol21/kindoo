@@ -5,7 +5,7 @@ import path from 'path';
 const withPWAConfig = withPWA({
   dest: 'public',
   register: true,
-  disable: process.env.NODE_ENV === 'development',
+  disable: true,
   cacheOnFrontEndNav: false,
   aggressiveFrontEndNavCaching: false,
   reloadOnOnline: true,
