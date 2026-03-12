@@ -1213,6 +1213,16 @@ export function EventTable({
               const shouldShowExpiredLicense = !!event.kindooLicenseCreated && licenseWindowEnded;
               const shouldShowPastExistingLicenseLabel =
                 eventEnded && licenseOutcome === 'Active license already existed';
+              const msUntilLicenseExpires =
+                !!event.kindooLicenseCreated && nowMs !== null
+                  ? getLicenseWindowEndTimestamp(event) - nowMs
+                  : null;
+              const shouldShowLicenseExpiryCountdown =
+                !!event.kindooLicenseCreated &&
+                !shouldShowExpiredLicense &&
+                msUntilLicenseExpires !== null &&
+                Number.isFinite(msUntilLicenseExpires) &&
+                msUntilLicenseExpires > 0;
               const displayedOutcome = shouldShowExpiredLicense
                 ? 'License expired'
                 : shouldShowPastSchedulingWindowPassed
@@ -1222,9 +1232,11 @@ export function EventTable({
                 ? msUntilDue !== null && msUntilDue > 0
                   ? `License schedules in ${formatCountdownMs(msUntilDue)}`
                   : 'Scheduling queued'
-                : shouldShowPastExistingLicenseLabel
-                  ? 'Active license existed at event time'
-                  : displayedOutcome;
+                : shouldShowLicenseExpiryCountdown
+                  ? `License expires in ${formatCountdownMs(msUntilLicenseExpires)}`
+                  : shouldShowPastExistingLicenseLabel
+                    ? 'Active license existed at event time'
+                    : displayedOutcome;
               const scheduleTimeReached =
                 shouldUseCountdownAsOutcomeLabel && (msUntilDue === null || msUntilDue <= 0);
               const licenseOutcomeVisual = getLicenseOutcomeVisual(
