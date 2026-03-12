@@ -39,7 +39,7 @@ export function BootLoader() {
   return (
     <div
       aria-label="Loading application"
-      className={`fixed inset-0 mt-17 -mb-17 pb-17 z-100 grid place-items-center overflow-hidden bg-background px-4 text-foreground transition-opacity duration-200 ${
+      className={`fixed inset-0 mt-17 -mb-17 pb-25 z-100 grid place-items-center overflow-hidden bg-background px-4 text-foreground transition-opacity duration-200 ${
         isVisible ? 'opacity-100' : 'pointer-events-none opacity-0'
       }`}
       style={{ zIndex: 9998 }}
