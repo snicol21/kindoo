@@ -229,6 +229,7 @@ export function EventTable({
   isLoading,
   isError,
   building,
+  defaultSortDir,
   emptyStateTitle,
   emptyStateMessage,
   messageTemplates,
@@ -244,7 +245,7 @@ export function EventTable({
   const PAGE_SIZE = 10;
 
   const [sortKey, setSortKey] = useState<SortKey>('eventDate');
-  const [sortDir, setSortDir] = useState<SortDir>('asc');
+  const [sortDir, setSortDir] = useState<SortDir>(defaultSortDir ?? 'asc');
   const [currentPage, setCurrentPage] = useState(1);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [pendingDeleteEvent, setPendingDeleteEvent] = useState<EventWithCreator | null>(null);

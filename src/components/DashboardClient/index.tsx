@@ -109,38 +109,32 @@ export function DashboardClient({
   const setKindooLicenseCreated = useSetKindooLicenseCreated();
 
   const stakeMainEvents = useMemo(
-    () =>
-      stakeCenterEvents.filter(
-        (event) =>
-          !isPastEvent(event.eventDate, event.endTime) || !isOutsideDashboardWindow(event.eventDate)
-      ),
+    () => stakeCenterEvents.filter((event) => !isPastEvent(event.eventDate, event.endTime)),
     [stakeCenterEvents]
   );
 
   const maplesMainEvents = useMemo(
-    () =>
-      maplesEvents.filter(
-        (event) =>
-          !isPastEvent(event.eventDate, event.endTime) || !isOutsideDashboardWindow(event.eventDate)
-      ),
+    () => maplesEvents.filter((event) => !isPastEvent(event.eventDate, event.endTime)),
     [maplesEvents]
   );
 
   const stakePastEvents = useMemo(
-    () =>
-      stakeCenterEvents.filter(
-        (event) =>
-          isPastEvent(event.eventDate, event.endTime) && isOutsideDashboardWindow(event.eventDate)
-      ),
+    () => stakeCenterEvents.filter((event) => isPastEvent(event.eventDate, event.endTime)),
     [stakeCenterEvents]
   );
 
   const maplesPastEvents = useMemo(
-    () =>
-      maplesEvents.filter(
-        (event) =>
-          isPastEvent(event.eventDate, event.endTime) && isOutsideDashboardWindow(event.eventDate)
-      ),
+    () => maplesEvents.filter((event) => isPastEvent(event.eventDate, event.endTime)),
+    [maplesEvents]
+  );
+
+  const stakeCalendarEvents = useMemo(
+    () => stakeCenterEvents.filter((event) => !isOutsideDashboardWindow(event.eventDate)),
+    [stakeCenterEvents]
+  );
+
+  const maplesCalendarEvents = useMemo(
+    () => maplesEvents.filter((event) => !isOutsideDashboardWindow(event.eventDate)),
     [maplesEvents]
   );
 
@@ -181,13 +175,18 @@ export function DashboardClient({
 
   const activeBuildingKey = activeTab === 'maples-building' ? 'maples' : 'stake';
   const activeUpcoming = activeTab === 'maples-building' ? maplesMainEvents : stakeMainEvents;
+  const activeCalendarEvents =
+    activeTab === 'maples-building' ? maplesCalendarEvents : stakeCalendarEvents;
   const activeBuildingName = activeTab === 'maples-building' ? 'Maples Building' : 'Stake Center';
   const activeBuildingSubtitle =
     activeTab === 'maples-building'
       ? 'All upcoming events at Maples Building'
       : 'All upcoming events at Stake Center';
 
-  const dotCalendarDays = useMemo(() => buildDotCalendarDays(activeUpcoming), [activeUpcoming]);
+  const dotCalendarDays = useMemo(
+    () => buildDotCalendarDays(activeCalendarEvents),
+    [activeCalendarEvents]
+  );
 
   useEffect(() => {
     const upcomingIds = new Set(filteredStakeUpcoming.map((event) => event.id));
@@ -343,7 +342,13 @@ export function DashboardClient({
               onClick={() => setShowStakePastEvents((prev) => !prev)}
               className="flex w-full items-center justify-between px-3 py-2 text-left text-sm font-medium hover:bg-muted/50"
             >
-              <span>Past events ({filteredStakePast.length})</span>
+              <span className="inline-flex items-center gap-2">
+                <span
+                  aria-hidden="true"
+                  className="inline-block h-2.5 w-2.5 rounded-full bg-amber-500/85 dark:bg-amber-300/90"
+                />
+                <span>Past events ({filteredStakePast.length})</span>
+              </span>
               {showStakePastEvents ? (
                 <ChevronDown className="h-4 w-4 text-muted-foreground" />
               ) : (
@@ -359,9 +364,10 @@ export function DashboardClient({
                   isError={scError}
                   building="Stake Center"
                   messageTemplates={messageTemplates}
+                  defaultSortDir="desc"
                   searchQuery={searchQuery}
                   emptyStateTitle="No past events"
-                  emptyStateMessage="Historical events will appear here once they move outside the current 4-week window."
+                  emptyStateMessage="Completed events appear here."
                   onDeleteAction={(eventId) =>
                     deleteStakeCenterEvent.mutateAsync(eventId).then(() => undefined)
                   }
@@ -412,7 +418,13 @@ export function DashboardClient({
               onClick={() => setShowMaplesPastEvents((prev) => !prev)}
               className="flex w-full items-center justify-between px-3 py-2 text-left text-sm font-medium hover:bg-muted/50"
             >
-              <span>Past events ({filteredMaplesPast.length})</span>
+              <span className="inline-flex items-center gap-2">
+                <span
+                  aria-hidden="true"
+                  className="inline-block h-2.5 w-2.5 rounded-full bg-amber-500/85 dark:bg-amber-300/90"
+                />
+                <span>Past events ({filteredMaplesPast.length})</span>
+              </span>
               {showMaplesPastEvents ? (
                 <ChevronDown className="h-4 w-4 text-muted-foreground" />
               ) : (
@@ -428,9 +440,10 @@ export function DashboardClient({
                   isError={mbError}
                   building="Maples Building"
                   messageTemplates={messageTemplates}
+                  defaultSortDir="desc"
                   searchQuery={searchQuery}
                   emptyStateTitle="No past events"
-                  emptyStateMessage="Historical events will appear here once they move outside the current 4-week window."
+                  emptyStateMessage="Completed events appear here."
                   onDeleteAction={(eventId) =>
                     deleteMaplesEvent.mutateAsync(eventId).then(() => undefined)
                   }

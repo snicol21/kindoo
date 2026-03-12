@@ -6,6 +6,7 @@ export interface EventTableProps {
   isLoading: boolean;
   isError: boolean;
   building: string;
+  defaultSortDir?: SortDir;
   emptyStateTitle?: string;
   emptyStateMessage?: string;
   messageTemplates?: MessageTemplateMap;

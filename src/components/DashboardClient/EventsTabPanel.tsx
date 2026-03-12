@@ -4,6 +4,7 @@ import type { AddEventInput, EventWithCreator, UpdateEventInput } from '@/action
 import { Button } from '@/components/_ui/button';
 import { Card, CardContent } from '@/components/_ui/card';
 import { EventTable } from '@/components/EventTable';
+import type { SortDir } from '@/components/EventTable/types';
 import type { MessageTemplateMap } from '@/lib/message-templates';
 import type { Building } from '@/schema/schema';
 
@@ -13,6 +14,7 @@ type EventsTabPanelProps = {
   isError: boolean;
   building: Building;
   messageTemplates: MessageTemplateMap;
+  defaultSortDir?: SortDir;
   searchQuery?: string;
   emptyStateTitle?: string;
   emptyStateMessage?: string;
@@ -35,6 +37,7 @@ export function EventsTabPanel({
   isError,
   building,
   messageTemplates,
+  defaultSortDir,
   searchQuery,
   emptyStateTitle,
   emptyStateMessage,
@@ -71,6 +74,7 @@ export function EventsTabPanel({
             isLoading={isLoading}
             isError={isError}
             building={building}
+            defaultSortDir={defaultSortDir}
             emptyStateTitle={isSearching ? 'No matching events' : emptyStateTitle}
             emptyStateMessage={
               isSearching ? 'Try a different search or clear the filter.' : emptyStateMessage
