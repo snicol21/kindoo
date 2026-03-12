@@ -6,7 +6,7 @@ import { PasswordInput } from '@/components/_ui/password-input';
 import { FormSubmitButton } from '@/components/FormSubmitButton';
 import { PageContainer } from '@/components/PageContainer';
 import { PasswordInputWithCount } from '@/components/PasswordInputWithCount';
-import { auth, signOut } from '@/lib/auth';
+import { auth, signIn, signOut } from '@/lib/auth';
 import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 
@@ -52,15 +52,31 @@ export default async function ForcedPasswordPage({ searchParams }: ForcedPasswor
             <form
               action={async (formData: FormData) => {
                 'use server';
+                const newPassword = String(formData.get('newPassword') ?? '');
+                const confirmPassword = String(formData.get('confirmPassword') ?? '');
+
                 const result = await completeForcedPasswordReset({
-                  newPassword: String(formData.get('newPassword') ?? ''),
-                  confirmPassword: String(formData.get('confirmPassword') ?? ''),
+                  newPassword,
+                  confirmPassword,
                 });
 
                 if (!result.success) {
                   const msg = encodeURIComponent(result.error ?? 'Failed to update password.');
                   redirect(`/change-password?error=${msg}`);
                 }
+
+                // Refresh auth state immediately so the dashboard load sees a fresh session.
+                const refreshedSession = await auth();
+                const email = refreshedSession?.user?.email;
+                if (!email) {
+                  redirect('/auth/signin?error=Callback&callbackUrl=%2Fdashboard');
+                }
+
+                await signIn('credentials', {
+                  email,
+                  password: newPassword,
+                  redirectTo: '/dashboard',
+                });
 
                 redirect('/dashboard');
               }}
