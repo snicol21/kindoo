@@ -1,5 +1,6 @@
 'use client';
 
+import { LoaderVisual } from '@/components/LoaderVisual';
 import { useEffect, useState } from 'react';
 
 export function BootLoader() {
@@ -17,11 +18,14 @@ export function BootLoader() {
       document.body.style.overflow = previousBodyOverflow;
     };
 
-    const fadeTimer = window.setTimeout(() => setIsVisible(false), 0);
+    const MIN_VISIBLE_MS = 380;
+    const FADE_DURATION_MS = 220;
+
+    const fadeTimer = window.setTimeout(() => setIsVisible(false), MIN_VISIBLE_MS);
     const removeTimer = window.setTimeout(() => {
       unlockScroll();
       setIsRendered(false);
-    }, 220);
+    }, MIN_VISIBLE_MS + FADE_DURATION_MS);
 
     return () => {
       window.clearTimeout(fadeTimer);
@@ -35,27 +39,12 @@ export function BootLoader() {
   return (
     <div
       aria-label="Loading application"
-      className={`fixed inset-0 z-100 grid place-items-center bg-background text-foreground transition-opacity duration-200 ${
+      className={`fixed inset-0 mt-16 -mb-16 z-100 grid place-items-center overflow-hidden bg-background px-4 text-foreground transition-opacity duration-200 ${
         isVisible ? 'opacity-100' : 'pointer-events-none opacity-0'
       }`}
+      style={{ zIndex: 9998 }}
     >
-      <div className="relative grid h-24 w-24 place-items-center">
-        <div className="absolute inset-1 animate-ping rounded-3xl border border-primary/35" />
-        <div className="absolute inset-0 animate-spin rounded-3xl border-2 border-primary/20 border-t-primary" />
-        <div className="absolute inset-2 animate-pulse rounded-3xl border border-primary/30" />
-        <div className="grid h-14 w-14 animate-pulse animation-duration-[1.2s] place-items-center rounded-2xl border border-border bg-card shadow-sm">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src="/icons/favicon.svg"
-            alt="DigitalFob"
-            width={28}
-            height={28}
-            loading="eager"
-            decoding="sync"
-            fetchPriority="high"
-          />
-        </div>
-      </div>
+      <LoaderVisual />
     </div>
   );
 }
