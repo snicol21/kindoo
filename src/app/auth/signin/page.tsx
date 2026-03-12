@@ -4,6 +4,7 @@ import { PasswordInput } from '@/components/_ui/password-input';
 import { FormSubmitButton } from '@/components/FormSubmitButton';
 import { auth, signIn } from '@/lib/auth';
 import type { Metadata } from 'next';
+import { AuthError } from 'next-auth';
 import Image from 'next/image';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
@@ -78,10 +79,23 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
                     password: formData.get('password'),
                     redirectTo: params.callbackUrl ?? '/dashboard',
                   });
-                } catch {
-                  const callbackUrl = encodeURIComponent(params.callbackUrl ?? '/dashboard');
-                  redirect(`/auth/signin?error=CredentialsSignin&callbackUrl=${callbackUrl}`);
+                } catch (error) {
+                  if (error instanceof AuthError) {
+                    if (error.type === 'CredentialsSignin') {
+                      const callbackUrl = encodeURIComponent(params.callbackUrl ?? '/dashboard');
+                      redirect(`/auth/signin?error=CredentialsSignin&callbackUrl=${callbackUrl}`);
+                    }
+
+                    const callbackUrl = encodeURIComponent(params.callbackUrl ?? '/dashboard');
+                    redirect(`/auth/signin?error=Callback&callbackUrl=${callbackUrl}`);
+                  }
+
+                  // Preserve Next.js redirect/navigation errors.
+                  throw error;
                 }
+
+                // Defensive fallback in case signIn returns without redirect.
+                redirect(params.callbackUrl ?? '/dashboard');
               }}
               className="space-y-3"
             >
