@@ -38,6 +38,13 @@ function parsePreviewNumber(value: string | null, fallback: number, min: number,
   return Math.max(min, Math.min(max, parsed));
 }
 
+function getLocalTodayYmd() {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(
+    now.getDate()
+  ).padStart(2, '0')}`;
+}
+
 export function DashboardStats({
   activeBuildingKey,
   dashboardCounts,
@@ -55,6 +62,7 @@ export function DashboardStats({
   }, [currentUserRole]);
   const [breakdownMode, setBreakdownMode] = useState<BreakdownMode>(availableBreakdownModes[0]);
   const [calendarPage, setCalendarPage] = useState(0);
+  const [clientTodayYmd, setClientTodayYmd] = useState(todayYmd);
   const breakdownTouchStartX = useRef<number | null>(null);
   const breakdownTouchStartY = useRef<number | null>(null);
   const calendarTouchStartX = useRef<number | null>(null);
@@ -128,6 +136,26 @@ export function DashboardStats({
       setBreakdownMode(availableBreakdownModes[0]);
     }
   }, [availableBreakdownModes, breakdownMode]);
+
+  useEffect(() => {
+    const syncLocalToday = () => {
+      setClientTodayYmd(getLocalTodayYmd());
+    };
+
+    syncLocalToday();
+
+    const now = new Date();
+    const nextMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+    const msUntilMidnight = Math.max(1000, nextMidnight.getTime() - now.getTime() + 1000);
+
+    const midnightTimer = window.setTimeout(() => {
+      syncLocalToday();
+    }, msUntilMidnight);
+
+    return () => {
+      window.clearTimeout(midnightTimer);
+    };
+  }, []);
 
   useEffect(() => {
     const target = upcomingEvents;
@@ -439,7 +467,7 @@ export function DashboardStats({
             return (
               <div key={`week-${weekIndex}`} className="flex w-full items-center justify-between">
                 {week.map((day) => {
-                  const isToday = day.ymd === todayYmd;
+                  const isToday = day.ymd === clientTodayYmd;
                   const dotClass = day.count === 0 ? 'bg-muted-foreground/30' : 'bg-emerald-500';
                   const title = `${formatShortDate(day.ymd)}${
                     isToday ? ' (today)' : ''
