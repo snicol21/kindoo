@@ -54,6 +54,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     ref
   ) => {
     const content = isLoading && loadingText ? loadingText : children;
+    const domProps = props;
 
     if (asChild) {
       return (
@@ -62,7 +63,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
           ref={ref}
           aria-busy={isLoading || undefined}
           data-loading={isLoading ? '' : undefined}
-          {...props}
+          {...domProps}
         >
           {content}
         </Slot>
@@ -76,7 +77,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         aria-busy={isLoading || undefined}
         data-loading={isLoading ? '' : undefined}
         disabled={disabled || isLoading}
-        {...props}
+        {...domProps}
       >
         {isLoading && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
         {content}

@@ -24,7 +24,7 @@ import Link from 'next/link';
 
 export async function NavbarUserSection() {
   const session = await auth();
-  let isForcedPasswordMode = !!session?.user?.mustChangePassword;
+  let isForcedPasswordMode = false;
 
   if (session?.user?.id) {
     const existing = await db
@@ -35,6 +35,20 @@ export async function NavbarUserSection() {
     const currentUser = existing[0];
     if (currentUser) {
       isForcedPasswordMode = currentUser.mustChangePassword;
+    } else {
+      isForcedPasswordMode = !!session.user.mustChangePassword;
+    }
+  } else if (session?.user?.email) {
+    const existingByEmail = await db
+      .select({ mustChangePassword: users.mustChangePassword })
+      .from(users)
+      .where(eq(users.email, session.user.email))
+      .limit(1);
+    const currentUserByEmail = existingByEmail[0];
+    if (currentUserByEmail) {
+      isForcedPasswordMode = currentUserByEmail.mustChangePassword;
+    } else {
+      isForcedPasswordMode = !!session.user.mustChangePassword;
     }
   }
 

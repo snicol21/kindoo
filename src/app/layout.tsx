@@ -1,5 +1,6 @@
 import '@/app/globals.css';
 import { BootLoader } from '@/components/BootLoader';
+import { DevServiceWorkerReset } from '@/components/DevServiceWorkerReset';
 import { Navbar } from '@/components/Navbar';
 import { PwaInstallBanner } from '@/components/PwaInstallBanner';
 import { Providers } from '@/providers/providers';
@@ -70,6 +71,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" suppressHydrationWarning className={inter.variable}>
       <body className="font-inter antialiased bg-background text-foreground min-h-screen flex flex-col">
+        {process.env.NODE_ENV === 'development' ? <DevServiceWorkerReset /> : null}
         <BootLoader />
         <NextTopLoader color="#2563eb" height={3} showSpinner={false} />
         <Suspense fallback={<NavbarSkeleton />}>
