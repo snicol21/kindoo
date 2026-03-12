@@ -70,14 +70,28 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     error: '/auth/error',
   },
   callbacks: {
-    authorized({ auth, request: { nextUrl } }) {
+    async authorized({ auth, request: { nextUrl } }) {
       const isLoggedIn = !!auth?.user;
       const isOnDashboard = nextUrl.pathname.startsWith('/dashboard');
       const isOnAdmin = nextUrl.pathname.startsWith('/admin');
       const isOnAccount = nextUrl.pathname.startsWith('/account');
       const isOnForcedPasswordPage = nextUrl.pathname.startsWith('/change-password');
 
-      if (isLoggedIn && auth?.user?.mustChangePassword && !isOnForcedPasswordPage) {
+      let mustChangePassword = !!auth?.user?.mustChangePassword;
+
+      if (isLoggedIn && auth?.user?.id) {
+        const existing = await db
+          .select({ mustChangePassword: users.mustChangePassword })
+          .from(users)
+          .where(eq(users.id, auth.user.id))
+          .limit(1);
+        const currentUser = existing[0];
+        if (currentUser) {
+          mustChangePassword = currentUser.mustChangePassword;
+        }
+      }
+
+      if (isLoggedIn && mustChangePassword && !isOnForcedPasswordPage) {
         return Response.redirect(new URL('/change-password', nextUrl));
       }
 
