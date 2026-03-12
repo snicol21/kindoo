@@ -6,14 +6,18 @@ const withPWAConfig = withPWA({
   dest: 'public',
   register: true,
   disable: process.env.NODE_ENV === 'development',
-  cacheOnFrontEndNav: true,
-  aggressiveFrontEndNavCaching: true,
+  cacheOnFrontEndNav: false,
+  aggressiveFrontEndNavCaching: false,
   reloadOnOnline: true,
-  extendDefaultRuntimeCaching: true,
+  extendDefaultRuntimeCaching: false,
   workboxOptions: {
     runtimeCaching: [
       {
         urlPattern: /^\/api\/license-jobs\/stream$/i,
+        handler: 'NetworkOnly',
+      },
+      {
+        urlPattern: /^\/api\/.*$/i,
         handler: 'NetworkOnly',
       },
       {
