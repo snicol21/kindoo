@@ -116,8 +116,15 @@ export function TemplateCard({
             <Button type="button" variant="outline" size="sm" onClick={onResetAction}>
               Reset changes
             </Button>
-            <Button type="button" size="sm" disabled={saving || !hasChanges} onClick={onSaveAction}>
-              {saving ? 'Saving...' : 'Save template'}
+            <Button
+              type="button"
+              size="sm"
+              disabled={saving || !hasChanges}
+              isLoading={saving}
+              loadingText="Saving..."
+              onClick={onSaveAction}
+            >
+              Save template
             </Button>
           </div>
         </div>

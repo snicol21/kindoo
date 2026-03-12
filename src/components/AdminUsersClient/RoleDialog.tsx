@@ -73,8 +73,10 @@ export function RoleDialog({
           <Button
             onClick={onSubmitAction}
             disabled={rolePending || !roleUser || nextRole === roleUser.role}
+            isLoading={rolePending}
+            loadingText="Saving..."
           >
-            {rolePending ? 'Saving...' : 'Save role'}
+            Save role
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -3,10 +3,12 @@ import { Button } from '@/components/_ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/_ui/card';
 import { Label } from '@/components/_ui/label';
 import { PasswordInput } from '@/components/_ui/password-input';
+import { FormSubmitButton } from '@/components/FormSubmitButton';
 import { PageContainer } from '@/components/PageContainer';
 import { PasswordInputWithCount } from '@/components/PasswordInputWithCount';
 import { auth, signOut } from '@/lib/auth';
 import type { Metadata } from 'next';
+import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 
 export const metadata: Metadata = {
@@ -61,6 +63,7 @@ export default async function ForcedPasswordPage({ searchParams }: ForcedPasswor
                   redirect(`/change-password?error=${msg}`);
                 }
 
+                revalidatePath('/', 'layout');
                 redirect('/dashboard');
               }}
               className="space-y-4"
@@ -106,9 +109,9 @@ export default async function ForcedPasswordPage({ searchParams }: ForcedPasswor
               await signOut({ redirectTo: '/' });
             }}
           >
-            <Button type="submit" variant="ghost" size="sm">
+            <FormSubmitButton variant="ghost" size="sm" loadingText="Signing out...">
               Sign out and return home
-            </Button>
+            </FormSubmitButton>
           </form>
         </div>
       </div>

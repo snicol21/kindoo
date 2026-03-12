@@ -41,7 +41,6 @@ import {
   parseTimeToMinutes,
   TIME_SLOT_INTERVAL_MINUTES,
 } from '@/utils/timeUtils';
-import { Loader2 } from 'lucide-react';
 import type { ChangeEvent } from 'react';
 import { useActionState, useEffect, useMemo, useRef, useState } from 'react';
 import { useFormStatus } from 'react-dom';
@@ -105,15 +104,8 @@ function SubmitButton() {
   const { pending } = useFormStatus();
 
   return (
-    <Button type="submit" disabled={pending} className="gap-2">
-      {pending ? (
-        <>
-          <Loader2 className="h-4 w-4 animate-spin" />
-          Adding event…
-        </>
-      ) : (
-        'Add event'
-      )}
+    <Button type="submit" isLoading={pending} loadingText="Adding event…" className="gap-2">
+      Add event
     </Button>
   );
 }

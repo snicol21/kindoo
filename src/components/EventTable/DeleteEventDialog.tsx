@@ -10,7 +10,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/_ui/dialog';
-import { Loader2 } from 'lucide-react';
 
 type DeleteEventDialogProps = {
   pendingDeleteEvent: EventWithCreator | null;
@@ -46,15 +45,10 @@ export function DeleteEventDialog({
               void onConfirmAction();
             }}
             disabled={!pendingDeleteEvent || deletingId === pendingDeleteEvent.id}
+            isLoading={!!pendingDeleteEvent && deletingId === pendingDeleteEvent.id}
+            loadingText="Deleting…"
           >
-            {pendingDeleteEvent && deletingId === pendingDeleteEvent.id ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Deleting…
-              </>
-            ) : (
-              'Delete'
-            )}
+            Delete
           </Button>
         </DialogFooter>
       </DialogContent>

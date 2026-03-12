@@ -163,8 +163,13 @@ export function CreateUserDialog({
           <Button variant="outline" onClick={() => onOpenChangeAction(false)}>
             Cancel
           </Button>
-          <Button onClick={onSubmitAction} disabled={createPending}>
-            {createPending ? 'Creating...' : 'Create user'}
+          <Button
+            onClick={onSubmitAction}
+            disabled={createPending}
+            isLoading={createPending}
+            loadingText="Creating..."
+          >
+            Create user
           </Button>
         </DialogFooter>
       </DialogContent>

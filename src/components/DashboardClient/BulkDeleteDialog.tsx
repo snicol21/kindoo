@@ -45,8 +45,10 @@ export function BulkDeleteDialog({
               void onConfirmAction();
             }}
             disabled={selectedCount === 0 || deleting}
+            isLoading={deleting}
+            loadingText="Deleting…"
           >
-            {deleting ? 'Deleting…' : 'Delete selected'}
+            Delete selected
           </Button>
         </DialogFooter>
       </DialogContent>

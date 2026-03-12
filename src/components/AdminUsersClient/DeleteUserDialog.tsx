@@ -41,8 +41,14 @@ export function DeleteUserDialog({
           <Button variant="outline" onClick={() => onOpenChangeAction(false)}>
             Cancel
           </Button>
-          <Button variant="destructive" onClick={onConfirmAction} disabled={deletePending}>
-            {deletePending ? 'Deleting...' : 'Delete user'}
+          <Button
+            variant="destructive"
+            onClick={onConfirmAction}
+            disabled={deletePending}
+            isLoading={deletePending}
+            loadingText="Deleting..."
+          >
+            Delete user
           </Button>
         </DialogFooter>
       </DialogContent>

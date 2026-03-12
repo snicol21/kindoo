@@ -1,7 +1,7 @@
-import { Button } from '@/components/_ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/_ui/card';
 import { Input } from '@/components/_ui/input';
 import { PasswordInput } from '@/components/_ui/password-input';
+import { FormSubmitButton } from '@/components/FormSubmitButton';
 import { auth, signIn } from '@/lib/auth';
 import type { Metadata } from 'next';
 import Image from 'next/image';
@@ -87,9 +87,9 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
             >
               <Input name="email" type="email" placeholder="you@example.com" />
               <PasswordInput name="password" placeholder="••••••••" />
-              <Button type="submit" className="w-full">
+              <FormSubmitButton className="w-full" loadingText="Signing in...">
                 Sign in
-              </Button>
+              </FormSubmitButton>
               <p className="text-xs text-center text-muted-foreground">
                 <Link href="/auth/forgot-password" className="underline underline-offset-2">
                   Forgot password?

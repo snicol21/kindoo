@@ -432,6 +432,8 @@ export function AccessRequestsTable({ requests, currentUserRole }: AccessRequest
             <Button
               className="bg-emerald-600 text-white hover:bg-emerald-700"
               disabled={!approveTarget || pendingRequestId === approveTarget?.id}
+              isLoading={pendingRequestId === approveTarget?.id}
+              loadingText="Approving..."
               onClick={async () => {
                 if (!approveTarget) return;
                 setPendingRequestId(approveTarget.id);
@@ -456,7 +458,7 @@ export function AccessRequestsTable({ requests, currentUserRole }: AccessRequest
                 }
               }}
             >
-              {pendingRequestId === approveTarget?.id ? 'Approving...' : 'Approve request'}
+              Approve request
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -485,6 +487,8 @@ export function AccessRequestsTable({ requests, currentUserRole }: AccessRequest
             <Button
               className="bg-red-600 text-white hover:bg-red-700 dark:bg-red-600 dark:text-white dark:hover:bg-red-700"
               disabled={!denyTarget || pendingRequestId === denyTarget?.id || !denyReason.trim()}
+              isLoading={pendingRequestId === denyTarget?.id}
+              loadingText="Denying..."
               onClick={async () => {
                 if (!denyTarget) return;
                 setPendingRequestId(denyTarget.id);
@@ -506,7 +510,7 @@ export function AccessRequestsTable({ requests, currentUserRole }: AccessRequest
                 }
               }}
             >
-              {pendingRequestId === denyTarget?.id ? 'Denying...' : 'Deny request'}
+              Deny request
             </Button>
           </DialogFooter>
         </DialogContent>

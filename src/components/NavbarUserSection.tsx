@@ -9,6 +9,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/_ui/dropdown-menu';
+import { FormSubmitButton } from '@/components/FormSubmitButton';
 import { PwaBadgeSync } from '@/components/PwaBadgeSync';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { isAdminEmail } from '@/lib/admin';
@@ -166,13 +167,14 @@ export async function NavbarUserSection() {
                     await signOut({ redirectTo: '/' });
                   }}
                 >
-                  <button
-                    type="submit"
-                    className="flex w-full items-center gap-2 text-destructive focus:text-destructive"
+                  <FormSubmitButton
+                    variant="ghost"
+                    className="w-full justify-start px-2 py-1.5 text-destructive focus:text-destructive"
+                    loadingText="Signing out..."
                   >
                     <LogOut className="h-4 w-4" />
                     Sign out
-                  </button>
+                  </FormSubmitButton>
                 </form>
               </DropdownMenuItem>
             </DropdownMenuContent>

@@ -174,8 +174,10 @@ export function EditUserDialog({
                 variant="outline"
                 onClick={onSendCredentialsAction}
                 disabled={sendCredentialsPending || !editUser || !canEditAccountDetails}
+                isLoading={sendCredentialsPending}
+                loadingText="Sending credentials..."
               >
-                {sendCredentialsPending ? 'Sending credentials...' : 'Send new credentials email'}
+                Send new credentials email
               </Button>
             </div>
           </div>
@@ -184,8 +186,13 @@ export function EditUserDialog({
           <Button variant="outline" onClick={() => onOpenChangeAction(false)}>
             Cancel
           </Button>
-          <Button onClick={onSubmitAction} disabled={pending || !editUser}>
-            {pending ? 'Saving...' : 'Save changes'}
+          <Button
+            onClick={onSubmitAction}
+            disabled={pending || !editUser}
+            isLoading={pending}
+            loadingText="Saving..."
+          >
+            Save changes
           </Button>
         </DialogFooter>
       </DialogContent>

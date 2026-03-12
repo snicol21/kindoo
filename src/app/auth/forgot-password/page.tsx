@@ -68,8 +68,13 @@ export default function ForgotPasswordPage() {
                     {error}
                   </div>
                 )}
-                <Button type="submit" className="w-full" disabled={pending}>
-                  {pending ? 'Requesting...' : 'Send temporary password'}
+                <Button
+                  type="submit"
+                  className="w-full"
+                  isLoading={pending}
+                  loadingText="Requesting..."
+                >
+                  Send temporary password
                 </Button>
                 <p className="text-xs text-center text-muted-foreground">
                   <Link href="/auth/signin" className="underline underline-offset-2">

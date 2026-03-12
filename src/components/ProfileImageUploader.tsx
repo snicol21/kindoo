@@ -310,8 +310,14 @@ export function ProfileImageUploader({
               )}
 
               <DialogFooter>
-                <Button type="submit" variant="secondary" disabled={isSubmitting}>
-                  {isSubmitting ? 'Uploading...' : 'Save profile photo'}
+                <Button
+                  type="submit"
+                  variant="secondary"
+                  disabled={isSubmitting}
+                  isLoading={isSubmitting}
+                  loadingText="Uploading..."
+                >
+                  Save profile photo
                 </Button>
               </DialogFooter>
             </form>

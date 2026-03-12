@@ -210,8 +210,13 @@ export function CsvImportDialog({ open, onOpenChange }: CsvImportDialogProps) {
           <Button variant="outline" onClick={() => handleOpenChange(false)} disabled={isPending}>
             Cancel
           </Button>
-          <Button onClick={handleSubmit} disabled={isPending || parsed.events.length === 0}>
-            {isPending ? 'Importing…' : 'Import events'}
+          <Button
+            onClick={handleSubmit}
+            disabled={isPending || parsed.events.length === 0}
+            isLoading={isPending}
+            loadingText="Importing…"
+          >
+            Import events
           </Button>
         </DialogFooter>
       </DialogContent>
