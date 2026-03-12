@@ -14,14 +14,29 @@ import { ResetOfflineCacheMenuItem } from '@/components/ResetOfflineCacheMenuIte
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { isAdminEmail } from '@/lib/admin';
 import { auth, signOut } from '@/lib/auth';
+import { db } from '@/lib/db';
 import { ROLE_LABELS, canAccessUserAdmin } from '@/lib/permissions';
 import type { UserRole } from '@/schema/schema';
+import { users } from '@/schema/schema';
+import { eq } from 'drizzle-orm';
 import { LayoutDashboard, LogOut, MessageSquare, Settings, Shield } from 'lucide-react';
 import Link from 'next/link';
 
 export async function NavbarUserSection() {
   const session = await auth();
-  const isForcedPasswordMode = !!session?.user?.mustChangePassword;
+  let isForcedPasswordMode = !!session?.user?.mustChangePassword;
+
+  if (session?.user?.id) {
+    const existing = await db
+      .select({ mustChangePassword: users.mustChangePassword })
+      .from(users)
+      .where(eq(users.id, session.user.id))
+      .limit(1);
+    const currentUser = existing[0];
+    if (currentUser) {
+      isForcedPasswordMode = currentUser.mustChangePassword;
+    }
+  }
 
   const userInitials = session?.user?.name
     ? session.user.name
