@@ -64,7 +64,6 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
           data-loading={isLoading ? '' : undefined}
           {...props}
         >
-          {isLoading && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
           {content}
         </Slot>
       );
