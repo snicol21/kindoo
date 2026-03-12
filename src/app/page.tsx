@@ -85,7 +85,7 @@ export default async function HomePage() {
             <Link href="/auth/signin">Sign in</Link>
           </Button>
           <Button asChild size="lg" variant="outline">
-            <Link href="/request-access">Request access to get started</Link>
+            <Link href="/request-access">Request access</Link>
           </Button>
         </div>
 
