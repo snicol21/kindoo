@@ -10,6 +10,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/_ui/dropdown-menu';
 import { PwaBadgeSync } from '@/components/PwaBadgeSync';
+import { ResetOfflineCacheMenuItem } from '@/components/ResetOfflineCacheMenuItem';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { isAdminEmail } from '@/lib/admin';
 import { auth, signOut } from '@/lib/auth';
@@ -122,22 +123,25 @@ export async function NavbarUserSection() {
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   {canAccessAdmin && (
-                    <DropdownMenuItem asChild>
-                      <Link
-                        href="/admin/users"
-                        className="flex w-full items-center justify-between gap-2 cursor-pointer"
-                      >
-                        <span className="flex items-center gap-2">
-                          <Shield className="h-4 w-4" />
-                          User admin
-                        </span>
-                        {pendingCount > 0 && (
-                          <span className="inline-flex h-5 w-fit min-w-5 shrink-0 items-center justify-center rounded-full border border-amber-600 bg-amber-500 px-1.5 text-[10px] font-semibold leading-none text-white dark:border-amber-500 dark:bg-amber-500 dark:text-white">
-                            {pendingCountLabel} Pending
+                    <>
+                      <DropdownMenuItem asChild>
+                        <Link
+                          href="/admin/users"
+                          className="flex w-full items-center justify-between gap-2 cursor-pointer"
+                        >
+                          <span className="flex items-center gap-2">
+                            <Shield className="h-4 w-4" />
+                            User admin
                           </span>
-                        )}
-                      </Link>
-                    </DropdownMenuItem>
+                          {pendingCount > 0 && (
+                            <span className="inline-flex h-5 w-fit min-w-5 shrink-0 items-center justify-center rounded-full border border-amber-600 bg-amber-500 px-1.5 text-[10px] font-semibold leading-none text-white dark:border-amber-500 dark:bg-amber-500 dark:text-white">
+                              {pendingCountLabel} Pending
+                            </span>
+                          )}
+                        </Link>
+                      </DropdownMenuItem>
+                      <ResetOfflineCacheMenuItem />
+                    </>
                   )}
                   <DropdownMenuSeparator />
                 </>

@@ -13,6 +13,10 @@ const withPWAConfig = withPWA({
   workboxOptions: {
     runtimeCaching: [
       {
+        urlPattern: /^\/api\/license-jobs\/stream$/i,
+        handler: 'NetworkOnly',
+      },
+      {
         urlPattern: /^\/_next\/static\/.*/i,
         handler: 'CacheFirst',
         options: {
