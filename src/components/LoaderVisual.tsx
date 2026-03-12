@@ -15,11 +15,36 @@ export function LoaderVisual({ ariaLabel = 'Loading application' }: LoaderVisual
       />
 
       <div className="relative" aria-label={ariaLabel}>
-        <div className="relative grid h-24 w-24 place-items-center">
-          <div className="absolute inset-1 animate-ping rounded-3xl border border-primary/35" />
-          <div className="absolute inset-0 animate-spin rounded-3xl border-2 border-primary/20 border-t-primary" />
-          <div className="absolute inset-2 animate-pulse rounded-3xl border border-primary/30" />
-          <div className="grid h-14 w-14 animate-pulse animation-duration-[1.2s] place-items-center rounded-2xl border border-border bg-card shadow-sm">
+        <div className="relative size-24 flex items-center justify-center">
+          {/* Outer faint pulsing ring */}
+          <div className="absolute inset-0 animate-ping rounded-full border-4 border-primary/20" />
+
+          {/* Main spinning ring – classic spinner style */}
+          <div
+            className="
+              absolute inset-0
+              animate-spin
+              rounded-full
+              border-4 border-primary/30
+              border-t-primary
+            "
+          />
+
+          {/* Optional inner faint ring (adds depth) */}
+          <div className="absolute inset-2 animate-pulse rounded-full border border-primary/25" />
+
+          {/* Center logo container – now circular */}
+          <div
+            className="
+              size-14
+              animate-pulse animation-duration-[1.2s]
+              rounded-full
+              border border-border
+              bg-card
+              shadow-sm
+              flex items-center justify-center
+            "
+          >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src="/icons/favicon.svg"
