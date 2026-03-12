@@ -9,6 +9,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/_ui/dropdown-menu';
+import { PwaBadgeSync } from '@/components/PwaBadgeSync';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { isAdminEmail } from '@/lib/admin';
 import { auth, signOut } from '@/lib/auth';
@@ -41,9 +42,11 @@ export async function NavbarUserSection() {
   const pendingResult = canAccessAdmin ? await getPendingAccessRequestCount() : null;
   const pendingCount = pendingResult?.success ? (pendingResult.data?.count ?? 0) : 0;
   const pendingCountLabel = pendingCount > 9 ? '9+' : String(pendingCount);
+  const pwaBadgeCount = canAccessAdmin ? pendingCount : 0;
 
   return (
     <div className="flex items-center gap-3">
+      <PwaBadgeSync count={pwaBadgeCount} />
       {session?.user ? (
         <div className="flex items-center gap-3">
           <span className="hidden text-sm text-muted-foreground sm:inline">
