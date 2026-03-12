@@ -91,6 +91,30 @@ function getDueTimestamp(eventDate: string, startTime: string) {
   return new Date(`${eventDate}T${dueTime}:00`).getTime();
 }
 
+function getLicenseWindowEndTimestamp(event: EventWithCreator) {
+  const endMinutes = parseTimeToMinutes(event.endTime);
+  if (endMinutes === null) return Number.NaN;
+
+  const licenseWindowEnd = Math.min(23 * 60, endMinutes + 120);
+  const endHours = Math.floor(licenseWindowEnd / 60);
+  const endRemainderMinutes = licenseWindowEnd % 60;
+  const endTime = `${String(endHours).padStart(2, '0')}:${String(endRemainderMinutes).padStart(2, '0')}`;
+  return new Date(`${event.eventDate}T${endTime}:00`).getTime();
+}
+
+function isPastForDashboard(event: EventWithCreator) {
+  if (!event.kindooLicenseCreated) {
+    return isPastEvent(event.eventDate, event.endTime);
+  }
+
+  const licenseWindowEndTimestamp = getLicenseWindowEndTimestamp(event);
+  if (Number.isFinite(licenseWindowEndTimestamp)) {
+    return licenseWindowEndTimestamp < Date.now();
+  }
+
+  return isPastEvent(event.eventDate, event.endTime);
+}
+
 function isPendingAutomation(event: EventWithCreator) {
   if (event.kindooLicenseCreated) return false;
   const now = Date.now();
@@ -118,7 +142,7 @@ export function buildDashboardCounts(
     let past = 0;
 
     for (const event of events) {
-      if (isPastEvent(event.eventDate, event.endTime)) {
+      if (isPastForDashboard(event)) {
         past += 1;
       } else if (event.kindooLicenseCreated) {
         active += 1;
@@ -176,7 +200,7 @@ export function buildWardBreakdown(events: EventWithCreator[]): WardBreakdownRow
     };
 
     current.total += 1;
-    if (isPastEvent(event.eventDate, event.endTime)) {
+    if (isPastForDashboard(event)) {
       current.past += 1;
     } else if (event.kindooLicenseCreated) {
       current.active += 1;
@@ -210,7 +234,7 @@ export function buildDotCalendarDays(activeUpcoming: EventWithCreator[]): DotCal
     };
     current.total += 1;
 
-    if (isPastEvent(event.eventDate, event.endTime)) {
+    if (isPastForDashboard(event)) {
       current.past += 1;
     } else if (event.kindooLicenseCreated) {
       current.active += 1;
