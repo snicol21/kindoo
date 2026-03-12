@@ -468,11 +468,25 @@ export function DashboardStats({
               <div key={`week-${weekIndex}`} className="flex w-full items-center justify-between">
                 {week.map((day) => {
                   const isToday = day.ymd === clientTodayYmd;
-                  const dotClass = day.count === 0 ? 'bg-muted-foreground/30' : 'bg-emerald-500';
+                  const hasPast = day.count > 0 && day.past > 0;
+                  const dotClass =
+                    day.count === 0
+                      ? 'bg-muted-foreground/20'
+                      : hasPast
+                        ? 'bg-amber-500/85 dark:bg-amber-300/90'
+                        : day.pending > 0
+                          ? 'bg-blue-500'
+                          : day.active > 0
+                            ? 'bg-emerald-500'
+                            : 'bg-emerald-400';
                   const title = `${formatShortDate(day.ymd)}${
                     isToday ? ' (today)' : ''
                   } - ${day.count} event${day.count === 1 ? '' : 's'}${
                     day.count === 0 ? ' (no events)' : ''
+                  }${
+                    day.count > 0
+                      ? ` [pending:${day.pending} active:${day.active} upcoming:${day.upcoming} past:${day.past}]`
+                      : ''
                   }`;
 
                   return (

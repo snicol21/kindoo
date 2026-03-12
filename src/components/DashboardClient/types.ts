@@ -40,4 +40,5 @@ export type DotCalendarDay = {
   pending: number;
   active: number;
   upcoming: number;
+  past: number;
 };

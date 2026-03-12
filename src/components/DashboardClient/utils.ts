@@ -25,6 +25,20 @@ export function isPastEvent(eventDate: string, endTime: string) {
   return eventEnd < Date.now();
 }
 
+export function isOutsideDashboardWindow(eventDate: string) {
+  const eventDateOnly = parseYmdToDate(eventDate);
+  if (!eventDateOnly) return false;
+
+  const now = new Date();
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const startOfWindow = new Date(startOfToday);
+  startOfWindow.setDate(startOfToday.getDate() - startOfToday.getDay());
+  const endOfWindow = new Date(startOfWindow);
+  endOfWindow.setDate(startOfWindow.getDate() + 28);
+
+  return eventDateOnly.getTime() < startOfWindow.getTime() || eventDateOnly >= endOfWindow;
+}
+
 export function getDaysUntilValue(dateStr: string) {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateStr);
   if (!match) return Number.NaN;
@@ -171,7 +185,7 @@ export function buildWardBreakdown(events: EventWithCreator[]): WardBreakdownRow
 export function buildDotCalendarDays(activeUpcoming: EventWithCreator[]): DotCalendarDay[] {
   const counts = new Map<
     string,
-    { total: number; pending: number; active: number; upcoming: number }
+    { total: number; pending: number; active: number; upcoming: number; past: number }
   >();
   for (const event of activeUpcoming) {
     const current = counts.get(event.eventDate) ?? {
@@ -179,10 +193,13 @@ export function buildDotCalendarDays(activeUpcoming: EventWithCreator[]): DotCal
       pending: 0,
       active: 0,
       upcoming: 0,
+      past: 0,
     };
     current.total += 1;
 
-    if (event.kindooLicenseCreated) {
+    if (isPastEvent(event.eventDate, event.endTime)) {
+      current.past += 1;
+    } else if (event.kindooLicenseCreated) {
       current.active += 1;
     } else if (isPendingAutomation(event)) {
       current.pending += 1;
@@ -198,19 +215,26 @@ export function buildDotCalendarDays(activeUpcoming: EventWithCreator[]): DotCal
   start.setDate(start.getDate() - start.getDay());
   const days: DotCalendarDay[] = [];
 
-  for (let i = 0; i < 56; i += 1) {
+  for (let i = 0; i < 28; i += 1) {
     const date = new Date(start);
     date.setDate(start.getDate() + i);
     const ymd = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(
       date.getDate()
     ).padStart(2, '0')}`;
-    const dayCounts = counts.get(ymd) ?? { total: 0, pending: 0, active: 0, upcoming: 0 };
+    const dayCounts = counts.get(ymd) ?? {
+      total: 0,
+      pending: 0,
+      active: 0,
+      upcoming: 0,
+      past: 0,
+    };
     days.push({
       ymd,
       count: dayCounts.total,
       pending: dayCounts.pending,
       active: dayCounts.active,
       upcoming: dayCounts.upcoming,
+      past: dayCounts.past,
     });
   }
 

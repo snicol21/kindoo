@@ -125,6 +125,13 @@ function getLicenseOutcomeVisual(outcome: string) {
     icon: <CheckCircle2 className="h-3.5 w-3.5" />,
   };
 
+  const expiredBadge = {
+    textClassName: 'text-amber-700 dark:text-amber-300',
+    badgeClassName:
+      'border border-amber-300 bg-amber-100/80 dark:border-amber-700/60 dark:bg-amber-900/30',
+    icon: <Clock className="h-3.5 w-3.5" />,
+  };
+
   if (outcome === 'Retry in progress') {
     return inProgressBadge;
   }
@@ -159,6 +166,10 @@ function getLicenseOutcomeVisual(outcome: string) {
 
   if (outcome === 'Scheduling queued') {
     return automationQueuedBadge;
+  }
+
+  if (outcome === 'License expired') {
+    return expiredBadge;
   }
 
   return completedBadge;
@@ -1168,6 +1179,7 @@ export function EventTable({
               const shouldShowLicensePlaceholder =
                 !isOptimistic && (hasLicenseStatus || isLicenseOutcomeLoading);
               const isDayOfEvent = getDaysUntilValue(event.eventDate) === 0;
+              const eventEnded = toLocalDateTime(event.eventDate, event.endTime) < Date.now();
               const dueAtMs = getAutoScheduleDueTimestamp(event.eventDate, event.startTime);
               const hasValidDueAt = Number.isFinite(dueAtMs);
               const msUntilDue = hasValidDueAt && nowMs !== null ? dueAtMs - nowMs : null;
@@ -1185,15 +1197,19 @@ export function EventTable({
                 !!licenseOutcome &&
                 (licenseOutcome === 'Auto-schedule pending' ||
                   licenseOutcome === 'Scheduled for license');
+              const shouldShowExpiredLicense = !!event.kindooLicenseCreated && eventEnded;
+              const displayedOutcome = shouldShowExpiredLicense
+                ? 'License expired'
+                : licenseOutcome;
               const licenseOutcomeLabel = shouldUseCountdownAsOutcomeLabel
                 ? msUntilDue !== null && msUntilDue > 0
                   ? `License schedules in ${formatCountdownMs(msUntilDue)}`
                   : 'Scheduling queued'
-                : licenseOutcome;
+                : displayedOutcome;
               const scheduleTimeReached =
                 shouldUseCountdownAsOutcomeLabel && (msUntilDue === null || msUntilDue <= 0);
               const licenseOutcomeVisual = getLicenseOutcomeVisual(
-                scheduleTimeReached ? 'Scheduling queued' : (licenseOutcome ?? '')
+                scheduleTimeReached ? 'Scheduling queued' : (displayedOutcome ?? '')
               );
               return (
                 <TableRow

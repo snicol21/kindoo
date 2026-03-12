@@ -15,7 +15,7 @@ import {
   buildDashboardCounts,
   buildDotCalendarDays,
   buildingToTab,
-  isPastEvent,
+  isOutsideDashboardWindow,
   normalizeTab,
   tabToBuilding,
 } from '@/components/DashboardClient/utils';
@@ -98,12 +98,12 @@ export function DashboardClient({
   const setKindooLicenseCreated = useSetKindooLicenseCreated();
 
   const stakeUpcoming = useMemo(
-    () => stakeCenterEvents.filter((event) => !isPastEvent(event.eventDate, event.endTime)),
+    () => stakeCenterEvents.filter((event) => !isOutsideDashboardWindow(event.eventDate)),
     [stakeCenterEvents]
   );
 
   const maplesUpcoming = useMemo(
-    () => maplesEvents.filter((event) => !isPastEvent(event.eventDate, event.endTime)),
+    () => maplesEvents.filter((event) => !isOutsideDashboardWindow(event.eventDate)),
     [maplesEvents]
   );
 
