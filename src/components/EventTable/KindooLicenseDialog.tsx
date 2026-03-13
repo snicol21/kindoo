@@ -12,7 +12,7 @@ import {
 } from '@/components/_ui/dialog';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/_ui/tooltip';
 import { parseTimeToMinutes } from '@/utils/timeUtils';
-import { AlertTriangle, CheckCircle2, Clock, Loader2, RotateCw } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Clock, Copy, Loader2, RotateCw } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -553,6 +553,7 @@ export function KindooLicenseDialog({
   // ── Derived values ────────────────────────────────────────────────────────
 
   const licenseTimes = licenseEvent ? getLicenseTimesAction(licenseEvent) : null;
+  const descriptionText = licenseEvent ? buildDescription(licenseEvent) : '';
   const scheduledDateTime = licenseEvent
     ? getScheduledProcessingDateTime(licenseEvent.eventDate, licenseEvent.startTime)
     : null;
@@ -712,7 +713,33 @@ export function KindooLicenseDialog({
                       />
                       <MetaRow
                         label="Description"
-                        value={buildDescription(licenseEvent)}
+                        value={
+                          <div className="flex items-start justify-between gap-2">
+                            <span className="select-text wrap-break-word">{descriptionText}</span>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-6 w-6 shrink-0"
+                                  aria-label="Copy description"
+                                  onClick={async () => {
+                                    try {
+                                      await navigator.clipboard.writeText(descriptionText);
+                                      toast.success('Description copied.');
+                                    } catch {
+                                      toast.error('Failed to copy.');
+                                    }
+                                  }}
+                                >
+                                  <Copy className="h-3.5 w-3.5" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>Copy description</TooltipContent>
+                            </Tooltip>
+                          </div>
+                        }
                         stackOnMobile
                       />
                       <MetaRow
