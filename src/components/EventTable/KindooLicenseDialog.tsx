@@ -705,7 +705,37 @@ export function KindooLicenseDialog({
                       <MetaRow
                         label="Email"
                         value={
-                          licenseEvent.contactEmail || (
+                          licenseEvent.contactEmail ? (
+                            <div className="flex items-start justify-between gap-2">
+                              <span className="select-text wrap-break-word">
+                                {licenseEvent.contactEmail}
+                              </span>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-6 w-6 shrink-0"
+                                    aria-label="Copy email"
+                                    onClick={async () => {
+                                      const email = licenseEvent.contactEmail;
+                                      if (!email) return;
+                                      try {
+                                        await navigator.clipboard.writeText(String(email));
+                                        toast.success('Email copied.');
+                                      } catch {
+                                        toast.error('Failed to copy.');
+                                      }
+                                    }}
+                                  >
+                                    <Copy className="h-3.5 w-3.5" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>Copy email</TooltipContent>
+                              </Tooltip>
+                            </div>
+                          ) : (
                             <span className="text-destructive">Missing</span>
                           )
                         }
