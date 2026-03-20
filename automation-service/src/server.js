@@ -437,6 +437,28 @@ async function performLogin({
 }) {
   logAutomation(requestId, 'submitting login flow');
   const emailField = page.getByRole('textbox', { name: 'Email' });
+  const passwordField = page.getByRole('textbox', { name: 'Password' });
+
+  const churchUsernameCandidates = [
+    page.getByRole('textbox', { name: 'Sign in to your church' }).first(),
+    page.getByRole('textbox', { name: /church|username|sign in/i }).first(),
+    page.getByPlaceholder(/church|username|sign in/i).first(),
+    page.locator('input[type="text"][name*="user" i]').first(),
+    page.locator('input[type="text"][id*="user" i]').first(),
+  ];
+
+  async function getVisibleChurchUsernameField(timeoutMs = 1200) {
+    for (const candidate of churchUsernameCandidates) {
+      try {
+        await candidate.waitFor({ state: 'visible', timeout: timeoutMs });
+        return candidate;
+      } catch {
+        // Try next candidate.
+      }
+    }
+    return null;
+  }
+
   await runStep(requestId, 'login-email', async () => {
     await emailField.waitFor({ state: 'visible', timeout: TIMEOUT_MS });
     await emailField.click();
@@ -444,36 +466,62 @@ async function performLogin({
     await page.getByText('Next').click();
   });
 
-  const churchUsernameField = page.getByRole('textbox', { name: 'Sign in to your church' });
   await runStep(requestId, 'login-church-username', async () => {
-    try {
-      await churchUsernameField.waitFor({ state: 'visible', timeout: TIMEOUT_MS });
-    } catch {
+    let churchUsernameField = await getVisibleChurchUsernameField(2000);
+
+    if (!churchUsernameField) {
       logAutomation(requestId, 'church username not visible after Next; waiting for redirect');
       await page
         .waitForLoadState('domcontentloaded', { timeout: TIMEOUT_MS })
         .catch(() => undefined);
-      for (let attempt = 0; attempt < 3; attempt += 1) {
-        try {
-          await churchUsernameField.waitFor({ state: 'visible', timeout: 1500 });
+
+      const deadline = Date.now() + TIMEOUT_MS;
+      while (Date.now() < deadline) {
+        churchUsernameField = await getVisibleChurchUsernameField(750);
+        if (churchUsernameField) {
           break;
-        } catch {
-          await page.waitForTimeout(200);
         }
+
+        if (await passwordField.isVisible().catch(() => false)) {
+          logAutomation(
+            requestId,
+            'church username step skipped; password field is already visible',
+            {
+              url: page.url(),
+            }
+          );
+          return;
+        }
+
+        await page.waitForTimeout(200);
       }
-      if (!(await churchUsernameField.isVisible().catch(() => false))) {
+
+      if (!churchUsernameField) {
         logAutomation(requestId, 'church username still not visible; retrying with Enter', {
           url: page.url(),
         });
         await emailField.press('Enter');
-        await churchUsernameField.waitFor({ state: 'visible', timeout: TIMEOUT_MS });
+        churchUsernameField = await getVisibleChurchUsernameField(TIMEOUT_MS);
+      }
+
+      if (!churchUsernameField && (await passwordField.isVisible().catch(() => false))) {
+        logAutomation(requestId, 'continuing login without church username after Enter retry', {
+          url: page.url(),
+        });
+        return;
+      }
+
+      if (!churchUsernameField) {
+        throw new Error(
+          `Church username step did not appear and password field was not visible. Current URL: ${page.url()}`
+        );
       }
     }
+
     await churchUsernameField.fill(kindooChurchUsername);
     await page.getByRole('button', { name: 'Next' }).click();
   });
 
-  const passwordField = page.getByRole('textbox', { name: 'Password' });
   await runStep(requestId, 'login-password', async () => {
     await passwordField.waitFor({ state: 'visible', timeout: TIMEOUT_MS });
     await passwordField.fill(kindooChurchPassword);
