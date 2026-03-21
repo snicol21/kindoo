@@ -351,6 +351,48 @@ async function checkAlreadyInvited(page, requestId, email) {
   return true;
 }
 
+async function confirmSaveDialogs(page, requestId) {
+  const confirmCandidates = [
+    page.getByRole('button', { name: /^Yes$/i }).first(),
+    page.getByText('Yes', { exact: true }).first(),
+    page.getByRole('button', { name: /^Confirm$/i }).first(),
+    page.getByText('Confirm', { exact: true }).first(),
+    page.getByRole('button', { name: /^OK$/i }).first(),
+    page.getByRole('button', { name: /^Ok$/i }).first(),
+    page.getByText('OK', { exact: true }).first(),
+    page.getByText('Ok', { exact: true }).first(),
+  ];
+
+  for (const candidate of confirmCandidates) {
+    try {
+      await candidate.waitFor({ state: 'visible', timeout: 1200 });
+      await candidate.click({ timeout: 5000, force: true });
+      logAutomation(requestId, 'post-save dialog confirmed');
+      return true;
+    } catch {
+      // Try next candidate.
+    }
+  }
+
+  return false;
+}
+
+async function waitForPostSaveTransition(page, requestId, timeoutMs = 15000) {
+  const loadingText = page.getByText('Loading...', { exact: true }).first();
+
+  const loadingVisible = await loadingText
+    .waitFor({ state: 'visible', timeout: 1200 })
+    .then(() => true)
+    .catch(() => false);
+
+  if (!loadingVisible) {
+    return;
+  }
+
+  logAutomation(requestId, 'post-save loading state detected; waiting for transition');
+  await loadingText.waitFor({ state: 'hidden', timeout: timeoutMs }).catch(() => undefined);
+}
+
 async function waitForPostLoginReady(page, requestId, timeoutMs = TIMEOUT_MS) {
   const startedAt = Date.now();
   let lastUrl = page.url();
@@ -987,7 +1029,8 @@ export async function runAutomation(payload, requestId, runtime = null) {
         };
       }
       await runStep(requestId, 'confirm-save', async () => {
-        await clickOptional(page.getByText('Yes'));
+        await confirmSaveDialogs(page, requestId);
+        await waitForPostSaveTransition(page, requestId);
       });
       await runStep(requestId, 'select-access-rule', async () => {
         await selectAccessRule(page, payload.kindooAccessRule, requestId);
