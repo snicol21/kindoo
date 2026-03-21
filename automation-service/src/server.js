@@ -211,6 +211,9 @@ async function selectAccessRule(page, kindooAccessRule, requestId) {
     return;
   }
 
+  // This prompt can appear after invitation confirmation and blocks all rule selectors.
+  await acceptAccessRightsPrompt(page, requestId);
+
   const allowed = new Set(['STAKE CENTER - LIMITED', 'MAPLES BUILDING - LIMITED']);
   if (!allowed.has(rule)) {
     throw new Error(`Invalid KINDOO_ACCESS_RULE: ${rule}`);
@@ -377,6 +380,35 @@ async function confirmSaveDialogs(page, requestId) {
   return false;
 }
 
+async function acceptAccessRightsPrompt(page, requestId) {
+  const accessRightsPrompt = page.getByText(/define the access rights/i).first();
+  const promptVisible = await accessRightsPrompt
+    .waitFor({ state: 'visible', timeout: 1200 })
+    .then(() => true)
+    .catch(() => false);
+
+  if (!promptVisible) {
+    return false;
+  }
+
+  const clickedYes = await clickFirstVisible(
+    [
+      page.getByRole('button', { name: /^Yes$/i }),
+      page.getByText('Yes', { exact: true }),
+      page.locator('div[tabindex="0"]', { hasText: /^Yes$/i }),
+    ],
+    4000
+  );
+
+  if (!clickedYes) {
+    throw new Error('Access-rights prompt appeared but the Yes action was not clickable.');
+  }
+
+  logAutomation(requestId, 'accepted access-rights prompt');
+  await page.waitForTimeout(250);
+  return true;
+}
+
 async function waitForPostSaveTransition(page, requestId, timeoutMs = 15000) {
   const loadingText = page.getByText('Loading...', { exact: true }).first();
 
@@ -391,6 +423,34 @@ async function waitForPostSaveTransition(page, requestId, timeoutMs = 15000) {
 
   logAutomation(requestId, 'post-save loading state detected; waiting for transition');
   await loadingText.waitFor({ state: 'hidden', timeout: timeoutMs }).catch(() => undefined);
+}
+
+async function detectPostSaveBlockingError(page, requestId) {
+  const expiredText = page.getByText(/expiry date already expired/i).first();
+  const expiredVisible = await expiredText
+    .waitFor({ state: 'visible', timeout: 1000 })
+    .then(() => true)
+    .catch(() => false);
+
+  if (!expiredVisible) {
+    return null;
+  }
+
+  await clickFirstVisible(
+    [
+      page.getByRole('button', { name: /^Ok$/i }),
+      page.getByRole('button', { name: /^OK$/i }),
+      page.getByText('Ok', { exact: true }),
+      page.getByText('OK', { exact: true }),
+    ],
+    3000
+  ).catch(() => undefined);
+
+  logAutomation(requestId, 'post-save blocking modal detected', {
+    reason: 'expiry-date-already-expired',
+  });
+
+  return 'Expiry date already expired in Kindoo. Please provide a future expiry date/time.';
 }
 
 async function waitForPostLoginReady(page, requestId, timeoutMs = TIMEOUT_MS) {
@@ -1019,6 +1079,12 @@ export async function runAutomation(payload, requestId, runtime = null) {
         await page.getByRole('textbox', { name: 'Description' }).fill(payload.description);
         await page.getByText('SAVE').click();
       });
+
+      const postSaveError = await detectPostSaveBlockingError(page, requestId);
+      if (postSaveError) {
+        throw new Error(postSaveError);
+      }
+
       if (await checkAlreadyInvited(page, requestId, payload.email)) {
         return {
           status: 'completed',
@@ -1030,6 +1096,7 @@ export async function runAutomation(payload, requestId, runtime = null) {
       }
       await runStep(requestId, 'confirm-save', async () => {
         await confirmSaveDialogs(page, requestId);
+        await acceptAccessRightsPrompt(page, requestId);
         await waitForPostSaveTransition(page, requestId);
       });
       await runStep(requestId, 'select-access-rule', async () => {
