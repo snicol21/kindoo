@@ -12,7 +12,11 @@ import { ProfileImageUploader } from '@/components/ProfileImageUploader';
 import { isAdminEmail } from '@/lib/admin';
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
-import { loadNotificationPreferencesForUser } from '@/lib/notification-preferences';
+import {
+  canRoleEnableSms,
+  loadNotificationPreferencesForUser,
+  loadSmsRoleAccessConfig,
+} from '@/lib/notification-preferences';
 import { ROLE_LABELS } from '@/lib/permissions';
 import type { UserRole } from '@/schema/schema';
 import { users } from '@/schema/schema';
@@ -63,6 +67,8 @@ export default async function AccountPage({ searchParams }: AccountPageProps) {
     : ((session.user.role ?? 'ward_user') as UserRole);
 
   const notificationPreferences = await loadNotificationPreferencesForUser(session.user.id);
+  const smsRoleAccessConfig = await loadSmsRoleAccessConfig();
+  const canEnableSmsMessaging = canRoleEnableSms(role, smsRoleAccessConfig);
 
   const message = params.error
     ? decodeURIComponent(params.error)
@@ -215,7 +221,9 @@ export default async function AccountPage({ searchParams }: AccountPageProps) {
           <CardHeader>
             <CardTitle>SMS notifications</CardTitle>
             <CardDescription>
-              Choose which app events should send SMS alerts to your phone.
+              {canEnableSmsMessaging
+                ? 'Choose which app events should send SMS alerts to your phone.'
+                : 'SMS rollout is currently admin-only during testing.'}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -250,6 +258,7 @@ export default async function AccountPage({ searchParams }: AccountPageProps) {
                     name="smsEnabled"
                     type="checkbox"
                     defaultChecked={notificationPreferences.smsEnabled}
+                    disabled={!canEnableSmsMessaging}
                   />
                   Enable SMS notifications
                 </Label>
@@ -261,8 +270,15 @@ export default async function AccountPage({ searchParams }: AccountPageProps) {
                   id="smsPhone"
                   name="smsPhone"
                   defaultValue={notificationPreferences.smsPhone || phone}
+                  disabled={!canEnableSmsMessaging}
                 />
               </div>
+
+              {!canEnableSmsMessaging && (
+                <p className="text-xs text-muted-foreground">
+                  SMS enablement is currently disabled for your role by admin configuration.
+                </p>
+              )}
 
               <div className="space-y-3 rounded-md border border-border p-3">
                 <Label className="flex items-center gap-3" htmlFor="accessRequestSubmittedSms">

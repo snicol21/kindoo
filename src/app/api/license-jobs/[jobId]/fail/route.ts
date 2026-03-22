@@ -1,6 +1,7 @@
 import { db } from '@/lib/db';
 import { publishLicenseJobEvent } from '@/lib/license-job-events';
 import { sendNotificationEventSms } from '@/lib/notifications';
+import { buildLicenseJobFailedSms } from '@/lib/sms-message-templates';
 import { events, kindooLicenseJobs } from '@/schema/schema';
 import { and, eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
@@ -94,7 +95,11 @@ export async function POST(request: Request, context: { params: Promise<{ jobId:
     await sendNotificationEventSms({
       eventKey: 'license_job_failed',
       recipientUserIds: [job.requestedByUserId],
-      message: `DigitalFob: Kindoo license job failed for ${timeWindow}. Error: ${details}`,
+      message: buildLicenseJobFailedSms({
+        timeWindow,
+        details,
+        eventId: job.eventId,
+      }),
     });
   } catch (error) {
     console.error('[license-jobs.fail] Failed to send SMS notifications:', error);

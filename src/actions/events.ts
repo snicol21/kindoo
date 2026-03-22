@@ -5,6 +5,7 @@ import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { sendNotificationEventSms } from '@/lib/notifications';
 import { canCreateEventInBuildingForWard, canMutateEvent } from '@/lib/permissions';
+import { buildEventCreatedSms } from '@/lib/sms-message-templates';
 import {
   BUILDINGS,
   contacts,
@@ -425,7 +426,17 @@ export async function addEvent(input: AddEventInput): Promise<ActionResult<Event
         const sendResult = await sendNotificationEventSms({
           eventKey: 'event_created',
           recipientUserIds,
-          message: `DigitalFob: New ${normalizedInput.eventType} event on ${normalizedInput.eventDate} ${normalizedInput.startTime}-${normalizedInput.endTime} at ${normalizedInput.building} (${normalizedInput.ward}).`,
+          message: buildEventCreatedSms({
+            eventType: normalizedInput.eventType ?? 'Private',
+            eventDate: normalizedInput.eventDate,
+            startTime: normalizedInput.startTime,
+            endTime: normalizedInput.endTime,
+            building: normalizedInput.building,
+            ward: normalizedInput.ward,
+            contactName: normalizedInput.name,
+            contactPhone: normalizedInput.phone,
+            contactEmail: normalizedInput.email,
+          }),
         });
         notificationDelivery = {
           attempted: recipientUserIds.length,

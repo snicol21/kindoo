@@ -230,6 +230,23 @@ export const notificationPreferences = sqliteTable('notification_preference', {
     .default(sql`(unixepoch())`),
 });
 
+export const smsRoleAccessConfig = sqliteTable('sms_role_access_config', {
+  id: text('id').primaryKey(),
+  adminEnabled: integer('admin_enabled', { mode: 'boolean' }).notNull().default(true),
+  stakeManagerEnabled: integer('stake_manager_enabled', { mode: 'boolean' })
+    .notNull()
+    .default(false),
+  wardManagerEnabled: integer('ward_manager_enabled', { mode: 'boolean' }).notNull().default(false),
+  wardUserEnabled: integer('ward_user_enabled', { mode: 'boolean' }).notNull().default(false),
+  updatedByUserId: text('updated_by_user_id').references(() => users.id, { onDelete: 'set null' }),
+  createdAt: integer('created_at', { mode: 'timestamp' })
+    .notNull()
+    .default(sql`(unixepoch())`),
+  updatedAt: integer('updated_at', { mode: 'timestamp' })
+    .notNull()
+    .default(sql`(unixepoch())`),
+});
+
 export const notificationOutbox = sqliteTable(
   'notification_outbox',
   {
@@ -367,6 +384,9 @@ export type NewMessageTemplateDefault = typeof messageTemplateDefaults.$inferIns
 
 export type NotificationPreference = typeof notificationPreferences.$inferSelect;
 export type NewNotificationPreference = typeof notificationPreferences.$inferInsert;
+
+export type SmsRoleAccessConfig = typeof smsRoleAccessConfig.$inferSelect;
+export type NewSmsRoleAccessConfig = typeof smsRoleAccessConfig.$inferInsert;
 
 export type NotificationOutboxEntry = typeof notificationOutbox.$inferSelect;
 export type NewNotificationOutboxEntry = typeof notificationOutbox.$inferInsert;

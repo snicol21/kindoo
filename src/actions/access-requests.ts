@@ -6,6 +6,7 @@ import { sendEmail } from '@/lib/email';
 import { sendNotificationEventSms } from '@/lib/notifications';
 import { hashPassword } from '@/lib/password';
 import { canAccessUserAdmin, canAssignRole, ROLE_LABELS } from '@/lib/permissions';
+import { buildAccessRequestSubmittedSms } from '@/lib/sms-message-templates';
 import {
   accessRequests,
   USER_ROLES,
@@ -142,7 +143,10 @@ export async function submitAccessRequest(input: {
       await sendNotificationEventSms({
         eventKey: 'access_request_submitted',
         recipientUserIds,
-        message: `DigitalFob: New access request from ${name} (${ward}). Review it in the admin access requests queue.`,
+        message: buildAccessRequestSubmittedSms({
+          name,
+          ward,
+        }),
       });
     }
   } catch (error) {
