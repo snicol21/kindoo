@@ -91,6 +91,16 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 </span>
               </p>
               <p className="mt-1">Support: Spencer Nicol (spencer.nicol@gmail.com).</p>
+              <p className="mt-1">
+                SMS policy:{' '}
+                <a
+                  href="/sms-policy"
+                  className="underline underline-offset-2 decoration-muted-foreground/60 hover:text-foreground"
+                >
+                  View consent and messaging policy
+                </a>
+                .
+              </p>
               <p className="mt-1">Kindoo is a trademark of its respective owner.</p>
             </div>
           </footer>

@@ -195,6 +195,80 @@ export const messageTemplateDefaults = sqliteTable('message_template_default', {
     .default(sql`(unixepoch())`),
 });
 
+export const NOTIFICATION_EVENT_KEYS = [
+  'access_request_submitted',
+  'license_job_completed',
+  'license_job_failed',
+  'event_created',
+] as const;
+export type NotificationEventKey = (typeof NOTIFICATION_EVENT_KEYS)[number];
+
+export const NOTIFICATION_OUTBOX_STATUSES = ['pending', 'sent', 'failed'] as const;
+export type NotificationOutboxStatus = (typeof NOTIFICATION_OUTBOX_STATUSES)[number];
+
+export const notificationPreferences = sqliteTable('notification_preference', {
+  userId: text('user_id')
+    .primaryKey()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  smsEnabled: integer('sms_enabled', { mode: 'boolean' }).notNull().default(false),
+  smsPhone: text('sms_phone'),
+  accessRequestSubmittedSms: integer('access_request_submitted_sms', { mode: 'boolean' })
+    .notNull()
+    .default(true),
+  licenseJobCompletedSms: integer('license_job_completed_sms', { mode: 'boolean' })
+    .notNull()
+    .default(true),
+  licenseJobFailedSms: integer('license_job_failed_sms', { mode: 'boolean' })
+    .notNull()
+    .default(true),
+  eventCreatedSms: integer('event_created_sms', { mode: 'boolean' }).notNull().default(false),
+  createdAt: integer('created_at', { mode: 'timestamp' })
+    .notNull()
+    .default(sql`(unixepoch())`),
+  updatedAt: integer('updated_at', { mode: 'timestamp' })
+    .notNull()
+    .default(sql`(unixepoch())`),
+});
+
+export const notificationOutbox = sqliteTable(
+  'notification_outbox',
+  {
+    id: text('id')
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    eventKey: text('event_key', { enum: NOTIFICATION_EVENT_KEYS })
+      .notNull()
+      .$type<NotificationEventKey>(),
+    recipientUserId: text('recipient_user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    phoneE164: text('phone_e164').notNull(),
+    message: text('message').notNull(),
+    status: text('status', { enum: NOTIFICATION_OUTBOX_STATUSES })
+      .notNull()
+      .$type<NotificationOutboxStatus>()
+      .default('pending'),
+    attempts: integer('attempts').notNull().default(0),
+    providerMessageId: text('provider_message_id'),
+    providerError: text('provider_error'),
+    sentAt: integer('sent_at', { mode: 'timestamp' }),
+    createdAt: integer('created_at', { mode: 'timestamp' })
+      .notNull()
+      .default(sql`(unixepoch())`),
+    updatedAt: integer('updated_at', { mode: 'timestamp' })
+      .notNull()
+      .default(sql`(unixepoch())`),
+  },
+  (table) => ({
+    recipientStatusIdx: index('notification_outbox_recipient_status_idx').on(
+      table.recipientUserId,
+      table.status,
+      table.createdAt
+    ),
+    eventStatusIdx: index('notification_outbox_event_status_idx').on(table.eventKey, table.status),
+  })
+);
+
 export const KINDOO_LICENSE_JOB_STATUSES = ['queued', 'processing', 'completed', 'failed'] as const;
 export type KindooLicenseJobStatus = (typeof KINDOO_LICENSE_JOB_STATUSES)[number];
 export const KINDOO_LICENSE_COMPLETION_TYPES = [
@@ -290,6 +364,12 @@ export type NewMessageTemplate = typeof messageTemplates.$inferInsert;
 
 export type MessageTemplateDefault = typeof messageTemplateDefaults.$inferSelect;
 export type NewMessageTemplateDefault = typeof messageTemplateDefaults.$inferInsert;
+
+export type NotificationPreference = typeof notificationPreferences.$inferSelect;
+export type NewNotificationPreference = typeof notificationPreferences.$inferInsert;
+
+export type NotificationOutboxEntry = typeof notificationOutbox.$inferSelect;
+export type NewNotificationOutboxEntry = typeof notificationOutbox.$inferInsert;
 
 export type KindooLicenseJob = typeof kindooLicenseJobs.$inferSelect;
 export type NewKindooLicenseJob = typeof kindooLicenseJobs.$inferInsert;

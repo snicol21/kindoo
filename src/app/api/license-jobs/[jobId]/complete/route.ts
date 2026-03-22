@@ -1,5 +1,6 @@
 import { db } from '@/lib/db';
 import { publishLicenseJobEvent } from '@/lib/license-job-events';
+import { sendNotificationEventSms } from '@/lib/notifications';
 import { events, kindooLicenseJobs } from '@/schema/schema';
 import { and, eq } from 'drizzle-orm';
 import { revalidateTag } from 'next/cache';
@@ -109,6 +110,31 @@ export async function POST(request: Request, context: { params: Promise<{ jobId:
   if (eventRecord) {
     revalidateTag(`events-${eventRecord.userId}`, 'max');
     revalidateTag(`events-${eventRecord.userId}-${eventRecord.building}`, 'max');
+  }
+
+  try {
+    const [eventSummary] = await db
+      .select({
+        eventDate: events.eventDate,
+        startTime: events.startTime,
+        endTime: events.endTime,
+        building: events.building,
+      })
+      .from(events)
+      .where(eq(events.id, job.eventId))
+      .limit(1);
+
+    const timeWindow = eventSummary
+      ? `${eventSummary.eventDate} ${eventSummary.startTime}-${eventSummary.endTime} (${eventSummary.building})`
+      : `event ${job.eventId}`;
+
+    await sendNotificationEventSms({
+      eventKey: 'license_job_completed',
+      recipientUserIds: [job.requestedByUserId],
+      message: `DigitalFob: Kindoo license job completed (${completionType.replaceAll('-', ' ')}). Window: ${timeWindow}.`,
+    });
+  } catch (error) {
+    console.error('[license-jobs.complete] Failed to send SMS notifications:', error);
   }
 
   publishLicenseJobEvent({

@@ -1,6 +1,7 @@
 import { db } from '@/lib/db';
 import { publishLicenseJobEvent } from '@/lib/license-job-events';
-import { kindooLicenseJobs } from '@/schema/schema';
+import { sendNotificationEventSms } from '@/lib/notifications';
+import { events, kindooLicenseJobs } from '@/schema/schema';
 import { and, eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 
@@ -72,6 +73,31 @@ export async function POST(request: Request, context: { params: Promise<{ jobId:
 
   if (!job) {
     return NextResponse.json({ error: 'Job not found or not processing.' }, { status: 404 });
+  }
+
+  try {
+    const [eventSummary] = await db
+      .select({
+        eventDate: events.eventDate,
+        startTime: events.startTime,
+        endTime: events.endTime,
+        building: events.building,
+      })
+      .from(events)
+      .where(eq(events.id, job.eventId))
+      .limit(1);
+
+    const timeWindow = eventSummary
+      ? `${eventSummary.eventDate} ${eventSummary.startTime}-${eventSummary.endTime} (${eventSummary.building})`
+      : `event ${job.eventId}`;
+
+    await sendNotificationEventSms({
+      eventKey: 'license_job_failed',
+      recipientUserIds: [job.requestedByUserId],
+      message: `DigitalFob: Kindoo license job failed for ${timeWindow}. Error: ${details}`,
+    });
+  } catch (error) {
+    console.error('[license-jobs.fail] Failed to send SMS notifications:', error);
   }
 
   publishLicenseJobEvent({

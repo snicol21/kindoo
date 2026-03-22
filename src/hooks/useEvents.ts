@@ -57,7 +57,10 @@ export function useAddEvent(onSuccess?: () => void) {
         phone: normalizePhoneForStorage(input.phone),
       });
       if (!result.success) throw new Error(result.error);
-      return result.data!;
+      return {
+        event: result.data!,
+        notificationDelivery: result.meta?.notificationDelivery,
+      };
     },
 
     // Optimistic update
@@ -116,8 +119,14 @@ export function useAddEvent(onSuccess?: () => void) {
       queryClient.invalidateQueries({ queryKey: contactKeys.all });
     },
 
-    onSuccess: () => {
+    onSuccess: (payload) => {
       toast.success('Event added successfully!');
+      const summary = payload.notificationDelivery;
+      if (summary && (summary.skipped > 0 || summary.failed > 0)) {
+        toast.warning(
+          `SMS delivery: sent ${summary.sent}/${summary.attempted}, skipped ${summary.skipped}, failed ${summary.failed}.`
+        );
+      }
       onSuccess?.();
     },
   });

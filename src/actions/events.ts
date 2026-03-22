@@ -3,6 +3,7 @@
 import { isAdminEmail } from '@/lib/admin';
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
+import { sendNotificationEventSms } from '@/lib/notifications';
 import { canCreateEventInBuildingForWard, canMutateEvent } from '@/lib/permissions';
 import {
   BUILDINGS,
@@ -72,9 +73,19 @@ export interface ImportEventsResult {
   rowErrors: { row: number; message: string }[];
 }
 
+interface NotificationDeliverySummary {
+  attempted: number;
+  sent: number;
+  skipped: number;
+  failed: number;
+}
+
 export interface ActionResult<T = unknown> {
   success: boolean;
   data?: T;
+  meta?: {
+    notificationDelivery?: NotificationDeliverySummary;
+  };
   error?: string;
 }
 
@@ -385,7 +396,62 @@ export async function addEvent(input: AddEventInput): Promise<ActionResult<Event
     revalidateTag(`events-${userId}`, 'max');
     revalidateTag(`events-${userId}-${normalizedInput.building}`, 'max');
 
-    return { success: true, data: newEvent };
+    let notificationDelivery: NotificationDeliverySummary | undefined;
+
+    try {
+      const recipients = await db
+        .select({ id: users.id, role: users.role, ward: users.ward })
+        .from(users)
+        .where(
+          or(
+            eq(users.role, 'admin'),
+            eq(users.role, 'stake_manager'),
+            and(eq(users.role, 'ward_manager'), eq(users.ward, normalizedInput.ward))
+          )
+        );
+
+      const recipientUserIds = recipients
+        .map((candidate) => candidate.id)
+        .filter((candidateId) => candidateId !== userId);
+
+      notificationDelivery = {
+        attempted: recipientUserIds.length,
+        sent: 0,
+        skipped: 0,
+        failed: 0,
+      };
+
+      if (recipientUserIds.length > 0) {
+        const sendResult = await sendNotificationEventSms({
+          eventKey: 'event_created',
+          recipientUserIds,
+          message: `DigitalFob: New ${normalizedInput.eventType} event on ${normalizedInput.eventDate} ${normalizedInput.startTime}-${normalizedInput.endTime} at ${normalizedInput.building} (${normalizedInput.ward}).`,
+        });
+        notificationDelivery = {
+          attempted: recipientUserIds.length,
+          sent: sendResult.sent,
+          skipped: sendResult.skipped,
+          failed: sendResult.failed,
+        };
+      }
+
+      console.info('[addEvent] SMS notification summary:', {
+        actorUserId: userId,
+        eventWard: normalizedInput.ward,
+        eventBuilding: normalizedInput.building,
+        summary: notificationDelivery,
+      });
+    } catch (error) {
+      console.error('[addEvent] Failed to send SMS notifications:', error);
+    }
+
+    return {
+      success: true,
+      data: newEvent,
+      meta: {
+        notificationDelivery,
+      },
+    };
   } catch (error) {
     console.error('[addEvent] Error:', error);
     return {

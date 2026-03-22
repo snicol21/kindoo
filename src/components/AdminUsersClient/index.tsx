@@ -84,8 +84,12 @@ export function AdminUsersClient({
     return true;
   };
 
+  const canSelfChangeWard = (user: ManagedUser) =>
+    user.id === currentUserId &&
+    (currentUserRole === 'admin' || currentUserRole === 'stake_manager');
+
   const openEditDialog = (user: ManagedUser) => {
-    if (!canManageTargetUser(user)) {
+    if (!canManageTargetUser(user) && !canSelfChangeWard(user)) {
       toast.error('You cannot change this user.');
       return;
     }
@@ -134,9 +138,11 @@ export function AdminUsersClient({
   }, [currentUserRole, currentUserWard]);
 
   const canEditWardField = useMemo(() => {
-    if (!editUser || !canManageTargetUser(editUser)) return false;
+    if (!editUser) return false;
+    if (canSelfChangeWard(editUser)) return true;
+    if (!canManageTargetUser(editUser)) return false;
     return currentUserRole !== 'ward_manager';
-  }, [editUser, currentUserRole, currentUserWard]);
+  }, [editUser, currentUserRole, currentUserWard, currentUserId]);
 
   const handleCreateUser = async () => {
     setCreatePending(true);

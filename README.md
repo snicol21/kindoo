@@ -63,7 +63,19 @@ Copy `.env.example` to `.env.local` and set:
 
 ```bash
 KINDOO_WORKER_TOKEN="replace-with-long-random-secret"
+
+# Twilio SMS notifications
+TWILIO_ACCOUNT_SID="ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+TWILIO_AUTH_TOKEN="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+TWILIO_FROM_NUMBER="+15551234567"
 ```
+
+SMS delivery is user-preference based from Account Settings. Supported SMS events:
+
+- new access requests submitted
+- Kindoo worker job completed
+- Kindoo worker job failed
+- new events created
 
 ### 2) Configure local worker env vars
 

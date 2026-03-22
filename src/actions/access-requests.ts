@@ -3,6 +3,7 @@
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { sendEmail } from '@/lib/email';
+import { sendNotificationEventSms } from '@/lib/notifications';
 import { hashPassword } from '@/lib/password';
 import { canAccessUserAdmin, canAssignRole, ROLE_LABELS } from '@/lib/permissions';
 import {
@@ -117,6 +118,36 @@ export async function submitAccessRequest(input: {
     comments,
     status: 'pending',
   });
+
+  try {
+    const potentialReviewers = await db
+      .select({
+        id: users.id,
+        role: users.role,
+        ward: users.ward,
+      })
+      .from(users);
+
+    const recipientUserIds = potentialReviewers
+      .filter((candidate) =>
+        canReviewRequest({
+          actorRole: (candidate.role ?? 'ward_user') as UserRole,
+          actorWard: candidate.ward,
+          requestWard: ward,
+        })
+      )
+      .map((candidate) => candidate.id);
+
+    if (recipientUserIds.length > 0) {
+      await sendNotificationEventSms({
+        eventKey: 'access_request_submitted',
+        recipientUserIds,
+        message: `DigitalFob: New access request from ${name} (${ward}). Review it in the admin access requests queue.`,
+      });
+    }
+  } catch (error) {
+    console.error('[submitAccessRequest] Failed to send SMS notifications:', error);
+  }
 
   return { success: true };
 }

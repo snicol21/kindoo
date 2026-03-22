@@ -1,4 +1,5 @@
 import { changePassword, changeProfile } from '@/actions/auth';
+import { updateNotificationPreferences } from '@/actions/notification-preferences';
 import { Button } from '@/components/_ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/_ui/card';
 import { Input } from '@/components/_ui/input';
@@ -11,6 +12,7 @@ import { ProfileImageUploader } from '@/components/ProfileImageUploader';
 import { isAdminEmail } from '@/lib/admin';
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
+import { loadNotificationPreferencesForUser } from '@/lib/notification-preferences';
 import { ROLE_LABELS } from '@/lib/permissions';
 import type { UserRole } from '@/schema/schema';
 import { users } from '@/schema/schema';
@@ -29,6 +31,7 @@ interface AccountPageProps {
     updated?: string;
     nameUpdated?: string;
     imageUpdated?: string;
+    notificationUpdated?: string;
     forcePasswordChange?: string;
     error?: string;
   }>;
@@ -59,17 +62,21 @@ export default async function AccountPage({ searchParams }: AccountPageProps) {
     ? 'admin'
     : ((session.user.role ?? 'ward_user') as UserRole);
 
+  const notificationPreferences = await loadNotificationPreferencesForUser(session.user.id);
+
   const message = params.error
     ? decodeURIComponent(params.error)
     : params.forcePasswordChange === '1'
       ? 'You must change your temporary password before using the app.'
       : params.imageUpdated === '1'
         ? 'Profile photo updated.'
-        : params.nameUpdated === '1'
-          ? 'Name updated.'
-          : params.updated === '1'
-            ? 'Password updated.'
-            : null;
+        : params.notificationUpdated === '1'
+          ? 'Notification preferences updated.'
+          : params.nameUpdated === '1'
+            ? 'Name updated.'
+            : params.updated === '1'
+              ? 'Password updated.'
+              : null;
 
   const userInitials = session?.user?.name
     ? session.user.name
@@ -198,6 +205,107 @@ export default async function AccountPage({ searchParams }: AccountPageProps) {
               <div className="flex justify-end">
                 <Button type="submit" variant="secondary">
                   Update password
+                </Button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>SMS notifications</CardTitle>
+            <CardDescription>
+              Choose which app events should send SMS alerts to your phone.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form
+              action={async (formData: FormData) => {
+                'use server';
+
+                const result = await updateNotificationPreferences({
+                  smsEnabled: formData.get('smsEnabled') === 'on',
+                  smsPhone: String(formData.get('smsPhone') ?? ''),
+                  accessRequestSubmittedSms: formData.get('accessRequestSubmittedSms') === 'on',
+                  licenseJobCompletedSms: formData.get('licenseJobCompletedSms') === 'on',
+                  licenseJobFailedSms: formData.get('licenseJobFailedSms') === 'on',
+                  eventCreatedSms: formData.get('eventCreatedSms') === 'on',
+                });
+
+                if (!result.success) {
+                  const msg = encodeURIComponent(
+                    result.error ?? 'Failed to update notification preferences.'
+                  );
+                  redirect(`/account?error=${msg}`);
+                }
+
+                redirect('/account?notificationUpdated=1');
+              }}
+              className="space-y-4"
+            >
+              <div className="space-y-3">
+                <Label className="flex items-center gap-3" htmlFor="smsEnabled">
+                  <input
+                    id="smsEnabled"
+                    name="smsEnabled"
+                    type="checkbox"
+                    defaultChecked={notificationPreferences.smsEnabled}
+                  />
+                  Enable SMS notifications
+                </Label>
+              </div>
+
+              <div className="space-y-3">
+                <Label htmlFor="smsPhone">SMS phone (optional override)</Label>
+                <PhoneInput
+                  id="smsPhone"
+                  name="smsPhone"
+                  defaultValue={notificationPreferences.smsPhone || phone}
+                />
+              </div>
+
+              <div className="space-y-3 rounded-md border border-border p-3">
+                <Label className="flex items-center gap-3" htmlFor="accessRequestSubmittedSms">
+                  <input
+                    id="accessRequestSubmittedSms"
+                    name="accessRequestSubmittedSms"
+                    type="checkbox"
+                    defaultChecked={notificationPreferences.accessRequestSubmittedSms}
+                  />
+                  New access requests submitted
+                </Label>
+                <Label className="flex items-center gap-3" htmlFor="licenseJobCompletedSms">
+                  <input
+                    id="licenseJobCompletedSms"
+                    name="licenseJobCompletedSms"
+                    type="checkbox"
+                    defaultChecked={notificationPreferences.licenseJobCompletedSms}
+                  />
+                  Kindoo worker job completed
+                </Label>
+                <Label className="flex items-center gap-3" htmlFor="licenseJobFailedSms">
+                  <input
+                    id="licenseJobFailedSms"
+                    name="licenseJobFailedSms"
+                    type="checkbox"
+                    defaultChecked={notificationPreferences.licenseJobFailedSms}
+                  />
+                  Kindoo worker job failed
+                </Label>
+                <Label className="flex items-center gap-3" htmlFor="eventCreatedSms">
+                  <input
+                    id="eventCreatedSms"
+                    name="eventCreatedSms"
+                    type="checkbox"
+                    defaultChecked={notificationPreferences.eventCreatedSms}
+                  />
+                  New events created by others
+                </Label>
+              </div>
+
+              <div className="flex justify-end">
+                <Button type="submit" variant="secondary">
+                  Save notification preferences
                 </Button>
               </div>
             </form>

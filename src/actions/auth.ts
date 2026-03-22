@@ -347,7 +347,11 @@ export async function adminSetUserWard(input: {
   const user = existing[0];
   if (!user) return { success: false, error: 'User not found.' };
 
+  const isSelfWardChange = user.id === admin.userId;
+  const canSelfChangeWard = admin.role === 'admin' || admin.role === 'stake_manager';
+
   if (
+    !(isSelfWardChange && canSelfChangeWard) &&
     !canManageUserInWard({
       actorRole: admin.role,
       actorWard: admin.ward,
