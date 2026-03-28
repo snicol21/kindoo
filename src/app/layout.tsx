@@ -54,7 +54,12 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" suppressHydrationWarning className={inter.variable}>
+    <html
+      lang="en"
+      suppressHydrationWarning
+      className={inter.variable}
+      style={{ scrollPaddingTop: '5rem' }}
+    >
       <body
         suppressHydrationWarning
         className="font-inter antialiased bg-background text-foreground min-h-screen flex flex-col"

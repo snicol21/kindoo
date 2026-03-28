@@ -97,12 +97,9 @@ export default function LegalPage() {
         </div>
 
         {/* ── SMS Messaging Policy ─────────────────────────────────── */}
-        <Card id="sms-policy" style={{ scrollMarginTop: '5rem' }}>
+        <Card id="sms-policy">
           {/* Secondary anchor for direct consent proof linking */}
-          <span
-            id="sms-consent"
-            style={{ scrollMarginTop: '5rem', display: 'block', position: 'relative', top: 0 }}
-          />
+          <span id="sms-consent" style={{ display: 'block', position: 'relative', top: 0 }} />
           <CardHeader>
             <CardTitle>
               <a href="#sms-policy" className="hover:underline underline-offset-2">
@@ -283,7 +280,7 @@ export default function LegalPage() {
         </Card>
 
         {/* ── SMS Program Details ──────────────────────────────────── */}
-        <Card id="toll-free-verification" style={{ scrollMarginTop: '5rem' }}>
+        <Card id="toll-free-verification">
           <CardHeader>
             <CardTitle>
               <a href="#toll-free-verification" className="hover:underline underline-offset-2">
@@ -326,7 +323,7 @@ export default function LegalPage() {
         </Card>
 
         {/* ── Privacy Policy ───────────────────────────────────────── */}
-        <Card id="privacy" style={{ scrollMarginTop: '5rem' }}>
+        <Card id="privacy">
           <CardHeader>
             <CardTitle>
               <a href="#privacy" className="hover:underline underline-offset-2">
@@ -420,7 +417,7 @@ export default function LegalPage() {
         </Card>
 
         {/* ── Terms of Service ─────────────────────────────────────── */}
-        <Card id="terms" style={{ scrollMarginTop: '5rem' }}>
+        <Card id="terms">
           <CardHeader>
             <CardTitle>
               <a href="#terms" className="hover:underline underline-offset-2">
