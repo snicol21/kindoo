@@ -51,10 +51,10 @@ export function BootLoader() {
   return (
     <div
       aria-label="Loading application"
-      className={`fixed inset-0 mt-17 -mb-17 pb-34 z-100 grid place-items-center overflow-hidden bg-background px-4 text-foreground transition-opacity duration-200 ${
+      className={`fixed inset-0 pt-16 grid place-items-center overflow-hidden bg-background px-4 text-foreground transition-opacity duration-200 ${
         isVisible ? 'opacity-100' : 'pointer-events-none opacity-0'
       }`}
-      style={{ zIndex: 9998 }}
+      style={{ zIndex: 49 }}
     >
       <LoaderVisual />
     </div>
