@@ -98,6 +98,11 @@ export default function LegalPage() {
 
         {/* ── SMS Messaging Policy ─────────────────────────────────── */}
         <Card id="sms-policy" style={{ scrollMarginTop: '5rem' }}>
+          {/* Secondary anchor for direct consent proof linking */}
+          <span
+            id="sms-consent"
+            style={{ scrollMarginTop: '5rem', display: 'block', position: 'relative', top: 0 }}
+          />
           <CardHeader>
             <CardTitle>
               <a href="#sms-policy" className="hover:underline underline-offset-2">
@@ -166,6 +171,39 @@ export default function LegalPage() {
                 Your consent is stored and associated with your account. You may modify or revoke it
                 at any time by returning to Account Settings.
               </Prose>
+            </SubSection>
+
+            <SectionDivider />
+
+            <SubSection heading="2a. Opt-In Form Preview">
+              <Prose>
+                The following is a live rendering of the exact consent UI shown to users inside
+                Account Settings. The checkbox is unchecked by default and must be actively selected
+                by the user before saving.
+              </Prose>
+              <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-3">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                  Account Settings › SMS Notifications
+                </p>
+                <label className="flex items-center gap-3 cursor-default">
+                  <input
+                    type="checkbox"
+                    disabled
+                    aria-label="I agree to receive SMS notifications from DigitalFob about account and operations updates."
+                  />
+                  <span className="text-sm">
+                    I agree to receive SMS notifications from DigitalFob about account and
+                    operations updates.
+                  </span>
+                </label>
+                <p className="text-xs text-muted-foreground">
+                  Message frequency varies. Message and data rates may apply. Reply STOP to opt out
+                  and HELP for help. You can also disable SMS in Account Settings at any time.{' '}
+                  <a href="/policies#sms-policy" className="underline underline-offset-2">
+                    View full SMS policy.
+                  </a>
+                </p>
+              </div>
             </SubSection>
 
             <SectionDivider />
