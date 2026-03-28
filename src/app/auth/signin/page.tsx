@@ -123,6 +123,20 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
               </Link>
               .
             </p>
+
+            <p className="text-xs text-center text-muted-foreground">
+              <Link href="/policies#sms-policy" className="underline underline-offset-2">
+                SMS Policy
+              </Link>
+              {' · '}
+              <Link href="/policies#privacy" className="underline underline-offset-2">
+                Privacy Policy
+              </Link>
+              {' · '}
+              <Link href="/policies#terms" className="underline underline-offset-2">
+                Terms of Service
+              </Link>
+            </p>
           </CardContent>
         </Card>
       </div>

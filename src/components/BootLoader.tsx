@@ -1,13 +1,25 @@
 'use client';
 
 import { LoaderVisual } from '@/components/LoaderVisual';
+import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
+// Public pages that render fully via SSR — no auth splash needed.
+const PUBLIC_PATHS = ['/policies', '/auth', '/request-access'];
+
 export function BootLoader() {
+  const pathname = usePathname();
   const [isVisible, setIsVisible] = useState(true);
   const [isRendered, setIsRendered] = useState(true);
 
+  const skipLoader = PUBLIC_PATHS.some((p) => pathname?.startsWith(p));
+
   useEffect(() => {
+    if (skipLoader) {
+      setIsRendered(false);
+      return;
+    }
+
     const previousHtmlOverflow = document.documentElement.style.overflow;
     const previousBodyOverflow = document.body.style.overflow;
     document.documentElement.style.overflow = 'hidden';
@@ -32,9 +44,9 @@ export function BootLoader() {
       window.clearTimeout(removeTimer);
       unlockScroll();
     };
-  }, []);
+  }, [skipLoader]);
 
-  if (!isRendered) return null;
+  if (!isRendered || skipLoader) return null;
 
   return (
     <div

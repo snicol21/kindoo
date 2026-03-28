@@ -260,8 +260,16 @@ export default async function AccountPage({ searchParams }: AccountPageProps) {
                     defaultChecked={notificationPreferences.smsEnabled}
                     disabled={!canEnableSmsMessaging}
                   />
-                  Enable SMS notifications
+                  I agree to receive SMS notifications from DigitalFob about account and operations
+                  updates.
                 </Label>
+                <p className="text-xs text-muted-foreground">
+                  Message frequency varies. Message and data rates may apply. Reply STOP to opt out
+                  and HELP for help. You can also disable SMS in Account Settings at any time.{' '}
+                  <a href="/policies#sms-policy" className="underline underline-offset-2">
+                    View full SMS policy.
+                  </a>
+                </p>
               </div>
 
               <div className="space-y-3">

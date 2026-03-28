@@ -55,7 +55,10 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning className={inter.variable}>
-      <body className="font-inter antialiased bg-background text-foreground min-h-screen flex flex-col">
+      <body
+        suppressHydrationWarning
+        className="font-inter antialiased bg-background text-foreground min-h-screen flex flex-col"
+      >
         {process.env.NODE_ENV === 'development' ? <DevServiceWorkerReset /> : null}
         <BootLoader />
         <NextTopLoader color="#2563eb" height={3} showSpinner={false} />
@@ -92,14 +95,26 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               </p>
               <p className="mt-1">Support: Spencer Nicol (spencer.nicol@gmail.com).</p>
               <p className="mt-1">
-                SMS policy:{' '}
                 <a
-                  href="/sms-policy"
+                  href="/policies#sms-policy"
                   className="underline underline-offset-2 decoration-muted-foreground/60 hover:text-foreground"
                 >
-                  View consent and messaging policy
+                  SMS Policy
                 </a>
-                .
+                {' · '}
+                <a
+                  href="/policies#privacy"
+                  className="underline underline-offset-2 decoration-muted-foreground/60 hover:text-foreground"
+                >
+                  Privacy Policy
+                </a>
+                {' · '}
+                <a
+                  href="/policies#terms"
+                  className="underline underline-offset-2 decoration-muted-foreground/60 hover:text-foreground"
+                >
+                  Terms of Service
+                </a>
               </p>
               <p className="mt-1">Kindoo is a trademark of its respective owner.</p>
             </div>

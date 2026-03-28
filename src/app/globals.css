@@ -150,15 +150,14 @@
   }
 }
 
-/* Tailwind preflight removes default list markers.
-   Restore semantic list styling only inside policy-content wrappers. */
-.policy-content ul {
+/* Restore list markers inside the policies page (Tailwind preflight removes them). */
+#policies-page ul {
   list-style-type: disc;
   list-style-position: outside;
   padding-left: 1.5rem;
 }
 
-.policy-content ol {
+#policies-page ol {
   list-style-type: decimal;
   list-style-position: outside;
   padding-left: 1.5rem;
@@ -189,8 +188,13 @@ input[type='time'] {
 
 html {
   scrollbar-gutter: stable;
-  /* Optional: stable both-edges if you have centered content and want symmetric gutters */
-  /* scrollbar-gutter: stable both-edges; */
+}
+
+@layer base {
+  html {
+    /* Offset anchor scroll by the height of the sticky navbar (h-16 = 64px) */
+    scroll-padding-top: 5rem;
+  }
 }
 
 /* Improve perceived responsiveness for touch interactions on mobile browsers. */

@@ -112,6 +112,11 @@ export default async function RequestAccessPage({ searchParams }: RequestAccessP
               <div className="space-y-2">
                 <Label htmlFor="phone">Phone</Label>
                 <PhoneInput id="phone" name="phone" placeholder="(555) 000-0000" required />
+                <p className="text-xs text-muted-foreground">
+                  Your phone number is used for account and operations communication. Submitting
+                  this form does not enroll you in SMS notifications. SMS opt-in is collected later
+                  in Account Settings with explicit consent language.
+                </p>
               </div>
 
               <div className="space-y-2">
@@ -151,6 +156,15 @@ export default async function RequestAccessPage({ searchParams }: RequestAccessP
                 </Button>
                 <Button type="submit">Submit request</Button>
               </div>
+
+              <p className="text-xs text-muted-foreground">
+                When SMS is enabled: reply STOP to opt out, HELP for help. Message frequency varies.
+                Message and data rates may apply.{' '}
+                <Link href="/policies#sms-policy" className="underline underline-offset-2">
+                  View SMS Policy, Privacy Policy, and Terms of Service
+                </Link>
+                .
+              </p>
             </form>
           </CardContent>
         </Card>
