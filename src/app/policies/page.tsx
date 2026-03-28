@@ -323,13 +323,20 @@ export default function LegalPage() {
                 </li>
                 <li>
                   We do not sell, rent, trade, or otherwise disclose your personal information to
-                  any third party for advertising, marketing, or commercial purposes.
+                  any third party for advertising, marketing, or commercial purposes. The above
+                  excludes text messaging originator opt-in data and consent; this information will
+                  not be shared with any third parties.
                 </li>
                 <li>
                   SMS messages are transmitted via Twilio, our third-party SMS delivery provider.
                   Twilio processes your phone number solely to route and deliver your requested
                   notifications. Twilio&apos;s privacy practices are governed by their own privacy
                   policy.
+                </li>
+                <li>
+                  Mobile information (including SMS opt-in consent) may be shared only with service
+                  providers that directly assist in delivering our application services. It is never
+                  shared with third parties for marketing or promotional purposes.
                 </li>
               </BulletList>
             </SubSection>
