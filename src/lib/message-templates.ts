@@ -16,7 +16,7 @@ export interface MessageTemplatePlaceholder {
 }
 
 export const DEFAULT_POLICY_LINK =
-  'https://drive.google.com/file/d/1hytbmjVvuJp2WLVfEycPnpds4r2NFfCC/view?usp=drivesdk';
+  'https://drive.google.com/file/d/1hytbmjVvuJp2WLVfEycPnpds4r2NFfCC/preview';
 
 export const MESSAGE_TEMPLATE_DEFINITIONS: MessageTemplateDefinition[] = [
   {
