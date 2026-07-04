@@ -110,6 +110,12 @@ Useful modes:
 - `pnpm run worker:drain`: process until queue is empty and exit.
 - `pnpm run worker:watch`: keep polling in a loop.
 
+If Playwright reports a missing browser executable on a new machine, run this once inside `automation-service/`:
+
+```bash
+pnpm run browsers:install
+```
+
 ### 4) Run automatically on macOS
 
 Use a LaunchAgent that runs the worker in `--watch` mode and keeps the Mac awake while it is running.

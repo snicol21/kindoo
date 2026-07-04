@@ -7,6 +7,7 @@
     "start": "node src/server.js",
     "start:dist": "node dist/src/server.js",
     "build": "rm -rf dist && mkdir -p dist && cp -R src dist/src",
+    "browsers:install": "playwright install chromium",
     "worker": "node src/worker.js --watch",
     "worker:once": "node src/worker.js --once",
     "worker:drain": "node src/worker.js --drain",

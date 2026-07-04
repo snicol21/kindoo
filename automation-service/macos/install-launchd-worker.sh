@@ -40,6 +40,7 @@ chmod +x "${WRAPPER_SCRIPT}"
 # Build stable dist snapshot used by the launch agent.
 cd "${AUTOMATION_ROOT}"
 pnpm run build
+pnpm run browsers:install
 
 cat > "${PLIST_TARGET}" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
