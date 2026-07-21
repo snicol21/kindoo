@@ -703,12 +703,20 @@ async function isAddUserFormVisible(page) {
   return false;
 }
 
-async function isUsersMenuVisible(page) {
-  const candidates = [
+function usersMenuCandidates(page) {
+  const usersLabelPattern = /^Users(?:\s*\(\d+\))?$/i;
+
+  return [
     page.getByText('Users', { exact: true }).first(),
-    page.getByRole('button', { name: /^Users$/i }).first(),
-    page.getByRole('link', { name: /^Users$/i }).first(),
+    page.getByText(usersLabelPattern).first(),
+    page.getByRole('button', { name: usersLabelPattern }).first(),
+    page.getByRole('link', { name: usersLabelPattern }).first(),
+    page.getByText(/\busers\b/i).first(),
   ];
+}
+
+async function isUsersMenuVisible(page) {
+  const candidates = usersMenuCandidates(page);
 
   for (const candidate of candidates) {
     try {
@@ -866,29 +874,13 @@ async function openAddUserFlow(page, requestId, kindooUrl) {
   }
 
   logAutomation(requestId, 'opening users menu');
-  let clickedUsersMenu = await clickFirstVisible(
-    [
-      page.getByText('Users', { exact: true }),
-      page.getByRole('button', { name: /^Users$/i }),
-      page.getByRole('link', { name: /^Users$/i }),
-      page.getByText(/users/i),
-    ],
-    10000
-  );
+  let clickedUsersMenu = await clickFirstVisible(usersMenuCandidates(page), 10000);
 
   if (!clickedUsersMenu) {
     logAutomation(requestId, 'users menu not found; reloading kindoo home and retrying');
     await page.goto(kindooUrl, { waitUntil: 'domcontentloaded' });
     await waitForKindooShell(page, 12000);
-    clickedUsersMenu = await clickFirstVisible(
-      [
-        page.getByText('Users', { exact: true }),
-        page.getByRole('button', { name: /^Users$/i }),
-        page.getByRole('link', { name: /^Users$/i }),
-        page.getByText(/users/i),
-      ],
-      10000
-    );
+    clickedUsersMenu = await clickFirstVisible(usersMenuCandidates(page), 10000);
   }
 
   if (!clickedUsersMenu) {
