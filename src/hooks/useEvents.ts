@@ -59,7 +59,6 @@ export function useAddEvent(onSuccess?: () => void) {
       if (!result.success) throw new Error(result.error);
       return {
         event: result.data!,
-        notificationDelivery: result.meta?.notificationDelivery,
       };
     },
 
@@ -119,14 +118,8 @@ export function useAddEvent(onSuccess?: () => void) {
       queryClient.invalidateQueries({ queryKey: contactKeys.all });
     },
 
-    onSuccess: (payload) => {
+    onSuccess: () => {
       toast.success('Event added successfully!');
-      const summary = payload.notificationDelivery;
-      if (summary && (summary.skipped > 0 || summary.failed > 0)) {
-        toast.warning(
-          `SMS delivery: sent ${summary.sent}/${summary.attempted}, skipped ${summary.skipped}, failed ${summary.failed}.`
-        );
-      }
       onSuccess?.();
     },
   });
