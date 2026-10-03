@@ -15,7 +15,7 @@ const HEADLESS = (process.env.PLAYWRIGHT_HEADLESS ?? 'true') !== 'false';
 const TIMEOUT_MS = Number.parseInt(process.env.PLAYWRIGHT_TIMEOUT_MS ?? '30000', 10);
 const RETRY_COUNT = Number.parseInt(process.env.PLAYWRIGHT_RETRY_COUNT ?? '3', 10);
 const RETRY_DELAY_MS = Number.parseInt(process.env.PLAYWRIGHT_RETRY_DELAY_MS ?? '300', 10);
-const RUN_TIMEOUT_MS = Number.parseInt(process.env.PLAYWRIGHT_RUN_TIMEOUT_MS ?? '120000', 10);
+const RUN_TIMEOUT_MS = Number.parseInt(process.env.PLAYWRIGHT_RUN_TIMEOUT_MS ?? '240000', 10);
 const MAX_LOG_LINES_PER_RUN = 1500;
 
 const automationRunLogs = new Map();
@@ -72,7 +72,6 @@ async function clickOptional(locator, timeoutMs = 1500) {
     await target.click({ timeout: timeoutMs });
     return true;
   } catch {
-    // Optional step; ignore if missing.
     return false;
   }
 }
@@ -373,7 +372,7 @@ async function confirmSaveDialogs(page, requestId) {
       logAutomation(requestId, 'post-save dialog confirmed');
       return true;
     } catch {
-      // Try next candidate.
+      continue;
     }
   }
 
@@ -525,7 +524,7 @@ async function captureDebugArtifacts(page, requestId, label) {
       metaPath,
     });
   } catch {
-    // Best effort only.
+    return;
   }
 }
 
@@ -555,7 +554,7 @@ async function performLogin({
         await candidate.waitFor({ state: 'visible', timeout: timeoutMs });
         return candidate;
       } catch {
-        // Try next candidate.
+        continue;
       }
     }
     return null;
@@ -678,7 +677,7 @@ async function isLoginScreenVisible(page) {
       await candidate.waitFor({ state: 'visible', timeout: 1500 });
       return true;
     } catch {
-      // Try next candidate.
+      continue;
     }
   }
 
@@ -696,7 +695,7 @@ async function isAddUserFormVisible(page) {
       await candidate.waitFor({ state: 'visible', timeout: 1500 });
       return true;
     } catch {
-      // Try next candidate.
+      continue;
     }
   }
 
@@ -723,7 +722,7 @@ async function isUsersMenuVisible(page) {
       await candidate.waitFor({ state: 'visible', timeout: 1200 });
       return true;
     } catch {
-      // Try next candidate.
+      continue;
     }
   }
 
@@ -788,7 +787,7 @@ async function enterSiteFromMySites(page, requestId) {
         return true;
       }
     } catch {
-      // Try next candidate.
+      continue;
     }
   }
 
@@ -815,7 +814,7 @@ async function clickFirstVisible(candidates, timeoutMs = 4000) {
       await target.click({ timeout: timeoutMs });
       return true;
     } catch {
-      // Try next candidate.
+      continue;
     }
   }
 
