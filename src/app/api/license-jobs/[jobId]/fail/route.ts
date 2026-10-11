@@ -1,8 +1,9 @@
 import { db } from '@/lib/db';
 import { publishLicenseJobEvent } from '@/lib/license-job-events';
+import { loadEventSmsDetails } from '@/lib/license-job-sms';
 import { sendNotificationEventSms } from '@/lib/notifications';
 import { buildLicenseJobFailedSms } from '@/lib/sms-message-templates';
-import { events, kindooLicenseJobs } from '@/schema/schema';
+import { kindooLicenseJobs } from '@/schema/schema';
 import { and, eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 
@@ -77,29 +78,15 @@ export async function POST(request: Request, context: { params: Promise<{ jobId:
   }
 
   try {
-    const [eventSummary] = await db
-      .select({
-        eventDate: events.eventDate,
-        startTime: events.startTime,
-        endTime: events.endTime,
-        building: events.building,
-      })
-      .from(events)
-      .where(eq(events.id, job.eventId))
-      .limit(1);
-
-    const timeWindow = eventSummary
-      ? `${eventSummary.eventDate} ${eventSummary.startTime}-${eventSummary.endTime} (${eventSummary.building})`
-      : `event ${job.eventId}`;
+    const eventDetails = await loadEventSmsDetails(job.eventId);
+    if (!eventDetails) {
+      throw new Error(`Event ${job.eventId} not found for SMS.`);
+    }
 
     await sendNotificationEventSms({
       eventKey: 'license_job_failed',
       recipientUserIds: [job.requestedByUserId],
-      message: buildLicenseJobFailedSms({
-        timeWindow,
-        details,
-        eventId: job.eventId,
-      }),
+      message: buildLicenseJobFailedSms({ ...eventDetails, details }),
     });
   } catch (error) {
     console.error('[license-jobs.fail] Failed to send SMS notifications:', error);

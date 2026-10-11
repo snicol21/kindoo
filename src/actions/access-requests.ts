@@ -146,6 +146,7 @@ export async function submitAccessRequest(input: {
         message: buildAccessRequestSubmittedSms({
           name,
           ward,
+          email,
         }),
       });
     }
