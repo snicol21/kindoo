@@ -414,6 +414,7 @@ export async function createEventForAccess(
           eventKey: 'event_created',
           recipientUserIds,
           message: buildEventCreatedSms({
+            description: normalizedInput.description,
             eventType: normalizedInput.eventType ?? 'Private',
             eventDate: normalizedInput.eventDate,
             startTime: normalizedInput.startTime,
@@ -422,7 +423,6 @@ export async function createEventForAccess(
             ward: normalizedInput.ward,
             contactName: normalizedInput.name,
             contactPhone: normalizedInput.phone,
-            contactEmail: normalizedInput.email,
           }),
         });
         notificationDelivery = {
