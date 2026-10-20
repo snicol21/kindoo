@@ -358,80 +358,69 @@ export function EventTable({
       return;
     }
 
-    const trackedEventIdSet = new Set(trackedEvents.map((event) => event.id));
+    const ACTIVE_POLL_MS = 10_000;
+    const IDLE_POLL_STEPS_MS = [30_000, 60_000];
 
     let cancelled = false;
 
-    const loadOutcomes = async () => {
-      const results = await Promise.all(
-        trackedEvents.map(
-          async ({ id: eventId, isCompleted, shouldShowScheduled, shouldShowAutoSchedule }) => {
-            try {
-              const response = await fetch(`/api/license-jobs/event/${eventId}/latest`, {
-                cache: 'no-store',
-              });
-              const data = await response.json().catch(() => ({}));
-              if (!response.ok) {
-                return [
-                  eventId,
-                  isCompleted
-                    ? 'License created'
-                    : shouldShowScheduled
-                      ? 'Scheduled for license'
-                      : shouldShowAutoSchedule
-                        ? 'Auto-schedule pending'
-                        : null,
-                ] as const;
-              }
+    const fallbackOutcome = ({
+      isCompleted,
+      shouldShowScheduled,
+      shouldShowAutoSchedule,
+    }: (typeof trackedEvents)[number]) =>
+      isCompleted
+        ? 'License created'
+        : shouldShowScheduled
+          ? 'Scheduled for license'
+          : shouldShowAutoSchedule
+            ? 'Auto-schedule pending'
+            : null;
 
-              const jobStatus = data?.job?.status;
-              if (jobStatus === 'queued') {
-                return [eventId, isCompleted ? 'Retry queued' : 'Request queued'] as const;
-              }
-              if (jobStatus === 'processing') {
-                return [
-                  eventId,
-                  isCompleted ? 'Retry in progress' : 'Request in progress',
-                ] as const;
-              }
-              if (jobStatus === 'failed') {
-                return [eventId, isCompleted ? 'Retry failed' : 'Request failed'] as const;
-              }
+    // Returns true when any tracked event has a queued or processing job.
+    const loadOutcomes = async (): Promise<boolean> => {
+      let jobs: Record<string, { status?: string; completionType?: string | null } | null> | null =
+        null;
+      try {
+        const response = await fetch('/api/license-jobs/outcomes', {
+          method: 'POST',
+          cache: 'no-store',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ eventIds: trackedEvents.map((event) => event.id) }),
+        });
+        const data = await response.json().catch(() => ({}));
+        if (response.ok && data?.jobs && typeof data.jobs === 'object') {
+          jobs = data.jobs;
+        }
+      } catch {
+        jobs = null;
+      }
 
-              const completionType = data?.job?.completionType;
-              if (completionType === 'existing-active-license') {
-                return [eventId, 'Active license already existed'] as const;
-              }
-              if (completionType === 'temporary-license-created') {
-                return [eventId, 'Temporary license created'] as const;
-              }
-              return [
-                eventId,
-                isCompleted
-                  ? 'License created'
-                  : shouldShowScheduled
-                    ? 'Scheduled for license'
-                    : shouldShowAutoSchedule
-                      ? 'Auto-schedule pending'
-                      : null,
-              ] as const;
-            } catch {
-              return [
-                eventId,
-                isCompleted
-                  ? 'License created'
-                  : shouldShowScheduled
-                    ? 'Scheduled for license'
-                    : shouldShowAutoSchedule
-                      ? 'Auto-schedule pending'
-                      : null,
-              ] as const;
-            }
-          }
-        )
-      );
+      let hasActiveJob = false;
+      const results = trackedEvents.map((tracked) => {
+        const { id: eventId, isCompleted } = tracked;
+        const job = jobs?.[eventId] ?? null;
+        const jobStatus = job?.status;
+        if (jobStatus === 'queued') {
+          hasActiveJob = true;
+          return [eventId, isCompleted ? 'Retry queued' : 'Request queued'] as const;
+        }
+        if (jobStatus === 'processing') {
+          hasActiveJob = true;
+          return [eventId, isCompleted ? 'Retry in progress' : 'Request in progress'] as const;
+        }
+        if (jobStatus === 'failed') {
+          return [eventId, isCompleted ? 'Retry failed' : 'Request failed'] as const;
+        }
+        if (job?.completionType === 'existing-active-license') {
+          return [eventId, 'Active license already existed'] as const;
+        }
+        if (job?.completionType === 'temporary-license-created') {
+          return [eventId, 'Temporary license created'] as const;
+        }
+        return [eventId, fallbackOutcome(tracked)] as const;
+      });
 
-      if (cancelled) return;
+      if (cancelled) return hasActiveJob;
       setLicenseOutcomeByEvent((prev) => {
         const nextOutcomes: Record<string, string> = {};
         for (const [eventId, outcome] of results) {
@@ -451,96 +440,52 @@ export function EventTable({
         nextLoaded[trackedEvent.id] = true;
       }
       setLicenseOutcomeLoadedByEvent(nextLoaded);
+      return hasActiveJob;
     };
 
-    void loadOutcomes();
+    // Poll every 10s while a job is queued/processing; otherwise back off to
+    // 30s, then 60s. Polling pauses while the tab is hidden.
+    let pollTimeout: ReturnType<typeof globalThis.setTimeout> | null = null;
+    let idleStep = 0;
 
-    let reloadTimeout: ReturnType<typeof globalThis.setTimeout> | null = null;
-    const scheduleReload = () => {
-      if (reloadTimeout) return;
-      reloadTimeout = globalThis.setTimeout(() => {
-        reloadTimeout = null;
-        void loadOutcomes();
-      }, 150);
-    };
-
-    let eventSource: EventSource | null = null;
-    let reconnectTimeout: ReturnType<typeof globalThis.setTimeout> | null = null;
-    let reconnectDelayMs = 1000;
-
-    const clearReconnect = () => {
-      if (reconnectTimeout) {
-        globalThis.clearTimeout(reconnectTimeout);
-        reconnectTimeout = null;
+    const clearPoll = () => {
+      if (pollTimeout) {
+        globalThis.clearTimeout(pollTimeout);
+        pollTimeout = null;
       }
     };
 
-    const scheduleReconnect = () => {
-      if (document.visibilityState !== 'visible') return;
-      if (reconnectTimeout) return;
-      reconnectTimeout = globalThis.setTimeout(() => {
-        reconnectTimeout = null;
-        reconnectDelayMs = Math.min(reconnectDelayMs * 2, 30000);
-        connectStream();
-      }, reconnectDelayMs);
+    const poll = async () => {
+      clearPoll();
+      const hasActiveJob = await loadOutcomes();
+      if (cancelled || document.visibilityState !== 'visible') return;
+      let delay = ACTIVE_POLL_MS;
+      if (hasActiveJob) {
+        idleStep = 0;
+      } else {
+        delay = IDLE_POLL_STEPS_MS[Math.min(idleStep, IDLE_POLL_STEPS_MS.length - 1)];
+        idleStep += 1;
+      }
+      clearPoll();
+      pollTimeout = globalThis.setTimeout(() => void poll(), delay);
     };
 
     const handleVisibility = () => {
       if (document.visibilityState === 'visible') {
-        reconnectDelayMs = 1000;
-        clearReconnect();
-        connectStream();
+        idleStep = 0;
+        void poll();
+      } else {
+        clearPoll();
       }
     };
 
-    const connectStream = () => {
-      if (typeof EventSource === 'undefined') return;
-      eventSource?.close();
-      try {
-        eventSource = new EventSource('/api/license-jobs/stream');
-      } catch {
-        // Service worker/network edge cases can throw synchronously.
-        // Keep polling fallback active instead of crashing the dashboard.
-        eventSource = null;
-        scheduleReconnect();
-        return;
-      }
-      eventSource.addEventListener('license-job-updated', (rawEvent) => {
-        try {
-          const parsed = JSON.parse((rawEvent as MessageEvent).data ?? '{}') as {
-            eventId?: string;
-          };
-          if (!parsed.eventId) return;
-          if (!trackedEventIdSet.has(parsed.eventId)) return;
-          scheduleReload();
-        } catch {
-          // Ignore parse errors and keep polling fallback.
-        }
-      });
-      eventSource.addEventListener('error', () => {
-        eventSource?.close();
-        scheduleReconnect();
-      });
-    };
-
-    connectStream();
+    void poll();
     document.addEventListener('visibilitychange', handleVisibility);
-
-    const intervalId = globalThis.setInterval(() => {
-      if (document.visibilityState === 'visible') {
-        void loadOutcomes();
-      }
-    }, 10000);
 
     return () => {
       cancelled = true;
-      if (reloadTimeout) {
-        globalThis.clearTimeout(reloadTimeout);
-      }
-      globalThis.clearInterval(intervalId);
+      clearPoll();
       document.removeEventListener('visibilitychange', handleVisibility);
-      clearReconnect();
-      eventSource?.close();
     };
   }, [events]);
 
@@ -565,7 +510,7 @@ export function EventTable({
       if (document.visibilityState === 'visible') {
         void loadWorkerHealth();
       }
-    }, 15000);
+    }, 60_000);
 
     return () => {
       cancelled = true;

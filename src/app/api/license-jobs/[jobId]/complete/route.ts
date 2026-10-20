@@ -1,5 +1,4 @@
 import { db } from '@/lib/db';
-import { publishLicenseJobEvent } from '@/lib/license-job-events';
 import { loadEventSmsDetails } from '@/lib/license-job-sms';
 import { sendNotificationEventSms } from '@/lib/notifications';
 import { buildLicenseJobCompletedSms } from '@/lib/sms-message-templates';
@@ -128,15 +127,6 @@ export async function POST(request: Request, context: { params: Promise<{ jobId:
   } catch (error) {
     console.error('[license-jobs.complete] Failed to send SMS notifications:', error);
   }
-
-  publishLicenseJobEvent({
-    type: 'license-job-updated',
-    userId: job.requestedByUserId,
-    jobId: job.id,
-    eventId: job.eventId,
-    status: 'completed',
-    completionType: job.completionType,
-  });
 
   return NextResponse.json({
     ok: true,

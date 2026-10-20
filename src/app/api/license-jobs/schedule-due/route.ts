@@ -1,5 +1,4 @@
 import { db } from '@/lib/db';
-import { publishLicenseJobEvent } from '@/lib/license-job-events';
 import { contacts, events, kindooLicenseJobs, users } from '@/schema/schema';
 import { eq, inArray } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
@@ -234,17 +233,6 @@ export async function POST(request: Request) {
     eventId: kindooLicenseJobs.eventId,
     requestedByUserId: kindooLicenseJobs.requestedByUserId,
   });
-
-  for (const job of queued) {
-    publishLicenseJobEvent({
-      type: 'license-job-updated',
-      userId: job.requestedByUserId,
-      jobId: job.id,
-      eventId: job.eventId,
-      status: 'queued',
-      completionType: null,
-    });
-  }
 
   return NextResponse.json({ ok: true, count: queued.length, queued });
 }

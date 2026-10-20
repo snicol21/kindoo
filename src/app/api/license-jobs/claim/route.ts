@@ -1,5 +1,4 @@
 import { db } from '@/lib/db';
-import { publishLicenseJobEvent } from '@/lib/license-job-events';
 import { kindooLicenseJobs } from '@/schema/schema';
 import { and, asc, eq, lt, sql } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
@@ -162,15 +161,6 @@ export async function POST(request: Request) {
         ...(claimed.kindooAccessRule ? { kindooAccessRule: claimed.kindooAccessRule } : {}),
       },
       attempts: claimed.attempts,
-    });
-
-    publishLicenseJobEvent({
-      type: 'license-job-updated',
-      userId: claimed.requestedByUserId,
-      jobId: claimed.id,
-      eventId: claimed.eventId,
-      status: 'processing',
-      completionType: null,
     });
   }
 

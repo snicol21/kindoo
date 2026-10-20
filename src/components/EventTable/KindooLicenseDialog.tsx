@@ -364,7 +364,7 @@ export function KindooLicenseDialog({
     void loadWorkerHealth();
     const interval = globalThis.setInterval(() => {
       if (document.visibilityState === 'visible') void loadWorkerHealth();
-    }, 15_000);
+    }, 60_000);
 
     return () => {
       cancelled = true;
@@ -476,70 +476,13 @@ export function KindooLicenseDialog({
 
     void pollStatus();
 
-    let eventSource: EventSource | null = null;
-    let reconnectTimeout: ReturnType<typeof globalThis.setTimeout> | null = null;
-    let reconnectDelayMs = 1000;
-
-    const clearReconnect = () => {
-      if (reconnectTimeout) {
-        globalThis.clearTimeout(reconnectTimeout);
-        reconnectTimeout = null;
-      }
-    };
-
-    const scheduleReconnect = () => {
-      if (document.visibilityState !== 'visible' || reconnectTimeout) return;
-      reconnectTimeout = globalThis.setTimeout(() => {
-        reconnectTimeout = null;
-        reconnectDelayMs = Math.min(reconnectDelayMs * 2, 30_000);
-        connectStream();
-      }, reconnectDelayMs);
-    };
-
-    const handleVisibility = () => {
-      if (document.visibilityState === 'visible') {
-        reconnectDelayMs = 1000;
-        clearReconnect();
-        connectStream();
-      }
-    };
-
-    const connectStream = () => {
-      if (typeof EventSource === 'undefined') return;
-      eventSource?.close();
-      try {
-        eventSource = new EventSource('/api/license-jobs/stream');
-      } catch {
-        // Service worker/network edge cases can throw synchronously.
-        // Keep polling fallback active instead of crashing the dialog.
-        eventSource = null;
-        scheduleReconnect();
-        return;
-      }
-      eventSource.addEventListener('license-job-updated', (rawEvent) => {
-        try {
-          const parsed = JSON.parse((rawEvent as MessageEvent).data ?? '{}') as { jobId?: string };
-          if (parsed.jobId === queuedJobId) void pollStatus();
-        } catch {
-          // Ignore malformed stream payloads and rely on polling fallback.
-        }
-      });
-      eventSource.addEventListener('error', () => {
-        eventSource?.close();
-        scheduleReconnect();
-      });
-    };
-
-    connectStream();
-    document.addEventListener('visibilitychange', handleVisibility);
-    const interval = globalThis.setInterval(() => void pollStatus(), 2500);
+    const interval = globalThis.setInterval(() => {
+      if (document.visibilityState === 'visible') void pollStatus();
+    }, 2500);
 
     return () => {
       cancelled = true;
       globalThis.clearInterval(interval);
-      document.removeEventListener('visibilitychange', handleVisibility);
-      clearReconnect();
-      eventSource?.close();
     };
   }, [queuedJobId, licenseEvent, isPollingStatus, hasAppliedCompletion]);
 
