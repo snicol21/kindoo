@@ -1,6 +1,5 @@
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
-import { publishLicenseJobEvent } from '@/lib/license-job-events';
 import { kindooLicenseJobs } from '@/schema/schema';
 import { and, eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
@@ -67,15 +66,6 @@ export async function POST(_request: Request, context: { params: Promise<{ jobId
   if (!updated) {
     return NextResponse.json({ error: 'Failed to retry job.' }, { status: 409 });
   }
-
-  publishLicenseJobEvent({
-    type: 'license-job-updated',
-    userId: updated.requestedByUserId,
-    jobId: updated.id,
-    eventId: updated.eventId,
-    status: 'queued',
-    completionType: null,
-  });
 
   return NextResponse.json({ ok: true, jobId: updated.id, status: updated.status });
 }

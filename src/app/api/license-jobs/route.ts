@@ -1,6 +1,5 @@
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
-import { publishLicenseJobEvent } from '@/lib/license-job-events';
 import { events, kindooLicenseJobs } from '@/schema/schema';
 import { and, eq, inArray } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
@@ -191,15 +190,6 @@ export async function POST(request: Request) {
       kindooAccessRule: normalizedPayload.kindooAccessRule ?? null,
     })
     .returning({ id: kindooLicenseJobs.id });
-
-  publishLicenseJobEvent({
-    type: 'license-job-updated',
-    userId,
-    jobId: job.id,
-    eventId: normalizedPayload.eventId,
-    status: 'queued',
-    completionType: null,
-  });
 
   return NextResponse.json(
     {
