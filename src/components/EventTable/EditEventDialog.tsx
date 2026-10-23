@@ -46,6 +46,7 @@ type EditEventDialogProps = {
   editBuilding: Building;
   editWard: Ward | '';
   editOtherWardName: string;
+  canSelectOtherWard?: boolean;
   editEventType: EventType;
   editName: string;
   editEventDate: string;
@@ -90,6 +91,7 @@ export function EditEventDialog({
   editBuilding,
   editWard,
   editOtherWardName,
+  canSelectOtherWard = false,
   editEventType,
   editName,
   editEventDate,
@@ -465,7 +467,7 @@ export function EditEventDialog({
                   )}
                 </SelectTrigger>
                 <SelectContent>
-                  {WARDS.map((ward) => (
+                  {WARDS.filter((ward) => canSelectOtherWard || ward !== OTHER_WARD).map((ward) => (
                     <SelectItem key={ward} value={ward}>
                       {ward}
                     </SelectItem>

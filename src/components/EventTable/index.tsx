@@ -240,6 +240,7 @@ export function EventTable({
   onSetKindooLicenseCreated,
   selectedIds,
   onSelectionChange,
+  canSelectOtherWard = false,
 }: EventTableProps) {
   // Adjust this value to control when the table collapses from Event+Contact to Event-only.
   const SINGLE_COLUMN_MAX_WIDTH = 639;
@@ -1819,6 +1820,7 @@ export function EventTable({
         open={!!editingEvent}
         editBuilding={editBuilding}
         editWard={editWard}
+        canSelectOtherWard={canSelectOtherWard}
         editOtherWardName={editOtherWardName}
         editEventType={editEventType}
         editName={editName}
@@ -1892,6 +1894,7 @@ export function EventTable({
         open={!!cloningEvent}
         cloneBuilding={cloneBuilding}
         cloneWard={cloneWard}
+        canSelectOtherWard={canSelectOtherWard}
         cloneOtherWardName={cloneOtherWardName}
         cloneEventType={cloneEventType}
         cloneName={cloneName}

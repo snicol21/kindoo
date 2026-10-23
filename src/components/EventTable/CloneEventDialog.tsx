@@ -46,6 +46,7 @@ type CloneEventDialogProps = {
   cloneBuilding: Building;
   cloneWard: Ward | '';
   cloneOtherWardName: string;
+  canSelectOtherWard?: boolean;
   cloneEventType: EventType;
   cloneName: string;
   cloneEventDate: string;
@@ -90,6 +91,7 @@ export function CloneEventDialog({
   cloneBuilding,
   cloneWard,
   cloneOtherWardName,
+  canSelectOtherWard = false,
   cloneEventType,
   cloneName,
   cloneEventDate,
@@ -474,7 +476,7 @@ export function CloneEventDialog({
                   )}
                 </SelectTrigger>
                 <SelectContent>
-                  {WARDS.map((ward) => (
+                  {WARDS.filter((ward) => canSelectOtherWard || ward !== OTHER_WARD).map((ward) => (
                     <SelectItem key={ward} value={ward}>
                       {ward}
                     </SelectItem>

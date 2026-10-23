@@ -2,6 +2,14 @@
 
 Status: implemented on branch `feat/sycamores-other-ward`, not merged, migration not applied to production.
 
+## Decisions (Spencer, Oct 23, 2026)
+
+1. **Sycamores 8th works exactly like every other ward.** Its home building is the Stake Center, and that is only a default; this change adds no special restriction. Building rules are the same as for existing wards. Admins and Stake Managers can book any ward, including Sycamores 8th, at either the Stake Center or Maples. Ward Managers and Ward Users can book only their own ward, and only at its home building. That is the current rule for every ward (see `canCreateEventInBuildingForWard`). Letting ward-level roles book either building would be a change for all wards, not just Sycamores 8th, so it is left as a follow-up for Spencer to confirm.
+2. **Rooms:** Maples rooms 117 (clerk) and 118 (bishop) stay as context only. No room modeling.
+3. **Roles:** use the existing roles (Ward Manager, Ward User). No Ward Scheduler role.
+4. **Other is stake-level only** (`admin` and `stake_manager`; there is no separate "stake admin" role in the code). Ward Managers and Ward Users never see Other in create, edit, or clone, and the server rejects it for them in `canCreateEventForWard` (events create, update, import, and the bookings API) and in `updateContact`. The bookings API token acts as admin, so it can use Other. Verified against a local copy of the database: a Stake Manager created an Other event (stored as `ward = 'Other'`, `other_ward_name = 'Riverton 3rd Ward'`), and a Ward Manager attempting Other was rejected.
+5. **No approval gate for Other.** Kindoo grants for Other events run like any other event. A manual approval step is a possible future item.
+
 ## Background
 
 The Sycamores 8th Ward (West Jordan Sycamores stake) was recently assigned to, and primarily attends, the Stake Center. Spencer asked for:
@@ -70,8 +78,8 @@ Rollback (only after reassigning or deleting any `ward = 'Other'` contacts): `do
 
 - No new roles. A Sycamores 8th member can be a Ward Manager or Ward User exactly like any other ward. The existing checks apply unchanged: they can see and book only Sycamores 8th events, and only at the Stake Center (via `WARD_BUILDING`). A Sycamores 8th Ward Manager can manage only Sycamores 8th users.
 - The UI already pins ward-scoped users to their ward's building, so their dashboard and new-event form lock to the Stake Center.
-- Other is not ward-scoped. User accounts and access requests cannot pick Other (UI hides it, and the server rejects it). Other events can be created and managed only by Admins and Stake Managers. Because Other has no home building, the ward-building check never passes for ward-scoped roles.
-- There is no separate "ward scheduler" role today. Ward User is the closest (can create and manage their own events). If Spencer wants a distinct scheduler role, that is a follow-up.
+- Other is stake-level only. User accounts and access requests cannot pick Other. Ward Managers and Ward Users do not see it in any ward picker, and the server explicitly rejects it for them (`canUseOtherWard` in `src/lib/permissions.ts`).
+- No Ward Scheduler role, per Spencer. Existing roles are used.
 
 ## License grant impact (Kindoo access)
 
@@ -79,13 +87,11 @@ Rollback (only after reassigning or deleting any `ward = 'Other'` contacts): `do
 - The worker (`automation-service/`) is untouched.
 - The only change on the license-job path is text: `schedule-due` (app side) now writes `Other: <name>` instead of just `Other` into the Kindoo grant description, and the license-job SMS shows the same label. Listed wards, including Sycamores 8th, produce exactly the same text as before.
 
-## Open questions for Spencer
+## Future items
 
-1. Should Sycamores 8th ever book the Maples Building? Today ward-scoped users are limited to one home building. Stake Center only is assumed.
-2. Do you want room-level booking (for example Maples rooms 117 and 118), or is that context only?
-3. Is "Ward User" enough for the Sycamores scheduler, or do you want a distinct "Ward Scheduler" role?
-4. Should Stake Managers be able to book Other units, or Admins only? (Both can today.)
-5. Should Kindoo grants for Other events need a manual approval step before the worker grants access?
+- An optional approval gate before Kindoo access is granted for Other events.
+- Letting ward-level roles book outside their home building (would apply to all wards).
+- Room-level booking, if ever needed.
 
 ## Deploy steps
 

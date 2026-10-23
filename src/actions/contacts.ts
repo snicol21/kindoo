@@ -3,6 +3,7 @@
 import { isAdminEmail } from '@/lib/admin';
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
+import { canUseOtherWard } from '@/lib/permissions';
 import {
   isOtherWard,
   normalizeOtherWardNameForStorage,
@@ -94,6 +95,9 @@ export async function updateContact(input: {
       return { success: false, error: 'At least one contact method is required (email or phone).' };
     }
 
+    if (isOtherWard(input.ward) && !canUseOtherWard(access.role)) {
+      return { success: false, error: 'Only stake-level roles can use the Other ward.' };
+    }
     if (isOtherWard(input.ward)) {
       const otherWardError = validateOtherWardName(input.otherWardName);
       if (otherWardError) return { success: false, error: otherWardError };

@@ -72,6 +72,8 @@ interface AddEventDialogProps {
   defaultEventType?: EventType;
   fixedBuilding?: Building;
   fixedWard?: Ward;
+  /** Stake-level roles only (admin, stake_manager). */
+  canSelectOtherWard?: boolean;
 }
 
 interface FormState {
@@ -121,6 +123,7 @@ export function AddEventDialog({
   defaultEventType = 'Private',
   fixedBuilding,
   fixedWard,
+  canSelectOtherWard = false,
 }: AddEventDialogProps) {
   type Snapshot = Record<string, string>;
   const formRef = useRef<HTMLFormElement>(null);
@@ -224,12 +227,13 @@ export function AddEventDialog({
     const maplesPriority: Ward[] = ['1st Ward', '2nd Ward', '5th Ward', 'Park Ridge Ward'];
     const priority = selectedBuilding === 'Stake Center' ? stakePriority : maplesPriority;
     // "Other" always sits last so the free-text option is easy to find.
-    const remaining = [
+    // "Other" is stake-level only; ward-scoped users (fixedWard set) never see it.
+    const remaining: Ward[] = [
       ...WARDS.filter((ward) => !priority.includes(ward) && ward !== OTHER_WARD),
-      OTHER_WARD,
+      ...(canSelectOtherWard ? [OTHER_WARD] : []),
     ];
     return { priority, remaining };
-  }, [selectedBuilding]);
+  }, [canSelectOtherWard, selectedBuilding]);
 
   const handlePhoneInput = (event: ChangeEvent<HTMLInputElement>) => {
     event.target.value = formatPhone(event.target.value);
@@ -638,6 +642,7 @@ export function AddEventDialog({
     defaultEventType,
     fixedBuilding,
     fixedWard,
+    (canSelectOtherWard = false),
     open,
     state.values?.eventType,
     state.values?.ward,
