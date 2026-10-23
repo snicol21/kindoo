@@ -22,6 +22,8 @@ Authenticated booking endpoints for Facilities Lead integrations. Uses a **dedic
 
 Required JSON fields: `building`, `ward`, `name`, `eventDate`, `startTime`, `endTime`, `eventType`, `email`, `phone`, `description`.
 
+`ward` must be one of the listed wards (including `Sycamores 8th Ward`) or `Other`. When `ward` is `Other`, also send `otherWardName` (2 to 60 characters; letters, numbers, spaces, and `. , ' & ( ) # / -`). It is ignored for any other ward.
+
 ```bash
 curl -sS -X POST "$BASE_URL/api/bookings" \
   -H "Authorization: Bearer $KINDOO_API_TOKEN" \

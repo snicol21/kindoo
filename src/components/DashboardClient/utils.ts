@@ -1,4 +1,5 @@
 import type { EventWithCreator } from '@/actions/events';
+import { formatWardLabel } from '@/lib/ward-utils';
 import type { Building } from '@/schema/schema';
 import type { DashboardCounts, DashboardTab, DotCalendarDay, WardBreakdownRow } from './types';
 
@@ -190,7 +191,9 @@ export function buildWardBreakdown(events: EventWithCreator[]): WardBreakdownRow
   >();
 
   for (const event of events) {
-    const key = event.contactWard ?? 'Unknown';
+    const key = event.contactWard
+      ? formatWardLabel(event.contactWard, event.contactOtherWardName)
+      : 'Unknown';
     const current = byWard.get(key) ?? {
       pending: 0,
       active: 0,

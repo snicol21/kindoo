@@ -24,10 +24,11 @@ import {
   type ContactMatch,
 } from '@/components/ContactMatchPopover';
 import { MatchedContactBadge } from '@/components/MatchedContactBadge';
+import { OtherWardNameField } from '@/components/OtherWardNameField';
 import { UnsavedChangesDialog } from '@/components/UnsavedChangesDialog';
 import type { ContactChangeState, LinkedContactSnapshot } from '@/lib/contact-linking';
 import type { Building, EventType, Ward } from '@/schema/schema';
-import { BUILDINGS, EVENT_TYPES, WARDS } from '@/schema/schema';
+import { BUILDINGS, EVENT_TYPES, OTHER_WARD, WARDS } from '@/schema/schema';
 import { getTodayYmd } from '@/utils/dateUtils';
 import { DESCRIPTION_MAX_LENGTH } from '@/utils/eventConstants';
 import {
@@ -44,6 +45,8 @@ type CloneEventDialogProps = {
   open: boolean;
   cloneBuilding: Building;
   cloneWard: Ward | '';
+  cloneOtherWardName: string;
+  canSelectOtherWard?: boolean;
   cloneEventType: EventType;
   cloneName: string;
   cloneEventDate: string;
@@ -58,6 +61,7 @@ type CloneEventDialogProps = {
   onSubmitAction: () => Promise<void>;
   setCloneBuildingAction: (value: Building) => void;
   setCloneWardAction: (value: Ward | '') => void;
+  setCloneOtherWardNameAction: (value: string) => void;
   setCloneEventTypeAction: (value: EventType) => void;
   setCloneNameAction: (value: string) => void;
   setCloneEventDateAction: (value: string) => void;
@@ -86,6 +90,8 @@ export function CloneEventDialog({
   open,
   cloneBuilding,
   cloneWard,
+  cloneOtherWardName,
+  canSelectOtherWard = false,
   cloneEventType,
   cloneName,
   cloneEventDate,
@@ -100,6 +106,7 @@ export function CloneEventDialog({
   onSubmitAction,
   setCloneBuildingAction,
   setCloneWardAction,
+  setCloneOtherWardNameAction,
   setCloneEventTypeAction,
   setCloneNameAction,
   setCloneEventDateAction,
@@ -469,7 +476,7 @@ export function CloneEventDialog({
                   )}
                 </SelectTrigger>
                 <SelectContent>
-                  {WARDS.map((ward) => (
+                  {WARDS.filter((ward) => canSelectOtherWard || ward !== OTHER_WARD).map((ward) => (
                     <SelectItem key={ward} value={ward}>
                       {ward}
                     </SelectItem>
@@ -478,6 +485,13 @@ export function CloneEventDialog({
               </Select>
             </div>
           </div>
+          {cloneWard === OTHER_WARD && (
+            <OtherWardNameField
+              id="clone-other-ward-name"
+              value={cloneOtherWardName}
+              onChange={setCloneOtherWardNameAction}
+            />
+          )}
           {showLinkedState && (
             <div className={`rounded-md border p-3 text-xs ${linkedBannerTone}`}>
               <div className="flex flex-wrap items-center justify-between gap-2">

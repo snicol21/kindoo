@@ -24,10 +24,11 @@ import {
   type ContactMatch,
 } from '@/components/ContactMatchPopover';
 import { MatchedContactBadge } from '@/components/MatchedContactBadge';
+import { OtherWardNameField } from '@/components/OtherWardNameField';
 import { UnsavedChangesDialog } from '@/components/UnsavedChangesDialog';
 import type { ContactChangeState, LinkedContactSnapshot } from '@/lib/contact-linking';
 import type { Building, EventType, Ward } from '@/schema/schema';
-import { BUILDINGS, EVENT_TYPES, WARDS } from '@/schema/schema';
+import { BUILDINGS, EVENT_TYPES, OTHER_WARD, WARDS } from '@/schema/schema';
 import { getTodayYmd } from '@/utils/dateUtils';
 import { DESCRIPTION_MAX_LENGTH } from '@/utils/eventConstants';
 import {
@@ -44,6 +45,8 @@ type EditEventDialogProps = {
   open: boolean;
   editBuilding: Building;
   editWard: Ward | '';
+  editOtherWardName: string;
+  canSelectOtherWard?: boolean;
   editEventType: EventType;
   editName: string;
   editEventDate: string;
@@ -58,6 +61,7 @@ type EditEventDialogProps = {
   onSubmitAction: () => Promise<void>;
   setEditBuildingAction: (value: Building) => void;
   setEditWardAction: (value: Ward | '') => void;
+  setEditOtherWardNameAction: (value: string) => void;
   setEditEventTypeAction: (value: EventType) => void;
   setEditNameAction: (value: string) => void;
   setEditEventDateAction: (value: string) => void;
@@ -86,6 +90,8 @@ export function EditEventDialog({
   open,
   editBuilding,
   editWard,
+  editOtherWardName,
+  canSelectOtherWard = false,
   editEventType,
   editName,
   editEventDate,
@@ -100,6 +106,7 @@ export function EditEventDialog({
   onSubmitAction,
   setEditBuildingAction,
   setEditWardAction,
+  setEditOtherWardNameAction,
   setEditEventTypeAction,
   setEditNameAction,
   setEditEventDateAction,
@@ -460,7 +467,7 @@ export function EditEventDialog({
                   )}
                 </SelectTrigger>
                 <SelectContent>
-                  {WARDS.map((ward) => (
+                  {WARDS.filter((ward) => canSelectOtherWard || ward !== OTHER_WARD).map((ward) => (
                     <SelectItem key={ward} value={ward}>
                       {ward}
                     </SelectItem>
@@ -469,6 +476,13 @@ export function EditEventDialog({
               </Select>
             </div>
           </div>
+          {editWard === OTHER_WARD && (
+            <OtherWardNameField
+              id="edit-other-ward-name"
+              value={editOtherWardName}
+              onChange={setEditOtherWardNameAction}
+            />
+          )}
           {showLinkedState && (
             <div className={`rounded-md border p-3 text-xs ${linkedBannerTone}`}>
               <div className="flex flex-wrap items-center justify-between gap-2">

@@ -3,6 +3,12 @@
 import { isAdminEmail } from '@/lib/admin';
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
+import { canUseOtherWard } from '@/lib/permissions';
+import {
+  isOtherWard,
+  normalizeOtherWardNameForStorage,
+  validateOtherWardName,
+} from '@/lib/ward-utils';
 import { contacts, users, type Contact, type UserRole, type Ward } from '@/schema/schema';
 import { normalizePhoneForStorage } from '@/utils/phoneUtils';
 import { normalizeEmail } from '@/utils/stringUtils';
@@ -13,6 +19,7 @@ export interface ContactSearchResult {
   id: string;
   name: string;
   ward: Ward;
+  otherWardName?: string | null;
   email: string | null;
   phone: string | null;
 }
@@ -67,6 +74,7 @@ export async function updateContact(input: {
   id: string;
   name: string;
   ward: Ward;
+  otherWardName?: string | null;
   email?: string | null;
   phone?: string | null;
 }): Promise<ContactActionResult<Contact>> {
@@ -86,6 +94,15 @@ export async function updateContact(input: {
     if (!emailValue && !phoneValue) {
       return { success: false, error: 'At least one contact method is required (email or phone).' };
     }
+
+    if (isOtherWard(input.ward) && !canUseOtherWard(access.role)) {
+      return { success: false, error: 'Only stake-level roles can use the Other ward.' };
+    }
+    if (isOtherWard(input.ward)) {
+      const otherWardError = validateOtherWardName(input.otherWardName);
+      if (otherWardError) return { success: false, error: otherWardError };
+    }
+    const otherWardNameValue = normalizeOtherWardNameForStorage(input.ward, input.otherWardName);
 
     if (
       (access.role === 'ward_manager' || access.role === 'ward_user') &&
@@ -116,6 +133,7 @@ export async function updateContact(input: {
       .set({
         name: input.name.trim(),
         ward: input.ward,
+        otherWardName: otherWardNameValue,
         email: emailValue,
         phone: phoneValue,
       })
@@ -168,6 +186,7 @@ export async function searchContacts(input: {
           id: contacts.id,
           name: contacts.name,
           ward: contacts.ward,
+          otherWardName: contacts.otherWardName,
           email: contacts.email,
           phone: contacts.phone,
         })
@@ -210,6 +229,7 @@ export async function searchContacts(input: {
       const broadClause = or(
         like(contacts.name, pattern),
         like(contacts.ward, pattern),
+        like(contacts.otherWardName, pattern),
         like(contacts.email, pattern),
         like(contacts.phone, pattern)
       );

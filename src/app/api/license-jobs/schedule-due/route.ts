@@ -1,4 +1,5 @@
 import { db } from '@/lib/db';
+import { formatWardLabel } from '@/lib/ward-utils';
 import { contacts, events, kindooLicenseJobs, users } from '@/schema/schema';
 import { eq, inArray } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
@@ -164,6 +165,7 @@ export async function POST(request: Request) {
       endTime: events.endTime,
       contactName: contacts.name,
       contactWard: contacts.ward,
+      contactOtherWardName: contacts.otherWardName,
       contactEmail: contacts.email,
       creatorName: users.name,
       creatorRole: users.role,
@@ -210,7 +212,7 @@ export async function POST(request: Request) {
         description: buildDescription(
           row.eventType,
           row.contactName,
-          row.contactWard,
+          row.contactWard ? formatWardLabel(row.contactWard, row.contactOtherWardName) : null,
           row.creatorName,
           row.creatorRole
         ),

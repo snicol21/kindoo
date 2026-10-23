@@ -17,6 +17,8 @@ export interface EventTableProps {
     eventId: string;
     kindooLicenseCreated: boolean;
   }) => Promise<void>;
+  /** Show the stake-level-only "Other" ward in edit and clone. */
+  canSelectOtherWard?: boolean;
   selectedIds?: string[];
   onSelectionChange?: (eventIds: string[]) => void;
 }

@@ -165,6 +165,13 @@ export function mapRowsToEvents(rows: string[][]): CsvParseResult {
       return;
     }
 
+    if (data.ward === 'Other') {
+      errors.push(
+        `Row ${index + 2}: "Other" ward is not supported in CSV import. Add this event from the form instead.`
+      );
+      return;
+    }
+
     const normalizedDate = normalizeDate(String(data.eventDate));
     if (!normalizedDate) {
       errors.push(`Row ${index + 2}: invalid event date format.`);

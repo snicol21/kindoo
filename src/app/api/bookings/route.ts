@@ -4,14 +4,23 @@ import {
   listEventsForAccess,
   type AddEventInput,
 } from '@/lib/events-service';
-import { BUILDINGS, EVENT_TYPES, WARDS, type Building, type EventType, type Ward } from '@/schema/schema';
+import {
+  BUILDINGS,
+  EVENT_TYPES,
+  WARDS,
+  type Building,
+  type EventType,
+  type Ward,
+} from '@/schema/schema';
 import { NextResponse } from 'next/server';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-function parseCreateBody(body: unknown): { ok: true; input: AddEventInput } | { ok: false; error: string } {
+function parseCreateBody(
+  body: unknown
+): { ok: true; input: AddEventInput } | { ok: false; error: string } {
   if (!isRecord(body)) {
     return { ok: false, error: 'Invalid JSON body.' };
   }
@@ -68,6 +77,8 @@ function parseCreateBody(body: unknown): { ok: true; input: AddEventInput } | { 
     input: {
       building: building as Building,
       ward: ward as Ward,
+      otherWardName:
+        ward === 'Other' && typeof body.otherWardName === 'string' ? body.otherWardName : null,
       eventType: eventTypeRaw as EventType,
       name,
       eventDate,
@@ -125,15 +136,10 @@ export async function GET(request: Request) {
   const dateFrom = url.searchParams.get('dateFrom')?.trim() || undefined;
   const dateTo = url.searchParams.get('dateTo')?.trim() || undefined;
   const eventId =
-    url.searchParams.get('eventId')?.trim() ||
-    url.searchParams.get('id')?.trim() ||
-    undefined;
+    url.searchParams.get('eventId')?.trim() || url.searchParams.get('id')?.trim() || undefined;
 
   if (!building) {
-    return NextResponse.json(
-      { error: 'Query param "building" is required.' },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: 'Query param "building" is required.' }, { status: 400 });
   }
 
   if (!BUILDINGS.includes(building as Building)) {

@@ -23,6 +23,7 @@ type EventsTabPanelProps = {
   onDeleteAction: (eventId: string) => Promise<void>;
   onEditAction: (input: UpdateEventInput) => Promise<void>;
   onCloneAction: (input: AddEventInput) => Promise<void>;
+  canSelectOtherWard?: boolean;
   onSetKindooLicenseCreatedAction: (input: {
     eventId: string;
     kindooLicenseCreated: boolean;
@@ -46,6 +47,7 @@ export function EventsTabPanel({
   onDeleteAction,
   onEditAction,
   onCloneAction,
+  canSelectOtherWard,
   onSetKindooLicenseCreatedAction,
   bulkDeletePending,
   onOpenBulkDeleteAction,
@@ -85,6 +87,7 @@ export function EventsTabPanel({
             onSelectionChange={onSelectionChangeAction}
             onEdit={onEditAction}
             onClone={onCloneAction}
+            canSelectOtherWard={canSelectOtherWard}
             onSetKindooLicenseCreated={onSetKindooLicenseCreatedAction}
           />
         </CardContent>

@@ -1,4 +1,9 @@
-import { WARDS, type Building, type Ward } from '@/schema/schema';
+import {
+  ASSIGNABLE_WARDS,
+  WARD_BUILDING,
+  type AssignableWard,
+  type Building,
+} from '@/schema/schema';
 
 export const TEMPLATE_HEADERS = [
   'Building',
@@ -13,17 +18,11 @@ export const TEMPLATE_HEADERS = [
   'Event Description',
 ];
 
-export const WARD_BUILDING_MAP: Record<Ward, Building> = {
-  '1st Ward': 'Maples Building',
-  '2nd Ward': 'Maples Building',
-  '3rd Ward': 'Stake Center',
-  '4th Ward': 'Stake Center',
-  '5th Ward': 'Maples Building',
-  '6th Ward': 'Stake Center',
-  'Park Ridge Ward': 'Maples Building',
-};
+export const WARD_BUILDING_MAP: Record<AssignableWard, Building> = Object.fromEntries(
+  ASSIGNABLE_WARDS.map((ward) => [ward, WARD_BUILDING[ward] ?? 'Stake Center'])
+) as Record<AssignableWard, Building>;
 
-export const TEMPLATE_SAMPLE_ROWS = WARDS.map((ward, index) => [
+export const TEMPLATE_SAMPLE_ROWS = ASSIGNABLE_WARDS.map((ward, index) => [
   WARD_BUILDING_MAP[ward],
   ward,
   'Private',

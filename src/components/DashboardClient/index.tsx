@@ -37,6 +37,7 @@ const buildEventSearchHaystack = (event: EventWithCreator) =>
   [
     event.contactName,
     event.contactWard,
+    event.contactOtherWardName,
     event.eventType,
     event.contactEmail,
     event.contactPhone,
@@ -69,6 +70,8 @@ export function DashboardClient({
     section: 'main' | 'past';
   };
 
+  // Matches canUseOtherWard on the server: admin and stake_manager only.
+  const canSelectOtherWard = currentUserRole === 'admin' || currentUserRole === 'stake_manager';
   const fixedTabForWardUsers = fixedBuildingForWardUsers
     ? buildingToTab(fixedBuildingForWardUsers)
     : null;
@@ -314,6 +317,7 @@ export function DashboardClient({
 
         <TabsContent value="stake-center">
           <EventsTabPanel
+            canSelectOtherWard={canSelectOtherWard}
             events={filteredStakeUpcoming}
             isLoading={scLoading}
             isError={scError}
@@ -359,6 +363,7 @@ export function DashboardClient({
             {showStakePastEvents && (
               <div className="border-t border-border/70 p-3">
                 <EventsTabPanel
+                  canSelectOtherWard={canSelectOtherWard}
                   events={filteredStakePast}
                   isLoading={scLoading}
                   isError={scError}
@@ -390,6 +395,7 @@ export function DashboardClient({
 
         <TabsContent value="maples-building">
           <EventsTabPanel
+            canSelectOtherWard={canSelectOtherWard}
             events={filteredMaplesUpcoming}
             isLoading={mbLoading}
             isError={mbError}
@@ -435,6 +441,7 @@ export function DashboardClient({
             {showMaplesPastEvents && (
               <div className="border-t border-border/70 p-3">
                 <EventsTabPanel
+                  canSelectOtherWard={canSelectOtherWard}
                   events={filteredMaplesPast}
                   isLoading={mbLoading}
                   isError={mbError}
@@ -472,6 +479,7 @@ export function DashboardClient({
         defaultEventType={defaultEventType}
         fixedBuilding={fixedBuildingForWardUsers}
         fixedWard={canSelectAnyWard ? undefined : currentUserWard}
+        canSelectOtherWard={canSelectOtherWard}
       />
 
       <CsvImportDialog open={importOpen} onOpenChange={setImportOpen} />

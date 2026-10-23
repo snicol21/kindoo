@@ -13,10 +13,27 @@ export const WARDS = [
   '5th Ward',
   '6th Ward',
   'Park Ridge Ward',
+  'Sycamores 8th Ward',
+  'Other',
 ] as const;
 export type Ward = (typeof WARDS)[number];
 
-export const WARD_BUILDING: Record<Ward, Building> = {
+/** Sentinel ward used for unlisted wards or units. The real name lives in contact.other_ward_name. */
+export const OTHER_WARD = 'Other' as const satisfies Ward;
+
+/** Wards a user account can belong to. "Other" is event/contact only and never ward-scoped. */
+export const ASSIGNABLE_WARDS = WARDS.filter(
+  (ward): ward is Exclude<Ward, typeof OTHER_WARD> => ward !== OTHER_WARD
+);
+export type AssignableWard = Exclude<Ward, typeof OTHER_WARD>;
+
+export const OTHER_WARD_NAME_MAX_LENGTH = 60;
+
+/**
+ * Building each ward primarily meets in. "Other" has no home building, so ward-scoped
+ * building checks never pass for it (only admin and stake_manager can book it).
+ */
+export const WARD_BUILDING: Record<Ward, Building | null> = {
   '1st Ward': 'Maples Building',
   '2nd Ward': 'Maples Building',
   '3rd Ward': 'Stake Center',
@@ -24,6 +41,9 @@ export const WARD_BUILDING: Record<Ward, Building> = {
   '5th Ward': 'Maples Building',
   '6th Ward': 'Stake Center',
   'Park Ridge Ward': 'Maples Building',
+  // West Jordan Sycamores stake; primarily attends the Stake Center.
+  'Sycamores 8th Ward': 'Stake Center',
+  Other: null,
 };
 
 export const USER_ROLES = ['admin', 'stake_manager', 'ward_manager', 'ward_user'] as const;
@@ -105,6 +125,8 @@ export const contacts = sqliteTable(
       .$defaultFn(() => crypto.randomUUID()),
     name: text('name').notNull(),
     ward: text('ward', { enum: WARDS }).notNull().$type<Ward>(),
+    /** Free-text unit name, set only when ward = 'Other'. */
+    otherWardName: text('other_ward_name'),
     email: text('email'),
     phone: text('phone'),
     notes: text('notes'),
@@ -121,8 +143,16 @@ export const contacts = sqliteTable(
     wardIdx: index('contact_ward_idx').on(table.ward),
     emailIdx: index('contact_email_idx').on(table.email),
     phoneIdx: index('contact_phone_idx').on(table.phone),
-    emailUnique: uniqueIndex('contact_email_unique').on(table.ward, table.email),
-    phoneUnique: uniqueIndex('contact_phone_unique').on(table.ward, table.phone),
+    emailUnique: uniqueIndex('contact_email_unique').on(
+      table.ward,
+      sql`coalesce(${table.otherWardName}, '')`,
+      table.email
+    ),
+    phoneUnique: uniqueIndex('contact_phone_unique').on(
+      table.ward,
+      sql`coalesce(${table.otherWardName}, '')`,
+      table.phone
+    ),
   })
 );
 

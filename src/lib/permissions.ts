@@ -47,7 +47,13 @@ export function canManageUserInWard(args: {
   return true;
 }
 
+/** "Other" (unlisted ward or unit) is stake-level only: admin and stake_manager. */
+export function canUseOtherWard(role: UserRole) {
+  return role === 'admin' || role === 'stake_manager';
+}
+
 export function canCreateEventForWard(role: UserRole, userWard: Ward, eventWard: Ward) {
+  if (eventWard === 'Other' && !canUseOtherWard(role)) return false;
   if (role === 'admin' || role === 'stake_manager') return true;
   return userWard === eventWard;
 }

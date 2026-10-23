@@ -3,6 +3,11 @@ import { sendNotificationEventSms } from '@/lib/notifications';
 import { canCreateEventInBuildingForWard, canMutateEvent } from '@/lib/permissions';
 import { buildEventCreatedSms } from '@/lib/sms-message-templates';
 import {
+  isOtherWard,
+  normalizeOtherWardNameForStorage,
+  validateOtherWardName,
+} from '@/lib/ward-utils';
+import {
   BUILDINGS,
   contacts,
   EVENT_TYPES,
@@ -19,7 +24,7 @@ import { DESCRIPTION_MAX_LENGTH } from '@/utils/eventConstants';
 import { normalizePhoneForStorage } from '@/utils/phoneUtils';
 import { normalizeEmail } from '@/utils/stringUtils';
 import { parseTimeToMinutes } from '@/utils/timeUtils';
-import { and, eq, gte, inArray, lte, or, type SQL } from 'drizzle-orm';
+import { and, eq, gte, inArray, isNull, lte, or, type SQL } from 'drizzle-orm';
 import { revalidateTag } from 'next/cache';
 
 export const EVENT_TIMEZONE = 'America/Denver';
@@ -27,6 +32,8 @@ export const EVENT_TIMEZONE = 'America/Denver';
 export interface AddEventInput {
   building: Building;
   ward: Ward;
+  /** Required when ward is "Other"; ignored otherwise. */
+  otherWardName?: string | null;
   eventType?: EventType;
   name: string;
   eventDate: string;
@@ -58,6 +65,7 @@ export interface EventWithCreator {
   creatorRole: UserRole | null;
   contactName: string;
   contactWard: Ward;
+  contactOtherWardName: string | null;
   contactEmail: string | null;
   contactPhone: string | null;
 }
@@ -142,6 +150,7 @@ export function normalizeEventInput(
   return {
     ...input,
     eventType: normalizeEventType(input.eventType, fallbackEventType),
+    otherWardName: normalizeOtherWardNameForStorage(input.ward, input.otherWardName),
     name: input.name.trim(),
     eventDate: input.eventDate.trim(),
     startTime: input.startTime.trim(),
@@ -188,6 +197,10 @@ export function validateEventInput(input: AddEventInput): string | null {
     return 'Invalid building selection.';
   }
   if (!input.ward || !WARDS.includes(input.ward)) return 'Ward is required.';
+  if (isOtherWard(input.ward)) {
+    const otherWardError = validateOtherWardName(input.otherWardName);
+    if (otherWardError) return otherWardError;
+  }
   if (!input.eventType || !EVENT_TYPES.includes(input.eventType)) {
     return 'Invalid event type selection.';
   }
@@ -246,6 +259,7 @@ type DbLike = typeof db | Parameters<Parameters<typeof db.transaction>[0]>[0];
 export async function getOrCreateContactId(
   input: {
     ward: Ward;
+    otherWardName?: string | null;
     name: string;
     email?: string | null;
     phone?: string | null;
@@ -254,6 +268,10 @@ export async function getOrCreateContactId(
 ) {
   const emailValue = input.email?.trim() ? normalizeEmail(input.email) : null;
   const phoneValue = input.phone?.trim() ? normalizePhoneForStorage(input.phone) : null;
+  const otherWardNameValue = normalizeOtherWardNameForStorage(input.ward, input.otherWardName);
+  const wardPredicate = otherWardNameValue
+    ? and(eq(contacts.ward, input.ward), eq(contacts.otherWardName, otherWardNameValue))
+    : and(eq(contacts.ward, input.ward), isNull(contacts.otherWardName));
 
   if (!emailValue && !phoneValue) {
     throw new Error('At least one contact method is required (email or phone).');
@@ -269,7 +287,7 @@ export async function getOrCreateContactId(
   const existing = await dbLike
     .select({ id: contacts.id })
     .from(contacts)
-    .where(and(eq(contacts.ward, input.ward), identifierPredicate))
+    .where(and(wardPredicate, identifierPredicate))
     .limit(1);
 
   if (existing[0]?.id) {
@@ -283,6 +301,7 @@ export async function getOrCreateContactId(
       .values({
         name: input.name.trim(),
         ward: input.ward,
+        otherWardName: otherWardNameValue,
         email: emailValue,
         phone: phoneValue,
       })
@@ -293,7 +312,7 @@ export async function getOrCreateContactId(
     const [recovered] = await dbLike
       .select({ id: contacts.id })
       .from(contacts)
-      .where(and(eq(contacts.ward, input.ward), identifierPredicate))
+      .where(and(wardPredicate, identifierPredicate))
       .limit(1);
 
     createdId = recovered?.id ?? null;
@@ -348,6 +367,7 @@ export async function createEventForAccess(
       const contactId = await getOrCreateContactId(
         {
           ward: normalizedInput.ward,
+          otherWardName: normalizedInput.otherWardName,
           name: normalizedInput.name,
           email: normalizedInput.email,
           phone: normalizedInput.phone,
@@ -529,6 +549,7 @@ export async function listEventsForAccess(
         creatorRole: users.role,
         contactName: contacts.name,
         contactWard: contacts.ward,
+        contactOtherWardName: contacts.otherWardName,
         contactEmail: contacts.email,
         contactPhone: contacts.phone,
       })
@@ -698,6 +719,7 @@ export async function updateEventForAccess(
 
     const contactId = await getOrCreateContactId({
       ward: normalizedInput.ward,
+      otherWardName: normalizedInput.otherWardName,
       name: normalizedInput.name,
       email: normalizedInput.email,
       phone: normalizedInput.phone,
@@ -778,6 +800,7 @@ export async function importEventsForAccess(
     for (const event of validRows) {
       const contactId = await getOrCreateContactId({
         ward: event.ward,
+        otherWardName: event.otherWardName,
         name: event.name,
         email: event.email,
         phone: event.phone,

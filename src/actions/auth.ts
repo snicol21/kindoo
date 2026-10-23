@@ -13,6 +13,7 @@ import {
 } from '@/lib/permissions';
 import {
   BUILDINGS,
+  OTHER_WARD,
   USER_ROLES,
   users,
   WARDS,
@@ -121,6 +122,9 @@ export async function createUser(input: {
   if (!isValidEmail(email)) return { success: false, error: 'Valid email is required.' };
   if (!ward || !WARDS.includes(ward)) {
     return { success: false, error: 'Ward is required.' };
+  }
+  if (ward === OTHER_WARD) {
+    return { success: false, error: 'Users must belong to a listed ward, not "Other".' };
   }
   if (!phone || !/^[\d\s\-+().]{7,20}$/.test(phone)) {
     return { success: false, error: 'Valid phone number is required.' };
@@ -342,6 +346,9 @@ export async function adminSetUserWard(input: {
 
   if (!userId) return { success: false, error: 'Invalid user id.' };
   if (!WARDS.includes(ward)) return { success: false, error: 'Invalid ward.' };
+  if (ward === OTHER_WARD) {
+    return { success: false, error: 'Users must belong to a listed ward, not "Other".' };
+  }
 
   const existing = await db.select().from(users).where(eq(users.id, userId)).limit(1);
   const user = existing[0];

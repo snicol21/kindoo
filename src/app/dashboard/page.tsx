@@ -84,7 +84,9 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   const canSelectAnyWard = role === 'admin' || role === 'stake_manager';
   const defaultEventType: EventType =
     role === 'ward_manager' || role === 'ward_user' ? 'Ward' : 'Private';
-  const fixedBuildingForWardUsers = canSelectAnyWard ? undefined : WARD_BUILDING[userWard];
+  const fixedBuildingForWardUsers = canSelectAnyWard
+    ? undefined
+    : (WARD_BUILDING[userWard] ?? undefined);
   const todayYmd = getTodayYmd();
 
   // Initial data fetch for both buildings (runs in parallel)
@@ -107,6 +109,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         creatorRole: users.role,
         contactName: contacts.name,
         contactWard: contacts.ward,
+        contactOtherWardName: contacts.otherWardName,
         contactEmail: contacts.email,
         contactPhone: contacts.phone,
       })
@@ -143,6 +146,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         creatorRole: users.role,
         contactName: contacts.name,
         contactWard: contacts.ward,
+        contactOtherWardName: contacts.otherWardName,
         contactEmail: contacts.email,
         contactPhone: contacts.phone,
       })
