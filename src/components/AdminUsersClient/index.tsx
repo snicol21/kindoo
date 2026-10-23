@@ -19,7 +19,7 @@ import { EditUserDialog } from '@/components/AdminUsersClient/EditUserDialog';
 import { UsersTable } from '@/components/AdminUsersClient/UsersTable';
 import { canAssignRole, canManageUser } from '@/lib/permissions';
 import type { UserRole, Ward } from '@/schema/schema';
-import { WARDS } from '@/schema/schema';
+import { ASSIGNABLE_WARDS } from '@/schema/schema';
 import { useRouter } from 'next/navigation';
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
@@ -134,7 +134,7 @@ export function AdminUsersClient({
     if (currentUserRole === 'ward_manager') {
       return [currentUserWard as Ward] as const;
     }
-    return WARDS;
+    return ASSIGNABLE_WARDS;
   }, [currentUserRole, currentUserWard]);
 
   const canEditWardField = useMemo(() => {
@@ -327,7 +327,7 @@ export function AdminUsersClient({
         createWard={createWard}
         createPhone={createPhone}
         sendCredentialsEmail={sendCredentialsEmail}
-        wardOptions={WARDS}
+        wardOptions={ASSIGNABLE_WARDS}
         allowedRoles={assignableRoles}
         fixedWard={currentUserRole === 'ward_manager' ? (currentUserWard as Ward) : undefined}
         createPending={createPending}

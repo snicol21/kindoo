@@ -9,6 +9,7 @@ import { canAccessUserAdmin, canAssignRole, ROLE_LABELS } from '@/lib/permission
 import { buildAccessRequestSubmittedSms } from '@/lib/sms-message-templates';
 import {
   accessRequests,
+  OTHER_WARD,
   USER_ROLES,
   users,
   WARDS,
@@ -90,6 +91,12 @@ export async function submitAccessRequest(input: {
     return { success: false, error: 'Valid phone number is required.' };
   }
   if (!WARDS.includes(ward)) return { success: false, error: 'Ward is required.' };
+  if (ward === OTHER_WARD) {
+    return {
+      success: false,
+      error: 'Please pick a listed ward. Contact an admin if yours is missing.',
+    };
+  }
   if (comments && comments.length > 1000) {
     return { success: false, error: 'Comments must be 1000 characters or less.' };
   }

@@ -5,6 +5,7 @@ import {
   type MessageTemplateKey,
   type MessageTemplateMap,
 } from '@/lib/message-templates';
+import { formatWardLabel } from '@/lib/ward-utils';
 import { formatDate, formatDateNoYear, toLocalDateTime } from '@/utils/dateUtils';
 import { formatPhone } from '@/utils/phoneUtils';
 import { formatTime, formatTimeRange, minutesToTime, parseTimeToMinutes } from '@/utils/timeUtils';
@@ -78,7 +79,9 @@ function buildTemplateContext(event: EventWithCreator) {
     '{firstName}': firstName,
     '{fullName}': event.contactName,
     '{building}': event.building,
-    '{ward}': event.contactWard ?? '—',
+    '{ward}': event.contactWard
+      ? formatWardLabel(event.contactWard, event.contactOtherWardName)
+      : '—',
     '{eventDate}': dateShort,
     '{eventDateLong}': dateLong,
     '{startTime}': formatTime(event.startTime),

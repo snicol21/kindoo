@@ -6,7 +6,7 @@ import { Label } from '@/components/_ui/label';
 import { Textarea } from '@/components/_ui/textarea';
 import { PageContainer } from '@/components/PageContainer';
 import { PhoneInput } from '@/components/PhoneInput';
-import { WARDS, type Ward } from '@/schema/schema';
+import { ASSIGNABLE_WARDS, type Ward } from '@/schema/schema';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
@@ -131,7 +131,7 @@ export default async function RequestAccessPage({ searchParams }: RequestAccessP
                   <option value="" disabled>
                     Select ward
                   </option>
-                  {WARDS.map((ward) => (
+                  {ASSIGNABLE_WARDS.map((ward) => (
                     <option key={ward} value={ward}>
                       {ward}
                     </option>

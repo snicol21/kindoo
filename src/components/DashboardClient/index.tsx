@@ -37,6 +37,7 @@ const buildEventSearchHaystack = (event: EventWithCreator) =>
   [
     event.contactName,
     event.contactWard,
+    event.contactOtherWardName,
     event.eventType,
     event.contactEmail,
     event.contactPhone,

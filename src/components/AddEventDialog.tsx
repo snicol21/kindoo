@@ -22,14 +22,16 @@ import {
 } from '@/components/_ui/select';
 import { ContactMatchPopover, handleContactMatchKeyDown } from '@/components/ContactMatchPopover';
 import { MatchedContactBadge } from '@/components/MatchedContactBadge';
+import { OtherWardNameField } from '@/components/OtherWardNameField';
 import { UnsavedChangesDialog } from '@/components/UnsavedChangesDialog';
 import { useContactChangeState } from '@/hooks/useContactChangeState';
 import { useContactSearch } from '@/hooks/useContacts';
 import { useAddEvent } from '@/hooks/useEvents';
 import { getContactChangeState } from '@/lib/contact-linking';
 import { findExactContact, getContactSuggestions } from '@/lib/contact-matching';
+import { cleanOtherWardName, isOtherWard, validateOtherWardName } from '@/lib/ward-utils';
 import type { Building, EventType, Ward } from '@/schema/schema';
-import { BUILDINGS, EVENT_TYPES, WARDS } from '@/schema/schema';
+import { BUILDINGS, EVENT_TYPES, OTHER_WARD, WARDS } from '@/schema/schema';
 import { getTodayYmd } from '@/utils/dateUtils';
 import { DESCRIPTION_MAX_LENGTH } from '@/utils/eventConstants';
 import { formatPhone } from '@/utils/phoneUtils';
@@ -76,6 +78,7 @@ interface FormState {
   errors?: {
     building?: string;
     ward?: string;
+    otherWardName?: string;
     eventType?: string;
     name?: string;
     eventDate?: string;
@@ -89,6 +92,7 @@ interface FormState {
   values?: {
     building?: string;
     ward?: string;
+    otherWardName?: string;
     eventType?: string;
     name?: string;
     eventDate?: string;
@@ -137,6 +141,7 @@ export function AddEventDialog({
     fixedBuilding ?? defaultBuilding
   );
   const [selectedWard, setSelectedWard] = useState<Ward | ''>(fixedWard ?? '');
+  const [otherWardName, setOtherWardName] = useState('');
   const [selectedEventType, setSelectedEventType] = useState<EventType>(defaultEventType);
   const [selectedEventDate, setSelectedEventDate] = useState('');
   const [selectedStartTime, setSelectedStartTime] = useState('');
@@ -215,10 +220,14 @@ export function AddEventDialog({
   };
 
   const prioritizedWards = useMemo(() => {
-    const stakePriority: Ward[] = ['3rd Ward', '4th Ward', '6th Ward'];
+    const stakePriority: Ward[] = ['3rd Ward', '4th Ward', '6th Ward', 'Sycamores 8th Ward'];
     const maplesPriority: Ward[] = ['1st Ward', '2nd Ward', '5th Ward', 'Park Ridge Ward'];
     const priority = selectedBuilding === 'Stake Center' ? stakePriority : maplesPriority;
-    const remaining = WARDS.filter((ward) => !priority.includes(ward));
+    // "Other" always sits last so the free-text option is easy to find.
+    const remaining = [
+      ...WARDS.filter((ward) => !priority.includes(ward) && ward !== OTHER_WARD),
+      OTHER_WARD,
+    ];
     return { priority, remaining };
   }, [selectedBuilding]);
 
@@ -251,6 +260,7 @@ export function AddEventDialog({
     setTypedPhone(formatPhone(contact.phone ?? ''));
     if (nameRef.current) nameRef.current.value = contact.name;
     setSelectedWard(fixedWard ?? contact.ward);
+    setOtherWardName(contact.otherWardName ?? '');
     if (phoneRef.current) phoneRef.current.value = formatPhone(contact.phone ?? '');
     if (emailRef.current) emailRef.current.value = contact.email ?? '';
   };
@@ -291,6 +301,7 @@ export function AddEventDialog({
     setTypedEmail('');
     setTypedPhone('');
     setSelectedWard(fixedWard ?? '');
+    setOtherWardName('');
     if (nameRef.current) nameRef.current.value = '';
     if (phoneRef.current) phoneRef.current.value = '';
     if (emailRef.current) emailRef.current.value = '';
@@ -387,6 +398,8 @@ export function AddEventDialog({
     async (_prevState, formData): Promise<FormState> => {
       const building = formData.get('building') as Building | null;
       const ward = formData.get('ward') as Ward | null;
+      const otherWardNameRaw = formData.get('otherWardName') as string | null;
+      const cleanedOtherWardName = cleanOtherWardName(otherWardNameRaw);
       const eventType = formData.get('eventType') as EventType | null;
       const name = formData.get('name') as string | null;
       const eventDate = formData.get('eventDate') as string | null;
@@ -409,6 +422,9 @@ export function AddEventDialog({
         errors.ward = 'Please select a ward.';
       } else if (fixedWard && ward !== fixedWard) {
         errors.ward = 'You can only create events for your assigned ward.';
+      } else if (isOtherWard(ward)) {
+        const otherWardError = validateOtherWardName(cleanedOtherWardName);
+        if (otherWardError) errors.otherWardName = otherWardError;
       }
       if (!eventType || !EVENT_TYPES.includes(eventType)) {
         errors.eventType = 'Please select a type.';
@@ -471,6 +487,7 @@ export function AddEventDialog({
           values: {
             building: building ?? undefined,
             ward: ward ?? undefined,
+            otherWardName: otherWardNameRaw ?? undefined,
             name: name ?? undefined,
             eventDate: eventDate ?? undefined,
             startTime: startTime ?? undefined,
@@ -500,6 +517,7 @@ export function AddEventDialog({
             id: selectedContact.id,
             name: name!.trim(),
             ward: ward!,
+            otherWardName: cleanedOtherWardName || null,
             email: email?.trim() || null,
             phone: formattedPhone || null,
           });
@@ -511,6 +529,7 @@ export function AddEventDialog({
               values: {
                 building: building ?? undefined,
                 ward: ward ?? undefined,
+                otherWardName: otherWardNameRaw ?? undefined,
                 eventType: eventType ?? undefined,
                 name: name ?? undefined,
                 eventDate: eventDate ?? undefined,
@@ -529,6 +548,7 @@ export function AddEventDialog({
             {
               building: building!,
               ward: ward!,
+              otherWardName: cleanedOtherWardName || null,
               eventType: eventType!,
               name: name!.trim(),
               eventDate: eventDate!,
@@ -547,6 +567,7 @@ export function AddEventDialog({
 
         formRef.current?.reset();
         setSelectedWard(fixedWard ?? '');
+        setOtherWardName('');
         setTypedName('');
         setTypedEmail('');
         setTypedPhone('');
@@ -561,6 +582,7 @@ export function AddEventDialog({
           values: {
             building: building ?? undefined,
             ward: ward ?? undefined,
+            otherWardName: otherWardNameRaw ?? undefined,
             eventType: eventType ?? undefined,
             name: name ?? undefined,
             eventDate: eventDate ?? undefined,
@@ -581,6 +603,7 @@ export function AddEventDialog({
     if (!open) {
       formRef.current?.reset();
       setSelectedBuilding(fixedBuilding ?? defaultBuilding);
+      setOtherWardName('');
       setSelectedWard(fixedWard ?? '');
       setSelectedEventType(defaultEventType);
       setTypedName('');
@@ -607,6 +630,7 @@ export function AddEventDialog({
     if (open) {
       setSelectedBuilding(fixedBuilding ?? defaultBuilding);
       setSelectedWard(fixedWard ?? (state.values?.ward as Ward | undefined) ?? '');
+      setOtherWardName(state.values?.otherWardName ?? '');
       setSelectedEventType((state.values?.eventType as EventType | undefined) ?? defaultEventType);
     }
   }, [
@@ -1003,6 +1027,16 @@ export function AddEventDialog({
                 <p className="text-xs text-destructive">{state.errors.ward}</p>
               )}
             </div>
+
+            {selectedWard === OTHER_WARD && (
+              <OtherWardNameField
+                id="otherWardName"
+                name="otherWardName"
+                value={otherWardName}
+                onChange={setOtherWardName}
+                error={state.errors?.otherWardName}
+              />
+            )}
 
             {showLinkedState && selectedContact && (
               <div className={`rounded-md border p-3 text-xs ${linkedBannerTone}`}>

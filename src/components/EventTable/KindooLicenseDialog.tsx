@@ -11,6 +11,7 @@ import {
   DialogTitle,
 } from '@/components/_ui/dialog';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/_ui/tooltip';
+import { formatWardLabel } from '@/lib/ward-utils';
 import { parseTimeToMinutes } from '@/utils/timeUtils';
 import { AlertTriangle, CheckCircle2, Clock, Copy, Loader2, RotateCw } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
@@ -239,7 +240,7 @@ function buildDescription(event: EventWithCreator) {
 
   const creatorName = event.creatorName?.trim() || event.creatorEmail?.trim() || 'Unknown';
   const creatorRole = formatCreatorRoleLabel(event.creatorRole);
-  return `[${event.eventType} event] - for ${event.contactName ?? ''} (${event.contactWard ?? ''}) - granted by ${creatorName} (${creatorRole})`;
+  return `[${event.eventType} event] - for ${event.contactName ?? ''} (${formatWardLabel(event.contactWard ?? '', event.contactOtherWardName)}) - granted by ${creatorName} (${creatorRole})`;
 }
 
 function getLogLineClassName(line: string) {

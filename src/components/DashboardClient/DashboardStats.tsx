@@ -2,6 +2,7 @@
 
 import type { EventWithCreator } from '@/actions/events';
 import { Card, CardDescription, CardHeader } from '@/components/_ui/card';
+import { formatWardLabel } from '@/lib/ward-utils';
 import type { UserRole } from '@/schema/schema';
 import { WARDS } from '@/schema/schema';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
@@ -97,6 +98,7 @@ export function DashboardStats({
       creatorRole: 'ward_user',
       contactName: 'Preview Contact',
       contactWard: WARDS[0],
+      contactOtherWardName: null,
       contactEmail: null,
       contactPhone: null,
     };
@@ -116,6 +118,7 @@ export function DashboardStats({
         creatorName: `Preview Creator ${creatorIndex}`,
         creatorEmail: `creator${creatorIndex}@preview.local`,
         contactWard: ward,
+        contactOtherWardName: null,
       };
     });
   }, [
@@ -317,7 +320,7 @@ export function DashboardStats({
     for (const event of breakdownEventsForDisplay) {
       const key =
         breakdownMode === 'ward'
-          ? event.contactWard || 'Unknown'
+          ? formatWardLabel(event.contactWard, event.contactOtherWardName) || 'Unknown'
           : breakdownMode === 'eventType'
             ? event.eventType
             : event.creatorName || event.creatorEmail || 'Unknown';

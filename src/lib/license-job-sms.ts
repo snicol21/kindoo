@@ -1,3 +1,4 @@
+import { formatWardLabel } from '@/lib/ward-utils';
 import 'server-only';
 
 import { db } from '@/lib/db';
@@ -17,10 +18,13 @@ export async function loadEventSmsDetails(eventId: string): Promise<EventSmsInpu
       building: events.building,
       contactName: contacts.name,
       ward: contacts.ward,
+      otherWardName: contacts.otherWardName,
     })
     .from(events)
     .leftJoin(contacts, eq(events.contactId, contacts.id))
     .where(eq(events.id, eventId))
     .limit(1);
-  return row ?? null;
+  if (!row) return null;
+  const { otherWardName, ...rest } = row;
+  return { ...rest, ward: rest.ward ? formatWardLabel(rest.ward, otherWardName) : rest.ward };
 }

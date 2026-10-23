@@ -28,6 +28,7 @@ import type { EventTableProps, SortDir, SortKey } from '@/components/EventTable/
 import { useContactChangeState } from '@/hooks/useContactChangeState';
 import { useContactSearch } from '@/hooks/useContacts';
 import { findExactContact, getContactSuggestions } from '@/lib/contact-matching';
+import { formatWardLabel, isOtherWard, validateOtherWardName } from '@/lib/ward-utils';
 import type { Building, EventType, Ward } from '@/schema/schema';
 import { formatDate, getDaysUntil, getDaysUntilValue, toLocalDateTime } from '@/utils/dateUtils';
 import { DESCRIPTION_MAX_LENGTH } from '@/utils/eventConstants';
@@ -280,6 +281,7 @@ export function EventTable({
   const [editBuilding, setEditBuilding] = useState<Building>('Stake Center');
   const [editName, setEditName] = useState('');
   const [editWard, setEditWard] = useState<Ward | ''>('');
+  const [editOtherWardName, setEditOtherWardName] = useState('');
   const [editEventType, setEditEventType] = useState<EventType>('Private');
   const [editEventDate, setEditEventDate] = useState('');
   const [editStartTime, setEditStartTime] = useState('');
@@ -300,6 +302,7 @@ export function EventTable({
   const [cloneBuilding, setCloneBuilding] = useState<Building>('Stake Center');
   const [cloneName, setCloneName] = useState('');
   const [cloneWard, setCloneWard] = useState<Ward | ''>('');
+  const [cloneOtherWardName, setCloneOtherWardName] = useState('');
   const [cloneEventType, setCloneEventType] = useState<EventType>('Private');
   const [cloneEventDate, setCloneEventDate] = useState('');
   const [cloneStartTime, setCloneStartTime] = useState('');
@@ -735,6 +738,7 @@ export function EventTable({
           id: event.contactId,
           name: event.contactName,
           ward: event.contactWard,
+          otherWardName: event.contactOtherWardName ?? null,
           email: event.contactEmail ?? null,
           phone: event.contactPhone ?? null,
         }
@@ -748,6 +752,7 @@ export function EventTable({
     setEditBuilding(event.building);
     setEditName(event.contactName);
     setEditWard(event.contactWard ?? '');
+    setEditOtherWardName(event.contactOtherWardName ?? '');
     setEditEventType(event.eventType);
     setEditEventDate(event.eventDate);
     setEditStartTime(event.startTime);
@@ -762,6 +767,7 @@ export function EventTable({
     setEditMatchedContact(contact);
     setEditName(contact.name);
     setEditWard(contact.ward);
+    setEditOtherWardName(contact.otherWardName ?? '');
     setEditEmail(contact.email ?? '');
     setEditPhone(formatPhone(contact.phone ?? ''));
   };
@@ -803,6 +809,13 @@ export function EventTable({
         toast.error('Ward is required.');
         return;
       }
+      if (isOtherWard(editWard)) {
+        const otherWardError = validateOtherWardName(editOtherWardName);
+        if (otherWardError) {
+          toast.error(otherWardError);
+          return;
+        }
+      }
       const timeError = validateTimeWindow(editStartTime, editEndTime);
       if (timeError) {
         toast.error(timeError);
@@ -818,6 +831,7 @@ export function EventTable({
           id: editingEvent.contactId,
           name: editName.trim(),
           ward: editWard as Ward,
+          otherWardName: editOtherWardName,
           email: editEmail.trim() || null,
           phone: editPhone || null,
         });
@@ -832,6 +846,7 @@ export function EventTable({
         id: editingEvent.id,
         building: editBuilding,
         ward: editWard as Ward,
+        otherWardName: editOtherWardName,
         eventType: editEventType,
         name: editName,
         eventDate: editEventDate,
@@ -853,6 +868,7 @@ export function EventTable({
           id: event.contactId,
           name: event.contactName,
           ward: event.contactWard,
+          otherWardName: event.contactOtherWardName ?? null,
           email: event.contactEmail ?? null,
           phone: event.contactPhone ?? null,
         }
@@ -866,6 +882,7 @@ export function EventTable({
     setCloneBuilding(event.building);
     setCloneName(event.contactName);
     setCloneWard(event.contactWard ?? '');
+    setCloneOtherWardName(event.contactOtherWardName ?? '');
     setCloneEventType(event.eventType);
     setCloneEventDate(event.eventDate);
     setCloneStartTime(event.startTime);
@@ -880,6 +897,7 @@ export function EventTable({
     setCloneMatchedContact(contact);
     setCloneName(contact.name);
     setCloneWard(contact.ward);
+    setCloneOtherWardName(contact.otherWardName ?? '');
     setCloneEmail(contact.email ?? '');
     setClonePhone(formatPhone(contact.phone ?? ''));
   };
@@ -937,6 +955,13 @@ export function EventTable({
       toast.error('Ward is required.');
       return;
     }
+    if (isOtherWard(cloneWard)) {
+      const otherWardError = validateOtherWardName(cloneOtherWardName);
+      if (otherWardError) {
+        toast.error(otherWardError);
+        return;
+      }
+    }
     const timeError = validateTimeWindow(cloneStartTime, cloneEndTime);
     if (timeError) {
       toast.error(timeError);
@@ -971,6 +996,7 @@ export function EventTable({
           id: cloneMatchedContactId,
           name: cloneName.trim(),
           ward: cloneWard as Ward,
+          otherWardName: cloneOtherWardName,
           email: cloneEmail.trim() || null,
           phone: clonePhone || null,
         });
@@ -984,6 +1010,7 @@ export function EventTable({
       await onClone({
         building: cloneBuilding,
         ward: cloneWard as Ward,
+        otherWardName: cloneOtherWardName,
         eventType: cloneEventType,
         name: cloneName.trim(),
         eventDate: cloneEventDate,
@@ -1329,7 +1356,8 @@ export function EventTable({
                             {event.contactName}
                           </div>
                           <span className="text-muted-foreground text-xs">
-                            ({event.contactWard ?? '—'})
+                            ({formatWardLabel(event.contactWard, event.contactOtherWardName) || '—'}
+                            )
                           </span>
                         </div>
                         <div className="flex items-center gap-1.5 text-muted-foreground text-xs">
@@ -1434,7 +1462,10 @@ export function EventTable({
                           </div>
                           <div className="flex items-center gap-1.5 text-muted-foreground text-xs">
                             <Church className="h-3.5 w-3.5 shrink-0" />
-                            <span>{event.contactWard ?? '—'}</span>
+                            <span>
+                              {formatWardLabel(event.contactWard, event.contactOtherWardName) ||
+                                '—'}
+                            </span>
                           </div>
                           <div className="flex items-center gap-1.5 text-muted-foreground text-xs">
                             <Mail className="h-3.5 w-3.5 shrink-0" />
@@ -1563,7 +1594,9 @@ export function EventTable({
                         </div>
                         <div className="flex items-center gap-1.5 text-muted-foreground text-xs">
                           <Church className="h-3.5 w-3.5 shrink-0" />
-                          <span>{event.contactWard ?? '—'}</span>
+                          <span>
+                            {formatWardLabel(event.contactWard, event.contactOtherWardName) || '—'}
+                          </span>
                         </div>
                       </div>
                     </TableCell>
@@ -1786,6 +1819,7 @@ export function EventTable({
         open={!!editingEvent}
         editBuilding={editBuilding}
         editWard={editWard}
+        editOtherWardName={editOtherWardName}
         editEventType={editEventType}
         editName={editName}
         editEventDate={editEventDate}
@@ -1807,6 +1841,7 @@ export function EventTable({
         onSubmitAction={submitEdit}
         setEditBuildingAction={setEditBuilding}
         setEditWardAction={setEditWard}
+        setEditOtherWardNameAction={setEditOtherWardName}
         setEditEventTypeAction={setEditEventType}
         setEditNameAction={(value) => {
           setEditName(value);
@@ -1848,6 +1883,7 @@ export function EventTable({
           setEditPhone('');
           setEditEmail('');
           setEditWard('');
+          setEditOtherWardName('');
         }}
         contactChangeState={editChangeState}
       />
@@ -1856,6 +1892,7 @@ export function EventTable({
         open={!!cloningEvent}
         cloneBuilding={cloneBuilding}
         cloneWard={cloneWard}
+        cloneOtherWardName={cloneOtherWardName}
         cloneEventType={cloneEventType}
         cloneName={cloneName}
         cloneEventDate={cloneEventDate}
@@ -1877,6 +1914,7 @@ export function EventTable({
         onSubmitAction={submitClone}
         setCloneBuildingAction={setCloneBuilding}
         setCloneWardAction={setCloneWard}
+        setCloneOtherWardNameAction={setCloneOtherWardName}
         setCloneEventTypeAction={setCloneEventType}
         setCloneNameAction={(value) => {
           setCloneName(value);
@@ -1920,6 +1958,7 @@ export function EventTable({
           setClonePhone('');
           setCloneEmail('');
           setCloneWard('');
+          setCloneOtherWardName('');
         }}
         contactChangeState={cloneChangeState}
       />

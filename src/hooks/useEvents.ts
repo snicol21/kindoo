@@ -90,6 +90,8 @@ export function useAddEvent(onSuccess?: () => void) {
         creatorRole: null,
         contactName: newEventInput.name,
         contactWard: newEventInput.ward,
+        contactOtherWardName:
+          newEventInput.ward === 'Other' ? (newEventInput.otherWardName ?? null) : null,
         contactEmail: normalizeEmail(newEventInput.email) ?? null,
         contactPhone: normalizePhoneForStorage(newEventInput.phone) ?? null,
       };
@@ -243,6 +245,7 @@ export function useUpdateEvent() {
           creatorRole: null,
           contactName: input.name,
           contactWard: input.ward,
+          contactOtherWardName: input.ward === 'Other' ? (input.otherWardName ?? null) : null,
           contactEmail: normalizeEmail(input.email) ?? null,
           contactPhone: normalizePhoneForStorage(input.phone) ?? null,
         }),
@@ -254,6 +257,7 @@ export function useUpdateEvent() {
         description: input.description,
         contactName: input.name,
         contactWard: input.ward,
+        contactOtherWardName: input.ward === 'Other' ? (input.otherWardName ?? null) : null,
         contactEmail: normalizeEmail(input.email) ?? null,
         contactPhone: normalizePhoneForStorage(input.phone) ?? null,
       });
