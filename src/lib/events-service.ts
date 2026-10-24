@@ -185,7 +185,7 @@ function getCurrentYmdHmInTimeZone(timeZone: string) {
   };
 }
 
-function eventEndsInFuture(eventDate: string, endTime: string, timeZone: string) {
+export function eventEndsInFuture(eventDate: string, endTime: string, timeZone: string) {
   const now = getCurrentYmdHmInTimeZone(timeZone);
   if (eventDate > now.ymd) return true;
   if (eventDate < now.ymd) return false;
