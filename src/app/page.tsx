@@ -25,8 +25,8 @@ const features = [
   },
   {
     icon: ClipboardList,
-    title: 'License queue',
-    desc: 'Kindoo license jobs are queued, claimed by workers, and tracked through completion.',
+    title: 'Door access queue',
+    desc: 'Door access requests are queued, claimed by workers, and tracked through completion.',
   },
   {
     icon: Zap,
@@ -60,7 +60,7 @@ export default async function HomePage() {
             Private operations dashboard for{' '}
             <span className="font-semibold text-foreground">Stake Center</span> and{' '}
             <span className="font-semibold text-foreground">Maples Building</span> — covering event
-            scheduling, role-based access, contact management, and Kindoo license automation.
+            scheduling, role-based access, contact management, and door access automation.
           </p>
         </div>
 

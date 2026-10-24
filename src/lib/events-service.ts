@@ -878,6 +878,6 @@ export async function setKindooLicenseCreatedForAccess(
     return { success: true, data: updatedEvent };
   } catch (error) {
     console.error('[setKindooLicenseCreatedForAccess] Error:', error);
-    return { success: false, error: 'Failed to update Kindoo license status.' };
+    return { success: false, error: 'Failed to update door access status.' };
   }
 }

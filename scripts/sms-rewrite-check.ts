@@ -179,7 +179,7 @@ Youth Activity Night (Ward event)
 For: Jane Smith, 3rd Ward
 Where: Stake Center
 When: Sat Nov 7, 6:00-9:00 PM MT
-Nothing needed from you. Access works from about 2 hours before the start until about 2 hours after the end.`
+Nothing needed from you. Door access works from about 2 hours before the start until about 2 hours after the end.`
     );
     assert.equal(
       rendered['failed sign-in'],
@@ -189,7 +189,7 @@ For: Jane Smith, 3rd Ward
 Where: Stake Center
 When: Sat Nov 7, 6:00-9:00 PM MT
 Why: Kindoo sign-in timed out.
-Please do one of these before the event starts: tap Retry on this event in DigitalFob, or add access in Kindoo.`
+Please do one of these before the event starts: tap Retry on this event in DigitalFob, or add door access in Kindoo.`
     );
     assert.equal(
       rendered['already exists'],
@@ -198,7 +198,7 @@ Youth Activity Night (Ward event)
 For: Jane Smith, 3rd Ward
 Where: Stake Center
 When: Sat Nov 7, 6:00-9:00 PM MT
-Kindoo already shows access for this person, so nothing was added.
+Kindoo already shows door access for this person, so nothing was added.
 Nothing needed from you. You can confirm in Kindoo if you like.`
     );
     assert.equal(
@@ -256,7 +256,7 @@ Please approve or deny it in DigitalFob when you can. No rush.`
     }
     assert.match(
       rendered['new booking (no email)'],
-      /add one in DigitalFob, or add access in Kindoo/
+      /add one in DigitalFob, or add door access in Kindoo/
     );
     assert.match(rendered['new booking (soon)'], /usually soon since the event is close/);
   });

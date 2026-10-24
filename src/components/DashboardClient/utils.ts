@@ -321,7 +321,7 @@ export const EVENT_STATUS_FILTER_LABELS: Record<EventStatusFilter, string> = {
 /**
  * Status filter for the events list.
  * - handled: an admin marked it as handled manually
- * - automated: not handled manually and a Kindoo license is recorded as created
+ * - automated: not handled manually and door access is recorded as created
  * - not-yet-handled: not handled manually and no license recorded yet
  */
 export function matchesEventStatusFilter(

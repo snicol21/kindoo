@@ -305,7 +305,7 @@ export default async function AccountPage({ searchParams }: AccountPageProps) {
                     type="checkbox"
                     defaultChecked={notificationPreferences.licenseJobCompletedSms}
                   />
-                  Kindoo worker job completed
+                  Door access set up
                 </Label>
                 <Label className="flex items-center gap-3" htmlFor="licenseJobFailedSms">
                   <input
@@ -314,7 +314,7 @@ export default async function AccountPage({ searchParams }: AccountPageProps) {
                     type="checkbox"
                     defaultChecked={notificationPreferences.licenseJobFailedSms}
                   />
-                  Kindoo worker job failed
+                  Door access not set up
                 </Label>
                 <Label className="flex items-center gap-3" htmlFor="eventCreatedSms">
                   <input

@@ -29,14 +29,14 @@ Youth Activity Night (Ward event)
 For: Jane Smith, 3rd Ward
 Where: Stake Center
 When: Sat Nov 7, 6:00-9:00 PM MT
-Nothing needed from you. Access works from about 2 hours before the start until about 2 hours after the end.`,
+Nothing needed from you. Door access works from about 2 hours before the start until about 2 hours after the end.`,
   `DigitalFob: Door access was not set up
 Youth Activity Night (Ward event)
 For: Jane Smith, 3rd Ward
 Where: Stake Center
 When: Sat Nov 7, 6:00-9:00 PM MT
 Why: Kindoo sign-in timed out.
-Please do one of these before the event starts: tap Retry on this event in DigitalFob, or add access in Kindoo.`,
+Please do one of these before the event starts: tap Retry on this event in DigitalFob, or add door access in Kindoo.`,
 ];
 
 const PROGRAM_DETAILS: [string, string][] = [
@@ -148,12 +148,12 @@ export default function LegalPage() {
                   account access request has been submitted for review.
                 </li>
                 <li>
-                  <strong>Kindoo license job completed</strong> — confirms that a scheduled Kindoo
-                  license automation job ran successfully.
+                  <strong>Door access set up</strong>: confirms that scheduled door access was set
+                  up successfully.
                 </li>
                 <li>
-                  <strong>Kindoo license job failed</strong> — alerts the user that a Kindoo license
-                  job encountered an error and requires attention.
+                  <strong>Door access not set up</strong>: alerts the user that setting up door
+                  access encountered an error and requires attention.
                 </li>
                 <li>
                   <strong>New event created</strong> — notifies users when a new building event has

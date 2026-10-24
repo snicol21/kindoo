@@ -126,7 +126,7 @@ function getOutcomeStatusVisual(outcome: string) {
     };
   }
 
-  if (outcome === 'Auto-schedule pending' || outcome === 'Scheduled for license') {
+  if (outcome === 'Auto-schedule pending' || outcome === 'Scheduled for door access') {
     return {
       label: outcome,
       textClassName: 'text-slate-700 dark:text-slate-300',
@@ -167,10 +167,10 @@ function getOutcomeStatusVisual(outcome: string) {
   }
 
   if (
-    outcome === 'Temporary license created' ||
-    outcome === 'Active license already existed' ||
-    outcome === 'License created' ||
-    outcome === 'Existing active license'
+    outcome === 'Temporary door access created' ||
+    outcome === 'Door access already existed' ||
+    outcome === 'Door access created' ||
+    outcome === 'Existing door access'
   ) {
     return {
       label: outcome,
@@ -478,8 +478,8 @@ export function KindooLicenseDialog({
           onLicenseOutcomeChangeAction?.(
             licenseEvent.id,
             ct === 'existing-active-license'
-              ? 'Active license already existed'
-              : 'Temporary license created'
+              ? 'Door access already existed'
+              : 'Temporary door access created'
           );
           setIsPollingStatus(false);
 
@@ -533,9 +533,9 @@ export function KindooLicenseDialog({
 
   const completionLabel =
     latestJob?.completionType === 'existing-active-license'
-      ? 'Active license already existed'
+      ? 'Door access already existed'
       : latestJob?.completionType === 'temporary-license-created'
-        ? 'Temporary license created'
+        ? 'Temporary door access created'
         : null;
 
   const latestDurationSec =
@@ -565,7 +565,7 @@ export function KindooLicenseDialog({
     !latestJob &&
     isScheduledPast &&
     (initialLicenseOutcome === 'Auto-schedule pending' ||
-      initialLicenseOutcome === 'Scheduled for license');
+      initialLicenseOutcome === 'Scheduled for door access');
 
   const effectiveOutcome = isHandledManually
     ? 'Handled manually'
@@ -574,10 +574,10 @@ export function KindooLicenseDialog({
       : (completionLabel ?? initialLicenseOutcome ?? null);
 
   const displayOutcome =
-    effectiveOutcome === 'Temporary license created' ||
-    effectiveOutcome === 'Active license already existed' ||
-    effectiveOutcome === 'License created' ||
-    effectiveOutcome === 'Existing active license' ||
+    effectiveOutcome === 'Temporary door access created' ||
+    effectiveOutcome === 'Door access already existed' ||
+    effectiveOutcome === 'Door access created' ||
+    effectiveOutcome === 'Existing door access' ||
     effectiveOutcome === 'Request failed' ||
     effectiveOutcome === 'Retry failed'
       ? effectiveOutcome
@@ -661,8 +661,10 @@ export function KindooLicenseDialog({
           }}
         >
           <DialogHeader>
-            <DialogTitle>Kindoo license</DialogTitle>
-            <DialogDescription>Automated license request details for this event.</DialogDescription>
+            <DialogTitle>Door access</DialogTitle>
+            <DialogDescription>
+              Automated door access request details for this event.
+            </DialogDescription>
           </DialogHeader>
 
           <TooltipProvider delayDuration={200}>
@@ -769,7 +771,7 @@ export function KindooLicenseDialog({
                     <SectionLabel>Timing</SectionLabel>
                     <div className="rounded-md border border-border divide-y divide-border/60">
                       <MetaRow
-                        label="License window"
+                        label="Door access window"
                         value={
                           licenseTimes
                             ? `${licenseWindowDateLabel ?? licenseTimes.startDate} · ${licenseTimes.startTime} – ${licenseTimes.endTime}`
@@ -791,7 +793,7 @@ export function KindooLicenseDialog({
 
                   {/* Scheduled creation status (minimal) */}
                   <section>
-                    <SectionLabel>Scheduled creation status</SectionLabel>
+                    <SectionLabel>Scheduled door access status</SectionLabel>
                     <div className="rounded-md border border-border bg-background">
                       <div className="divide-y divide-border/60">
                         <MetaRow

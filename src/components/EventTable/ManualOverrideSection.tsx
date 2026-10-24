@@ -85,8 +85,8 @@ export function ManualOverrideSection({
           </div>
         ) : (
           <p className="text-xs text-muted-foreground">
-            Granted access in Kindoo yourself, or the worker is offline? Mark this event and the
-            worker will skip it.
+            Granted door access in Kindoo yourself, or the worker is offline? Mark this event and
+            the worker will skip it.
           </p>
         )}
 

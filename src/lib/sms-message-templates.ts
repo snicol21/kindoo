@@ -78,12 +78,7 @@ export function formatTimeRange(startTime: string, endTime: string): string {
 }
 
 export type FailureKind =
-  | 'already-exists'
-  | 'time-passed'
-  | 'user-not-found'
-  | 'sign-in'
-  | 'slow'
-  | 'unexpected';
+  'already-exists' | 'time-passed' | 'user-not-found' | 'sign-in' | 'slow' | 'unexpected';
 
 /** Sort raw worker failure details into one of a few kinds. Never echoes raw text. */
 export function classifyFailure(details: string | null | undefined): FailureKind {
@@ -93,13 +88,17 @@ export function classifyFailure(details: string | null | undefined): FailureKind
     return 'already-exists';
   if (/user not found|no (matching )?user|not found in kindoo/.test(text)) return 'user-not-found';
   if (/login|password|username|authenticat|sign[- ]?in/.test(text)) return 'sign-in';
-  if (/timeout|timed out|exceeded .*ms|selector|not visible|unable to open|did not become ready|not clickable/.test(text))
+  if (
+    /timeout|timed out|exceeded .*ms|selector|not visible|unable to open|did not become ready|not clickable/.test(
+      text
+    )
+  )
     return 'slow';
   return 'unexpected';
 }
 
 const FAILURE_WHY: Record<FailureKind, string> = {
-  'already-exists': 'Kindoo already shows access for this person.',
+  'already-exists': 'Kindoo already shows door access for this person.',
   'time-passed': 'Kindoo saw this time as already past.',
   'user-not-found': 'this email was not found in Kindoo.',
   'sign-in': 'Kindoo sign-in timed out.',
@@ -112,13 +111,9 @@ export function friendlyFailureReason(details: string | null | undefined): strin
   return FAILURE_WHY[classifyFailure(details)];
 }
 
-/** How Kindoo access will (or will not) be added for a new booking. */
+/** How door access will (or will not) be added for a new booking. */
 export type KindooAccessPlan =
-  | 'automatic'
-  | 'automatic-soon'
-  | 'no-email'
-  | 'unsupported-building'
-  | 'ended';
+  'automatic' | 'automatic-soon' | 'no-email' | 'unsupported-building' | 'ended';
 
 export interface EventSmsInput {
   description?: string | null;
@@ -180,13 +175,15 @@ const NEW_BOOKING_ACTION_LINES: Record<KindooAccessPlan, string> = {
   'automatic-soon':
     'Nothing needed from you. Door access is added in Kindoo automatically, usually soon since the event is close.',
   'no-email':
-    'Door access will not be added automatically (no contact email). Please add one in DigitalFob, or add access in Kindoo.',
+    'Door access will not be added automatically (no contact email). Please add one in DigitalFob, or add door access in Kindoo.',
   'unsupported-building':
-    'Door access is not added automatically for this building. Please add access in Kindoo if it is needed.',
+    'Door access is not added automatically for this building. Please add door access in Kindoo if it is needed.',
   ended: 'Door access is not added automatically because this event has already ended.',
 };
 
-export function buildEventCreatedSms(input: EventSmsInput & { accessPlan?: KindooAccessPlan }): string {
+export function buildEventCreatedSms(
+  input: EventSmsInput & { accessPlan?: KindooAccessPlan }
+): string {
   const actionLine = NEW_BOOKING_ACTION_LINES[input.accessPlan ?? 'automatic'];
   return fitToLimit((descMax, fieldMax) => {
     const name = truncate(clean(input.contactName), Math.min(40, fieldMax));
@@ -221,12 +218,12 @@ export function buildLicenseJobCompletedSms(input: EventSmsInput): string {
       forNameWard(input, Math.min(40, fieldMax)),
       detailWhere(input, fieldMax),
       whenLine(input),
-      'Nothing needed from you. Access works from about 2 hours before the start until about 2 hours after the end.',
+      'Nothing needed from you. Door access works from about 2 hours before the start until about 2 hours after the end.',
     ])
   );
 }
 
-const RETRY_OR_KINDOO = 'tap Retry on this event in DigitalFob, or add access in Kindoo.';
+const RETRY_OR_KINDOO = 'tap Retry on this event in DigitalFob, or add door access in Kindoo.';
 
 function failureActionLine(kind: FailureKind, afterStart: boolean): string {
   const when = afterStart ? 'as soon as you can' : 'before the event starts';
@@ -256,7 +253,7 @@ export function buildLicenseJobFailedSms(
         forNameWard(input, Math.min(40, fieldMax)),
         detailWhere(input, fieldMax),
         whenLine(input),
-        'Kindoo already shows access for this person, so nothing was added.',
+        'Kindoo already shows door access for this person, so nothing was added.',
         'Nothing needed from you. You can confirm in Kindoo if you like.',
       ])
     );
@@ -316,10 +313,10 @@ export function buildAccessRequestSubmittedSms(input: {
 export type HandledManuallyReason = 'worker_offline' | 'granted_directly' | 'not_needed' | 'other';
 
 const HANDLED_MANUALLY_REASON_LINES: Record<HandledManuallyReason, string> = {
-  worker_offline: 'Access was handled by hand because automation was unavailable.',
-  granted_directly: 'Access was granted directly in Kindoo.',
-  not_needed: 'Kindoo access is not needed for this event.',
-  other: 'Access is being handled by hand.',
+  worker_offline: 'Door access was handled by hand because automation was unavailable.',
+  granted_directly: 'Door access was granted directly in Kindoo.',
+  not_needed: 'Door access is not needed for this event.',
+  other: 'Door access is being handled by hand.',
 };
 
 export function buildEventHandledManuallySms(
@@ -330,8 +327,8 @@ export function buildEventHandledManuallySms(
     HANDLED_MANUALLY_REASON_LINES[input.reason] ?? HANDLED_MANUALLY_REASON_LINES.other;
   const headline =
     input.reason === 'not_needed'
-      ? 'DigitalFob: No Kindoo access needed'
-      : 'DigitalFob: Kindoo access is taken care of';
+      ? 'DigitalFob: No door access needed'
+      : 'DigitalFob: Door access is taken care of';
   return fitToLimit((descMax) =>
     joinLines([
       headline,
@@ -349,13 +346,13 @@ export function buildEventHandledManuallyReopenedSms(input: EventSmsInput): stri
   const building = truncate(clean(input.building), 40);
   return fitToLimit((descMax) =>
     joinLines([
-      'DigitalFob: Correction, access is automatic',
+      'DigitalFob: Correction, door access is automatic',
       titleLine(input, descMax),
       forNameWard(input),
       building && `Where: ${building}`,
       whenLine(input),
       'Please disregard our earlier text.',
-      'Access will be set up as usual, about 4 hours before the event. Nothing needed from you.',
+      'Door access will be set up as usual, about 4 hours before the event. Nothing needed from you.',
     ])
   );
 }

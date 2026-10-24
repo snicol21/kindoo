@@ -4,13 +4,13 @@ This handbook describes what the Kindoo app does, how it is structured, and how 
 
 ## 1. What This App Is
 
-Kindoo is a private event management dashboard used to track building events and automate Kindoo temporary license creation.
+Kindoo is a private event management dashboard used to track building events and automate temporary door access in Kindoo.
 
 Core goals:
 
 - Keep event and contact data organized by ward/building.
 - Support role-based access with ward-aware permissions.
-- Queue and process license automation work asynchronously via a worker.
+- Queue and process door access automation work asynchronously via a worker.
 
 ## 2. Tech Stack
 

@@ -32,7 +32,7 @@ const EMPTY: ManualOverrideSmsSummary = { attempted: 0, sent: 0, skipped: 0, fai
 /**
  * Texts the people who are subscribed to texts for an event when an admin marks it as handled
  * manually, or reopens it. Recipients and opt-ins are the existing ones, nothing new:
- *  - the event's creator, who gets the "Kindoo access ready" text (license_job_completed opt-in)
+ *  - the event's creator, who gets the "Door access set up" text (license_job_completed opt-in)
  *  - admins, stake managers and the ward's managers, who get the "new booking" text
  *    (event_created opt-in)
  * The admin making the change is never texted. Each person gets one text. The admin note never
