@@ -168,8 +168,9 @@ export function ManualOverrideDialog({
                 already running cannot be undone. You can reopen it later.
               </p>
               <p className="text-sm text-muted-foreground">
-                People who are subscribed to texts for this event get a short text that access is
-                handled by hand. Your note is never included.
+                People who are subscribed to texts for this event get a short text that Kindoo
+                access is taken care of and nothing is needed from them. Your note is never
+                included.
               </p>
 
               <div className="space-y-2">
