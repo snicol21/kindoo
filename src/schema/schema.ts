@@ -55,6 +55,31 @@ export type AccessRequestStatus = (typeof ACCESS_REQUEST_STATUSES)[number];
 export const EVENT_TYPES = ['Private', 'Ward', 'Stake', 'Special'] as const;
 export type EventType = (typeof EVENT_TYPES)[number];
 
+/** Why an admin marked an event as handled manually (the worker then stands down). */
+export const MANUAL_OVERRIDE_REASONS = [
+  'worker_offline',
+  'granted_directly',
+  'not_needed',
+  'other',
+] as const;
+export type ManualOverrideReason = (typeof MANUAL_OVERRIDE_REASONS)[number];
+
+export const MANUAL_OVERRIDE_REASON_LABELS: Record<ManualOverrideReason, string> = {
+  worker_offline: 'Worker offline',
+  granted_directly: 'Granted directly in Kindoo',
+  not_needed: 'Not needed',
+  other: 'Other',
+};
+
+export const MANUAL_OVERRIDE_NOTE_MAX_LENGTH = 500;
+
+export const MANUAL_OVERRIDE_LOG_ACTIONS = [
+  'marked',
+  'reopened',
+  'worker_result_after_override',
+] as const;
+export type ManualOverrideLogAction = (typeof MANUAL_OVERRIDE_LOG_ACTIONS)[number];
+
 // ─── Auth.js Required Tables ──────────────────────────────────────────────────
 
 export const users = sqliteTable('user', {
@@ -181,6 +206,19 @@ export const events = sqliteTable('event', {
   kindooLicenseCreated: integer('kindoo_license_created', { mode: 'boolean' })
     .notNull()
     .default(false),
+  /**
+   * "Handled manually" overlay. When manual_handled_at is set, the Kindoo worker must not
+   * queue, claim, retry or run anything for this event. The automation state (jobs, license
+   * flag) is left untouched so reopening restores it exactly.
+   */
+  manualHandledAt: integer('manual_handled_at', { mode: 'timestamp' }),
+  manualHandledByUserId: text('manual_handled_by_user_id').references(() => users.id, {
+    onDelete: 'set null',
+  }),
+  manualReason: text('manual_reason', {
+    enum: MANUAL_OVERRIDE_REASONS,
+  }).$type<ManualOverrideReason>(),
+  manualNote: text('manual_note'),
   userId: text('userId')
     .notNull()
     .references(() => users.id, { onDelete: 'cascade' }),
@@ -188,6 +226,38 @@ export const events = sqliteTable('event', {
     .notNull()
     .default(sql`(unixepoch())`),
 });
+
+/** Append-only history of manual overrides and of worker results that landed after one. */
+export const eventManualOverrideLog = sqliteTable(
+  'event_manual_override_log',
+  {
+    id: text('id')
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    eventId: text('event_id')
+      .notNull()
+      .references(() => events.id, { onDelete: 'cascade' }),
+    action: text('action', { enum: MANUAL_OVERRIDE_LOG_ACTIONS })
+      .notNull()
+      .$type<ManualOverrideLogAction>(),
+    actorUserId: text('actor_user_id').references(() => users.id, { onDelete: 'set null' }),
+    /** Snapshot so the audit line survives user deletion. Null for worker rows. */
+    actorName: text('actor_name'),
+    reason: text('reason', { enum: MANUAL_OVERRIDE_REASONS }).$type<ManualOverrideReason>(),
+    note: text('note'),
+    /** JSON: automation state at that moment (see ManualOverrideDetails in manual-override.ts). */
+    details: text('details'),
+    createdAt: integer('created_at', { mode: 'timestamp' })
+      .notNull()
+      .default(sql`(unixepoch())`),
+  },
+  (table) => ({
+    eventCreatedIdx: index('event_manual_override_log_event_created_idx').on(
+      table.eventId,
+      table.createdAt
+    ),
+  })
+);
 
 // ─── Message Templates ───────────────────────────────────────────────────────
 
@@ -383,6 +453,8 @@ export const licenseWorkerHeartbeats = sqliteTable(
     workerId: text('worker_id').primaryKey(),
     host: text('host'),
     mode: text('mode'),
+    // The poll interval the worker reported in its heartbeat (null for older workers).
+    intervalMs: integer('interval_ms'),
     lastSeenAt: integer('last_seen_at', { mode: 'timestamp_ms' })
       .notNull()
       .default(sql`(unixepoch() * 1000)`),
@@ -399,6 +471,9 @@ export type NewUser = typeof users.$inferInsert;
 
 export type AccessRequest = typeof accessRequests.$inferSelect;
 export type NewAccessRequest = typeof accessRequests.$inferInsert;
+
+export type EventManualOverrideLogEntry = typeof eventManualOverrideLog.$inferSelect;
+export type NewEventManualOverrideLogEntry = typeof eventManualOverrideLog.$inferInsert;
 
 export type Event = typeof events.$inferSelect;
 export type NewEvent = typeof events.$inferInsert;

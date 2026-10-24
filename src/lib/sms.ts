@@ -7,6 +7,15 @@ export interface SendSmsInput {
   body: string;
 }
 
+/** True when all Twilio settings are present. Callers use it to skip optional texts quietly. */
+export function isSmsConfigured(): boolean {
+  return Boolean(
+    process.env.TWILIO_ACCOUNT_SID?.trim() &&
+    process.env.TWILIO_AUTH_TOKEN?.trim() &&
+    process.env.TWILIO_FROM_NUMBER?.trim()
+  );
+}
+
 export async function sendSms(
   input: SendSmsInput
 ): Promise<{ ok: true; providerMessageId: string | null } | { ok: false; error: string }> {

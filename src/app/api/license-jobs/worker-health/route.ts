@@ -1,12 +1,6 @@
 import { auth } from '@/lib/auth';
-import { getWorkerHealth } from '@/lib/license-worker-health';
+import { getEffectiveWorkerPollIntervalMs, getWorkerHealth } from '@/lib/license-worker-health';
 import { NextResponse } from 'next/server';
-
-function getWorkerPollIntervalMs() {
-  const parsed = Number.parseInt(process.env.KINDOO_WORKER_INTERVAL_MS ?? '60000', 10);
-  if (!Number.isFinite(parsed)) return 60000;
-  return Math.max(parsed, 5000);
-}
 
 export async function GET() {
   const session = await auth();
@@ -16,8 +10,8 @@ export async function GET() {
     return NextResponse.json({ error: 'Not authenticated.' }, { status: 401 });
   }
 
-  const workerPollIntervalMs = getWorkerPollIntervalMs();
-  const health = await getWorkerHealth(workerPollIntervalMs);
+  const workerPollIntervalMs = await getEffectiveWorkerPollIntervalMs();
+  const health = await getWorkerHealth();
 
   return NextResponse.json({
     ok: true,

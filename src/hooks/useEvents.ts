@@ -12,6 +12,8 @@ import {
   deleteEvents,
   getEventsByBuilding,
   importEvents,
+  markEventHandledManually,
+  reopenEventForAutomation,
   setKindooLicenseCreated,
   updateEvent,
 } from '@/actions/events';
@@ -83,6 +85,8 @@ export function useAddEvent(onSuccess?: () => void) {
         contactId: `optimistic-contact-${Date.now()}`,
         description: newEventInput.description,
         kindooLicenseCreated: false,
+        manualHandledAt: null,
+        manualReason: null,
         userId: 'pending',
         createdAt: new Date(),
         creatorName: null,
@@ -240,6 +244,8 @@ export function useUpdateEvent() {
           contactId: `optimistic-contact-${Date.now()}`,
           description: input.description,
           kindooLicenseCreated: false,
+          manualHandledAt: null,
+          manualReason: null,
           creatorName: null,
           creatorEmail: null,
           creatorRole: null,
@@ -375,6 +381,36 @@ export function useImportEvents() {
       return result.data as ImportEventsResult;
     },
 
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: eventKeys.all });
+    },
+  });
+}
+
+export function useMarkEventHandledManually() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (input: { eventId: string; reason: string; note?: string | null }) => {
+      const result = await markEventHandledManually(input);
+      if (!result.success) throw new Error(result.error);
+      return result.data!;
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: eventKeys.all });
+    },
+  });
+}
+
+export function useReopenEventForAutomation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (input: { eventId: string }) => {
+      const result = await reopenEventForAutomation(input);
+      if (!result.success) throw new Error(result.error);
+      return result.data!;
+    },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: eventKeys.all });
     },

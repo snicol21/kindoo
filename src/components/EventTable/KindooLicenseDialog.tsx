@@ -11,9 +11,10 @@ import {
   DialogTitle,
 } from '@/components/_ui/dialog';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/_ui/tooltip';
+import { ManualOverrideSection } from '@/components/EventTable/ManualOverrideSection';
 import { formatWardLabel } from '@/lib/ward-utils';
 import { parseTimeToMinutes } from '@/utils/timeUtils';
-import { AlertTriangle, CheckCircle2, Clock, Copy, Loader2, RotateCw } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Clock, Copy, Hand, Loader2, RotateCw } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -33,6 +34,9 @@ type KindooLicenseDialogProps = {
   } | null;
   formatDateAction: (dateStr: string) => string;
   formatTimeRangeAction: (startTime: string, endTime: string) => string;
+  /** Admin only: shows the mark and reopen controls. */
+  canMarkHandledManually?: boolean;
+  onOpenManualOverrideAction?: (event: EventWithCreator, mode: 'mark' | 'reopen') => void;
 };
 
 type LicenseJobStatus = 'queued' | 'processing' | 'completed' | 'failed';
@@ -99,7 +103,19 @@ function getJobStatusVisual(status: LicenseJobStatus) {
   }
 }
 
+const handledManuallyVisual = {
+  label: 'Handled manually',
+  textClassName: 'text-violet-700 dark:text-violet-300',
+  badgeClassName:
+    'border border-violet-300 bg-violet-100/80 dark:border-violet-700/60 dark:bg-violet-900/30',
+  icon: <Hand className="h-3.5 w-3.5" />,
+};
+
 function getOutcomeStatusVisual(outcome: string) {
+  if (outcome === 'Handled manually') {
+    return handledManuallyVisual;
+  }
+
   if (outcome === 'Request in progress' || outcome === 'Retry in progress') {
     return {
       label: outcome,
@@ -313,6 +329,8 @@ export function KindooLicenseDialog({
   getLicenseTimesAction,
   formatDateAction,
   formatTimeRangeAction,
+  canMarkHandledManually = false,
+  onOpenManualOverrideAction,
 }: KindooLicenseDialogProps) {
   const licenseDialogContentRef = useRef<HTMLDivElement | null>(null);
   const submitKindooLicenseStatusRef = useRef(submitKindooLicenseStatusAction);
@@ -540,15 +558,20 @@ export function KindooLicenseDialog({
     countdownToScheduledMs !== null ? formatCountdownMs(countdownToScheduledMs) : null;
   const isScheduledPast = countdownToScheduledMs !== null && countdownToScheduledMs <= 0;
 
+  const isHandledManually = !!licenseEvent?.manualHandledAt;
+
   const shouldShowAutomationQueued =
+    !isHandledManually &&
     !latestJob &&
     isScheduledPast &&
     (initialLicenseOutcome === 'Auto-schedule pending' ||
       initialLicenseOutcome === 'Scheduled for license');
 
-  const effectiveOutcome = shouldShowAutomationQueued
-    ? 'Scheduling queued'
-    : (completionLabel ?? initialLicenseOutcome ?? null);
+  const effectiveOutcome = isHandledManually
+    ? 'Handled manually'
+    : shouldShowAutomationQueued
+      ? 'Scheduling queued'
+      : (completionLabel ?? initialLicenseOutcome ?? null);
 
   const displayOutcome =
     effectiveOutcome === 'Temporary license created' ||
@@ -560,16 +583,20 @@ export function KindooLicenseDialog({
       ? effectiveOutcome
       : null;
 
-  const latestStatusVisual = effectiveOutcome
-    ? getOutcomeStatusVisual(effectiveOutcome)
-    : latestJob
-      ? getJobStatusVisual(latestJob.status)
-      : getOutcomeStatusVisual('');
+  const latestStatusVisual = isHandledManually
+    ? handledManuallyVisual
+    : effectiveOutcome
+      ? getOutcomeStatusVisual(effectiveOutcome)
+      : latestJob
+        ? getJobStatusVisual(latestJob.status)
+        : getOutcomeStatusVisual('');
 
   const canRetryFailedJob =
-    (!!queuedJobId && jobStatus === 'failed') || (!queuedJobId && latestJob?.status === 'failed');
+    !isHandledManually &&
+    ((!!queuedJobId && jobStatus === 'failed') || (!queuedJobId && latestJob?.status === 'failed'));
 
   const showWorkerWarning =
+    !isHandledManually &&
     (jobStatus === 'queued' || jobStatus === 'processing') &&
     workerHealth &&
     (workerHealth.status === 'down' ||
@@ -728,6 +755,14 @@ export function KindooLicenseDialog({
                       />
                     </div>
                   </section>
+
+                  <ManualOverrideSection
+                    event={licenseEvent}
+                    canMark={canMarkHandledManually && !!onOpenManualOverrideAction}
+                    onOpenOverrideAction={(event, mode) =>
+                      onOpenManualOverrideAction?.(event, mode)
+                    }
+                  />
 
                   {/* Timing */}
                   <section>

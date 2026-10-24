@@ -1,6 +1,6 @@
 import { db } from '@/lib/db';
-import { kindooLicenseJobs } from '@/schema/schema';
-import { and, asc, eq, lt, sql } from 'drizzle-orm';
+import { events, kindooLicenseJobs } from '@/schema/schema';
+import { and, asc, eq, isNull, lt, sql } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 
 const DEFAULT_CLAIM_LIMIT = 3;
@@ -85,10 +85,12 @@ export async function POST(request: Request) {
       )
     );
 
+  // Jobs for events an admin marked as handled manually are never claimed.
   const candidates = await db
     .select({ id: kindooLicenseJobs.id })
     .from(kindooLicenseJobs)
-    .where(eq(kindooLicenseJobs.status, 'queued'))
+    .innerJoin(events, eq(kindooLicenseJobs.eventId, events.id))
+    .where(and(eq(kindooLicenseJobs.status, 'queued'), isNull(events.manualHandledAt)))
     .orderBy(asc(kindooLicenseJobs.createdAt))
     .limit(limit);
 
@@ -125,7 +127,14 @@ export async function POST(request: Request) {
         durationMs: null,
         sessionReused: null,
       })
-      .where(and(eq(kindooLicenseJobs.id, candidate.id), eq(kindooLicenseJobs.status, 'queued')))
+      .where(
+        and(
+          eq(kindooLicenseJobs.id, candidate.id),
+          eq(kindooLicenseJobs.status, 'queued'),
+          // Re-check at claim time so a mark made after the select above is still honored.
+          sql`${kindooLicenseJobs.eventId} not in (select id from event where manual_handled_at is not null)`
+        )
+      )
       .returning({
         id: kindooLicenseJobs.id,
         eventId: kindooLicenseJobs.eventId,

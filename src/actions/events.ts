@@ -18,8 +18,19 @@ import {
   type ImportEventsResult,
   type UpdateEventInput,
 } from '@/lib/events-service';
+import {
+  getManualOverrideAuditForAccess,
+  markEventHandledManuallyForAccess,
+  previewReopenForAccess,
+  reopenEventForAutomationForAccess,
+  type ManualOverrideAudit,
+  type ManualOverrideSmsResult,
+  type ReopenPreview,
+} from '@/lib/manual-override';
 import { users, type Building, type Event, type UserRole } from '@/schema/schema';
 import { eq } from 'drizzle-orm';
+
+export type { ManualOverrideAudit, ReopenPreview };
 
 export type {
   AccessContext,
@@ -105,4 +116,40 @@ export async function setKindooLicenseCreated(input: {
   const access = await resolveAccessContext();
   if (!access.success || !access.data) return { success: false, error: access.error };
   return setKindooLicenseCreatedForAccess(access.data, input);
+}
+
+// ─── Handled manually (admin override) ────────────────────────────────────────
+
+export async function markEventHandledManually(input: {
+  eventId: string;
+  reason: string;
+  note?: string | null;
+}): Promise<ActionResult<ManualOverrideSmsResult>> {
+  const access = await resolveAccessContext();
+  if (!access.success || !access.data) return { success: false, error: access.error };
+  return markEventHandledManuallyForAccess(access.data, input);
+}
+
+export async function previewReopenEventForAutomation(input: {
+  eventId: string;
+}): Promise<ActionResult<ReopenPreview>> {
+  const access = await resolveAccessContext();
+  if (!access.success || !access.data) return { success: false, error: access.error };
+  return previewReopenForAccess(access.data, input);
+}
+
+export async function reopenEventForAutomation(input: {
+  eventId: string;
+}): Promise<ActionResult<ReopenPreview & ManualOverrideSmsResult>> {
+  const access = await resolveAccessContext();
+  if (!access.success || !access.data) return { success: false, error: access.error };
+  return reopenEventForAutomationForAccess(access.data, input);
+}
+
+export async function getEventManualOverrideAudit(input: {
+  eventId: string;
+}): Promise<ActionResult<ManualOverrideAudit>> {
+  const access = await resolveAccessContext();
+  if (!access.success || !access.data) return { success: false, error: access.error };
+  return getManualOverrideAuditForAccess(access.data, input);
 }

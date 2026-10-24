@@ -1,6 +1,6 @@
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
-import { kindooLicenseJobs } from '@/schema/schema';
+import { events, kindooLicenseJobs } from '@/schema/schema';
 import { and, eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 
@@ -20,8 +20,10 @@ export async function POST(_request: Request, context: { params: Promise<{ jobId
       id: kindooLicenseJobs.id,
       requestedByUserId: kindooLicenseJobs.requestedByUserId,
       status: kindooLicenseJobs.status,
+      manualHandledAt: events.manualHandledAt,
     })
     .from(kindooLicenseJobs)
+    .innerJoin(events, eq(kindooLicenseJobs.eventId, events.id))
     .where(eq(kindooLicenseJobs.id, jobId))
     .limit(1);
 
@@ -33,6 +35,13 @@ export async function POST(_request: Request, context: { params: Promise<{ jobId
   const canRetryJob = sessionRole !== 'ward_user' || job.requestedByUserId === userId;
   if (!canRetryJob) {
     return NextResponse.json({ error: 'Not authorized for this job.' }, { status: 403 });
+  }
+
+  if (job.manualHandledAt) {
+    return NextResponse.json(
+      { error: 'This event is marked as handled manually. Reopen it before retrying.' },
+      { status: 409 }
+    );
   }
 
   if (job.status !== 'failed') {

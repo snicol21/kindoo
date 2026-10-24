@@ -2,6 +2,7 @@ import { db } from '@/lib/db';
 import { hasEventStarted } from '@/lib/kindoo-access';
 import { resolveLicenseJobSmsRecipientIds } from '@/lib/license-job-recipients';
 import { loadEventSmsDetails } from '@/lib/license-job-sms';
+import { isEventHandledManually, logWorkerResultAfterOverride } from '@/lib/manual-override';
 import { sendNotificationEventSms } from '@/lib/notifications';
 import { buildLicenseJobFailedSms } from '@/lib/sms-message-templates';
 import { kindooLicenseJobs } from '@/schema/schema';
@@ -78,23 +79,33 @@ export async function POST(request: Request, context: { params: Promise<{ jobId:
     return NextResponse.json({ error: 'Job not found or not processing.' }, { status: 404 });
   }
 
-  try {
-    const eventDetails = await loadEventSmsDetails(job.eventId);
-    if (!eventDetails) {
-      throw new Error(`Event ${job.eventId} not found for SMS.`);
-    }
-
-    await sendNotificationEventSms({
-      eventKey: 'license_job_failed',
-      recipientUserIds: await resolveLicenseJobSmsRecipientIds(job.requestedByUserId),
-      message: buildLicenseJobFailedSms({
-        ...eventDetails,
-        details,
-        afterStart: hasEventStarted(eventDetails.eventDate, eventDetails.startTime),
-      }),
+  // The job row records the failure either way. For an event an admin marked as handled
+  // manually there is nobody to text, so skip the SMS and log the late result instead.
+  if (await isEventHandledManually(job.eventId)) {
+    await logWorkerResultAfterOverride(job.eventId, {
+      jobId: job.id,
+      outcome: 'failed',
+      error: details,
     });
-  } catch (error) {
-    console.error('[license-jobs.fail] Failed to send SMS notifications:', error);
+  } else {
+    try {
+      const eventDetails = await loadEventSmsDetails(job.eventId);
+      if (!eventDetails) {
+        throw new Error(`Event ${job.eventId} not found for SMS.`);
+      }
+
+      await sendNotificationEventSms({
+        eventKey: 'license_job_failed',
+        recipientUserIds: await resolveLicenseJobSmsRecipientIds(job.requestedByUserId),
+        message: buildLicenseJobFailedSms({
+          ...eventDetails,
+          details,
+          afterStart: hasEventStarted(eventDetails.eventDate, eventDetails.startTime),
+        }),
+      });
+    } catch (error) {
+      console.error('[license-jobs.fail] Failed to send SMS notifications:', error);
+    }
   }
 
   return NextResponse.json({

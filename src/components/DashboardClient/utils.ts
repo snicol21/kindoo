@@ -117,6 +117,8 @@ function isPastForDashboard(event: EventWithCreator) {
 }
 
 function isPendingAutomation(event: EventWithCreator) {
+  // The worker skips events an admin marked as handled manually, so they are never pending.
+  if (event.manualHandledAt) return false;
   if (event.kindooLicenseCreated) return false;
   const now = Date.now();
   const dueTimestamp = getDueTimestamp(event.eventDate, event.startTime);
@@ -141,10 +143,13 @@ export function buildDashboardCounts(
     let active = 0;
     let upcoming = 0;
     let past = 0;
+    let handled = 0;
 
     for (const event of events) {
       if (isPastForDashboard(event)) {
         past += 1;
+      } else if (event.manualHandledAt) {
+        handled += 1;
       } else if (event.kindooLicenseCreated) {
         active += 1;
       } else if (isPendingAutomation(event)) {
@@ -154,7 +159,7 @@ export function buildDashboardCounts(
       }
     }
 
-    return { pending, active, upcoming, past };
+    return { pending, active, upcoming, past, handled };
   };
 
   const stake = classify(stakeCenterEvents);
@@ -181,6 +186,11 @@ export function buildDashboardCounts(
       maples: maples.past,
       total: stake.past + maples.past,
     },
+    handledManually: {
+      stake: stake.handled,
+      maples: maples.handled,
+      total: stake.handled + maples.handled,
+    },
   };
 }
 
@@ -205,7 +215,8 @@ export function buildWardBreakdown(events: EventWithCreator[]): WardBreakdownRow
     current.total += 1;
     if (isPastForDashboard(event)) {
       current.past += 1;
-    } else if (event.kindooLicenseCreated) {
+    } else if (event.kindooLicenseCreated || event.manualHandledAt) {
+      // Handled manually counts as taken care of in the ward breakdown.
       current.active += 1;
     } else if (isPendingAutomation(event)) {
       current.pending += 1;
@@ -239,7 +250,8 @@ export function buildDotCalendarDays(activeUpcoming: EventWithCreator[]): DotCal
 
     if (isPastForDashboard(event)) {
       current.past += 1;
-    } else if (event.kindooLicenseCreated) {
+    } else if (event.kindooLicenseCreated || event.manualHandledAt) {
+      // Handled manually counts as taken care of in the ward breakdown.
       current.active += 1;
     } else if (isPendingAutomation(event)) {
       current.pending += 1;
@@ -294,4 +306,36 @@ export function buildDotCalendarDays(activeUpcoming: EventWithCreator[]): DotCal
   }
 
   return days;
+}
+
+export const EVENT_STATUS_FILTERS = ['all', 'handled', 'automated', 'not-yet-handled'] as const;
+export type EventStatusFilter = (typeof EVENT_STATUS_FILTERS)[number];
+
+export const EVENT_STATUS_FILTER_LABELS: Record<EventStatusFilter, string> = {
+  all: 'All',
+  handled: 'Handled manually',
+  automated: 'Automated',
+  'not-yet-handled': 'Not yet handled',
+};
+
+/**
+ * Status filter for the events list.
+ * - handled: an admin marked it as handled manually
+ * - automated: not handled manually and a Kindoo license is recorded as created
+ * - not-yet-handled: not handled manually and no license recorded yet
+ */
+export function matchesEventStatusFilter(
+  event: Pick<EventWithCreator, 'manualHandledAt' | 'kindooLicenseCreated'>,
+  filter: EventStatusFilter
+) {
+  switch (filter) {
+    case 'handled':
+      return !!event.manualHandledAt;
+    case 'automated':
+      return !event.manualHandledAt && !!event.kindooLicenseCreated;
+    case 'not-yet-handled':
+      return !event.manualHandledAt && !event.kindooLicenseCreated;
+    default:
+      return true;
+  }
 }

@@ -1,5 +1,6 @@
 import { db } from '@/lib/db';
 import { getKindooAccessPlan } from '@/lib/kindoo-access';
+import { eventEndsInFuture } from '@/lib/license-schedule';
 import { sendNotificationEventSms } from '@/lib/notifications';
 import { canCreateEventInBuildingForWard, canMutateEvent } from '@/lib/permissions';
 import { buildEventCreatedSms } from '@/lib/sms-message-templates';
@@ -19,6 +20,7 @@ import {
   type Building,
   type Event,
   type EventType,
+  type ManualOverrideReason,
   type UserRole,
   type Ward,
 } from '@/schema/schema';
@@ -60,6 +62,9 @@ export interface EventWithCreator {
   contactId: string;
   description: string;
   kindooLicenseCreated: boolean;
+  /** Set when an admin marked the event as handled manually (worker stands down). */
+  manualHandledAt: Date | null;
+  manualReason: ManualOverrideReason | null;
   userId: string;
   createdAt: Date;
   creatorName: string | null;
@@ -161,37 +166,6 @@ export function normalizeEventInput(
     email: normalizeEmail(input.email),
     description: input.description.trim(),
   };
-}
-
-function getCurrentYmdHmInTimeZone(timeZone: string) {
-  const parts = new Intl.DateTimeFormat('en-CA', {
-    timeZone,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    hourCycle: 'h23',
-  }).formatToParts(new Date());
-
-  const byType = new Map(parts.map((part) => [part.type, part.value]));
-  const year = byType.get('year') ?? '';
-  const month = byType.get('month') ?? '';
-  const day = byType.get('day') ?? '';
-  const hour = byType.get('hour') ?? '00';
-  const minute = byType.get('minute') ?? '00';
-
-  return {
-    ymd: `${year}-${month}-${day}`,
-    hm: `${hour}:${minute}`,
-  };
-}
-
-function eventEndsInFuture(eventDate: string, endTime: string, timeZone: string) {
-  const now = getCurrentYmdHmInTimeZone(timeZone);
-  if (eventDate > now.ymd) return true;
-  if (eventDate < now.ymd) return false;
-  return endTime >= now.hm;
 }
 
 export function validateEventInput(input: AddEventInput): string | null {
@@ -409,20 +383,7 @@ export async function createEventForAccess(
     let notificationDelivery: NotificationDeliverySummary | undefined;
 
     try {
-      const recipients = await db
-        .select({ id: users.id, role: users.role, ward: users.ward })
-        .from(users)
-        .where(
-          or(
-            eq(users.role, 'admin'),
-            eq(users.role, 'stake_manager'),
-            and(eq(users.role, 'ward_manager'), eq(users.ward, normalizedInput.ward))
-          )
-        );
-
-      const recipientUserIds = recipients
-        .map((candidate) => candidate.id)
-        .filter((candidateId) => candidateId !== userId);
+      const recipientUserIds = await listEventCreatedRecipientIds(normalizedInput.ward, userId);
 
       notificationDelivery = {
         attempted: recipientUserIds.length,
@@ -488,6 +449,24 @@ export async function createEventForAccess(
   }
 }
 
+/**
+ * Users who get the "new booking" text for an event in this ward: admins, stake managers and the
+ * ward's managers, never the person who made the change. Shared with the handled-manually texts.
+ */
+export async function listEventCreatedRecipientIds(ward: Ward, excludeUserId: string) {
+  const recipients = await db
+    .select({ id: users.id })
+    .from(users)
+    .where(
+      or(
+        eq(users.role, 'admin'),
+        eq(users.role, 'stake_manager'),
+        and(eq(users.role, 'ward_manager'), eq(users.ward, ward))
+      )
+    );
+  return recipients.map((candidate) => candidate.id).filter((id) => id !== excludeUserId);
+}
+
 function buildRoleScopedBuildingPredicate(
   access: AccessContext,
   building: Building
@@ -551,6 +530,8 @@ export async function listEventsForAccess(
         contactId: events.contactId,
         description: events.description,
         kindooLicenseCreated: events.kindooLicenseCreated,
+        manualHandledAt: events.manualHandledAt,
+        manualReason: events.manualReason,
         userId: events.userId,
         createdAt: events.createdAt,
         creatorName: users.name,
