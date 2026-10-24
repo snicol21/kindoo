@@ -86,6 +86,32 @@ async function markJobCompleted(jobId, result, runLog = '') {
   });
 }
 
+/**
+ * Pre-run check. A job claimed earlier in the batch can wait several minutes before it starts,
+ * and an admin may mark its event as "handled manually" in that time. Ask the server right
+ * before running. Returns false when the job must not run.
+ * An older server without this route (404) is treated as "proceed" so the worker still works
+ * during a rollout.
+ */
+async function confirmJobCanStart(jobId) {
+  try {
+    const response = await requestJson(`/api/license-jobs/${jobId}/start`, 'POST');
+    if (response?.proceed === false) {
+      console.log(
+        `[worker:${WORKER_ID}] job ${jobId} stands down (${response.reason ?? 'not allowed to start'})`
+      );
+      return false;
+    }
+    return true;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : '';
+    if (message.includes('(404)')) {
+      return true;
+    }
+    throw error;
+  }
+}
+
 async function sendHeartbeat(mode) {
   await requestJson('/api/license-jobs/heartbeat', 'POST', {
     mode,
@@ -120,6 +146,7 @@ async function runOneCycle() {
   const cycleStats = {
     completed: 0,
     failed: 0,
+    skipped: 0,
     existingActiveLicense: 0,
     temporaryLicenseCreated: 0,
     sessionReusedCount: 0,
@@ -139,6 +166,10 @@ async function runOneCycle() {
       }
 
       try {
+        if (!(await confirmJobCanStart(job.id))) {
+          cycleStats.skipped += 1;
+          continue;
+        }
         if (!sharedRuntime) {
           sharedRuntime = await createAutomationRuntime(requestId);
         }
@@ -183,6 +214,7 @@ async function runOneCycle() {
     claimed: jobs.length,
     completed: cycleStats.completed,
     failed: cycleStats.failed,
+    skipped: cycleStats.skipped,
     temporaryLicenseCreated: cycleStats.temporaryLicenseCreated,
     existingActiveLicense: cycleStats.existingActiveLicense,
     sessionReusedCount: cycleStats.sessionReusedCount,

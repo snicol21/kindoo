@@ -1,9 +1,10 @@
 import { db } from '@/lib/db';
 import { loadEventSmsDetails } from '@/lib/license-job-sms';
+import { isEventHandledManually, logWorkerResultAfterOverride } from '@/lib/manual-override';
 import { sendNotificationEventSms } from '@/lib/notifications';
 import { buildLicenseJobCompletedSms } from '@/lib/sms-message-templates';
 import { events, kindooLicenseJobs } from '@/schema/schema';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, isNull } from 'drizzle-orm';
 import { revalidateTag } from 'next/cache';
 import { NextResponse } from 'next/server';
 
@@ -98,10 +99,13 @@ export async function POST(request: Request, context: { params: Promise<{ jobId:
     return NextResponse.json({ error: 'Job not found or not processing.' }, { status: 404 });
   }
 
+  // The job row above always records what the worker did. If an admin marked the event as
+  // handled manually, the event flag stays untouched, no SMS goes out, and the late result is
+  // logged. The condition is part of the UPDATE so a mark racing this request is honored.
   const [eventRecord] = await db
     .update(events)
     .set({ kindooLicenseCreated: true })
-    .where(eq(events.id, job.eventId))
+    .where(and(eq(events.id, job.eventId), isNull(events.manualHandledAt)))
     .returning({
       id: events.id,
       userId: events.userId,
@@ -113,19 +117,28 @@ export async function POST(request: Request, context: { params: Promise<{ jobId:
     revalidateTag(`events-${eventRecord.userId}-${eventRecord.building}`, 'max');
   }
 
-  try {
-    const eventDetails = await loadEventSmsDetails(job.eventId);
-    if (!eventDetails) {
-      throw new Error(`Event ${job.eventId} not found for SMS.`);
-    }
-
-    await sendNotificationEventSms({
-      eventKey: 'license_job_completed',
-      recipientUserIds: [job.requestedByUserId],
-      message: buildLicenseJobCompletedSms({ ...eventDetails }),
+  const handledManually = !eventRecord && (await isEventHandledManually(job.eventId));
+  if (handledManually) {
+    await logWorkerResultAfterOverride(job.eventId, {
+      jobId: job.id,
+      outcome: 'completed',
+      completionType: job.completionType,
     });
-  } catch (error) {
-    console.error('[license-jobs.complete] Failed to send SMS notifications:', error);
+  } else {
+    try {
+      const eventDetails = await loadEventSmsDetails(job.eventId);
+      if (!eventDetails) {
+        throw new Error(`Event ${job.eventId} not found for SMS.`);
+      }
+
+      await sendNotificationEventSms({
+        eventKey: 'license_job_completed',
+        recipientUserIds: [job.requestedByUserId],
+        message: buildLicenseJobCompletedSms({ ...eventDetails }),
+      });
+    } catch (error) {
+      console.error('[license-jobs.complete] Failed to send SMS notifications:', error);
+    }
   }
 
   return NextResponse.json({

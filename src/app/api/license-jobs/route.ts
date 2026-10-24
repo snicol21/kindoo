@@ -121,6 +121,7 @@ export async function POST(request: Request) {
       id: events.id,
       userId: events.userId,
       building: events.building,
+      manualHandledAt: events.manualHandledAt,
     })
     .from(events)
     .where(eq(events.id, normalizedPayload.eventId))
@@ -128,6 +129,13 @@ export async function POST(request: Request) {
 
   if (!eventRecord) {
     return NextResponse.json({ error: 'Event not found.' }, { status: 404 });
+  }
+
+  if (eventRecord.manualHandledAt) {
+    return NextResponse.json(
+      { error: 'This event is marked as handled manually. Reopen it before requesting a license.' },
+      { status: 409 }
+    );
   }
 
   const sessionRole = sessionUser?.role ?? 'ward_user';
