@@ -1,4 +1,6 @@
 import { db } from '@/lib/db';
+import { hasEventStarted } from '@/lib/kindoo-access';
+import { resolveLicenseJobSmsRecipientIds } from '@/lib/license-job-recipients';
 import { loadEventSmsDetails } from '@/lib/license-job-sms';
 import { sendNotificationEventSms } from '@/lib/notifications';
 import { buildLicenseJobFailedSms } from '@/lib/sms-message-templates';
@@ -84,8 +86,12 @@ export async function POST(request: Request, context: { params: Promise<{ jobId:
 
     await sendNotificationEventSms({
       eventKey: 'license_job_failed',
-      recipientUserIds: [job.requestedByUserId],
-      message: buildLicenseJobFailedSms({ ...eventDetails, details }),
+      recipientUserIds: await resolveLicenseJobSmsRecipientIds(job.requestedByUserId),
+      message: buildLicenseJobFailedSms({
+        ...eventDetails,
+        details,
+        afterStart: hasEventStarted(eventDetails.eventDate, eventDetails.startTime),
+      }),
     });
   } catch (error) {
     console.error('[license-jobs.fail] Failed to send SMS notifications:', error);

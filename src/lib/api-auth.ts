@@ -1,4 +1,5 @@
 import { isAdminEmail } from '@/lib/admin';
+import { API_ACTOR_EMAIL } from '@/lib/api-actor';
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
 import type { AccessContext } from '@/lib/events-service';
@@ -14,7 +15,6 @@ function apiTokensEqual(provided: string, configured: string): boolean {
   return timingSafeEqual(a, b);
 }
 
-const API_ACTOR_EMAIL = 'facilities-api@kindoo.internal';
 const API_ACTOR_NAME = 'Facilities Lead API';
 
 /**
