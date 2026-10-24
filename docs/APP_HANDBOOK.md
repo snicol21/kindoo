@@ -115,7 +115,7 @@ Important values:
 
 - Connectivity: `KINDOO_APP_URL`
 - Auth link: `KINDOO_WORKER_TOKEN` (must match app env)
-- Worker tuning: `KINDOO_WORKER_ID`, `KINDOO_WORKER_CLAIM_LIMIT`, `KINDOO_WORKER_INTERVAL_MS`
+- Worker tuning: `KINDOO_WORKER_ID`, `KINDOO_WORKER_CLAIM_LIMIT`, `KINDOO_WORKER_INTERVAL_MS` (set on the worker machine; the app learns it from the heartbeat)
 - Kindoo credentials and Playwright runtime settings
 
 ## 8. Local Development
@@ -164,7 +164,7 @@ pnpm db:reset
 
 Operational indicators:
 
-- Healthy worker heartbeat freshness
+- Healthy worker heartbeat freshness (thresholds come from the interval the worker reports in its heartbeat: healthy up to 1.5 x interval + 5 minutes, stale up to 4 x interval + 10 minutes)
 - Queue status transitions (`queued` -> `processing` -> `completed`/`failed`)
 - `event.kindooLicenseCreated` set when job completes successfully
 
@@ -187,6 +187,7 @@ Check:
 
 - `unknown`: no heartbeat has been recorded yet
 - `down`: heartbeat is older than threshold; verify worker process and logs
+- The interval is reported by the worker (`intervalMs` in the heartbeat). `KINDOO_WORKER_INTERVAL_MS` in the app env is only a fallback for older workers that do not report it.
 
 ## 12. Security Notes
 

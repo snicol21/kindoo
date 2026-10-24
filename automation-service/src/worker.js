@@ -13,7 +13,15 @@ const APP_URL = process.env.KINDOO_APP_URL?.replace(/\/$/, '');
 const WORKER_TOKEN = process.env.KINDOO_WORKER_TOKEN;
 const WORKER_ID = process.env.KINDOO_WORKER_ID?.trim() || `${hostname()}-kindoo-worker`;
 const CLAIM_LIMIT = Number.parseInt(process.env.KINDOO_WORKER_CLAIM_LIMIT ?? '3', 10);
-const WATCH_INTERVAL_MS = Number.parseInt(process.env.KINDOO_WORKER_INTERVAL_MS ?? '600000', 10);
+const WATCH_INTERVAL_PARSED_MS = Number.parseInt(
+  process.env.KINDOO_WORKER_INTERVAL_MS ?? '600000',
+  10
+);
+// The effective sleep between watch cycles: never below 5 seconds, 10 minutes if the value is invalid.
+const WATCH_INTERVAL_MS = Math.max(
+  Number.isFinite(WATCH_INTERVAL_PARSED_MS) ? WATCH_INTERVAL_PARSED_MS : 600000,
+  5000
+);
 const WORKER_HOST = hostname();
 
 function requireEnv(name, value) {
@@ -116,6 +124,8 @@ async function sendHeartbeat(mode) {
   await requestJson('/api/license-jobs/heartbeat', 'POST', {
     mode,
     host: WORKER_HOST,
+    // The effective sleep between cycles, so the app can size its offline banner from the worker itself.
+    intervalMs: WATCH_INTERVAL_MS,
   });
 }
 
@@ -262,7 +272,7 @@ async function main() {
       const message = error instanceof Error ? error.message : 'Worker cycle failed.';
       console.error(`[worker:${WORKER_ID}] ${message}`);
     }
-    await sleep(Math.max(WATCH_INTERVAL_MS, 5000));
+    await sleep(WATCH_INTERVAL_MS);
   }
 }
 

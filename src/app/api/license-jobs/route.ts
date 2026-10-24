@@ -1,5 +1,6 @@
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
+import { getEffectiveWorkerPollIntervalMs } from '@/lib/license-worker-health';
 import { events, kindooLicenseJobs } from '@/schema/schema';
 import { and, eq, inArray } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
@@ -16,12 +17,6 @@ type LicensePayload = {
   endTime: string;
   kindooAccessRule?: string;
 };
-
-function getWorkerPollIntervalMs() {
-  const parsed = Number.parseInt(process.env.KINDOO_WORKER_INTERVAL_MS ?? '60000', 10);
-  if (!Number.isFinite(parsed)) return 60000;
-  return Math.max(parsed, 5000);
-}
 
 function validatePayload(payload: Record<string, unknown>) {
   const required = [
@@ -87,7 +82,7 @@ function extractPayload(payload: Record<string, unknown>): LicensePayload {
 
 export async function POST(request: Request) {
   const requestId = randomUUID();
-  const workerPollIntervalMs = getWorkerPollIntervalMs();
+  const workerPollIntervalMs = await getEffectiveWorkerPollIntervalMs();
   const session = await auth();
   const sessionUser = session?.user;
   const userId = sessionUser?.id ?? null;

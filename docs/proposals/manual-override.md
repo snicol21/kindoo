@@ -84,20 +84,31 @@ Access will be set up as usual, about 4 hours before the event. Nothing needed f
 Additive and nullable only. No existing row changes.
 
 - `event.manual_handled_at`, `manual_handled_by_user_id`, `manual_reason`, `manual_note`
+- `license_worker_heartbeat.interval_ms` (nullable integer): the poll interval the worker reports in its heartbeat. See "Worker heartbeat interval" below.
 - `event_manual_override_log` (id, event_id, action, actor_user_id, actor_name, reason, note, details JSON, created_at) and an index on (event_id, created_at). Actions: `marked`, `reopened`, `worker_result_after_override`. `details` holds the prior automation state and the text summary.
 
 Rollback SQL: `docs/proposals/0020_add_event_manual_override.rollback.sql`.
 
+## Worker heartbeat interval
+
+The worker defaulted to a 10 minute interval while the server health check assumed 60 seconds (its own env value in Vercel), so the offline banner could false-alarm. This PR makes the worker the single source of truth:
+
+- The worker sends `intervalMs` (its effective `max(KINDOO_WORKER_INTERVAL_MS or 600000, 5000)`) in every heartbeat.
+- The server accepts a finite integer from 5000 to 3600000 and stores it in `license_worker_heartbeat.interval_ms`. Anything else is ignored (stored as null).
+- Health thresholds come from the stored interval. The heartbeat is sent at the start of a cycle, so the gap between heartbeats is the interval plus the cycle run time. Healthy is up to 1.5 x interval + 5 minutes and stale is up to 4 x interval + 10 minutes. For a 10 minute interval: healthy to 20 minutes, stale to 50 minutes.
+- An older worker that sends no interval stores null. The server then uses the legacy rule with the app env `KINDOO_WORKER_INTERVAL_MS` (default 60000), exactly as before.
+- The worker-health, job create and job status responses return the same effective interval as `workerPollIntervalMs`. The health object also returns `intervalMs`, `intervalSource`, and both thresholds.
+- No `KINDOO_WORKER_INTERVAL_MS` setting is needed in Vercel once the Mac worker is updated.
+
 ## Rollout order
 
-1. Merge the PR. Do not apply anything yet.
-2. Apply migration `0020` to production (needs Spencer's explicit OK).
-3. Deploy the app.
-4. Pull the new `automation-service/src/worker.js` on the laptop and restart the worker. Until then, set `KINDOO_WORKER_CLAIM_LIMIT=1` so a batch of claimed jobs cannot run past a mark; the server guards still block flagged events.
+1. Apply migration `0020` to production (needs Spencer's explicit OK). It is additive and nullable, so the currently deployed app keeps working.
+2. Merge the PR. The production deploy starts right away and expects the new columns.
+3. Pull the new `automation-service/src/worker.js` on the laptop and restart the worker. Until then, set `KINDOO_WORKER_CLAIM_LIMIT=1` so a batch of claimed jobs cannot run past a mark; the server guards still block flagged events. Until the worker is updated, its heartbeats use the fallback interval.
 
 ## Follow-ups
 
 - Audit the existing `setKindooLicenseCreated` toggle, or restrict it.
 - Worker heartbeat improvements ("Phase 2").
-- `KINDOO_WORKER_INTERVAL_MS` default mismatch: the worker defaults to 10 minutes while the server health thresholds assume 60 seconds in Vercel.
-- Decide whether event-created subscribers should get the handled-manually text, or only the event creator.
+- Hooked up the offline banner threshold to the worker's own interval (done in this PR). A dedicated "Automation offline" banner and stuck-request alerts remain Phase 2.
+- Decided: the handled-manually text goes to the event creator plus the opted-in "new booking" audience, excluding the admin who marked it. Each person gets at most one text. A creator who is also in the audience but has turned off "access ready" texts is not texted.

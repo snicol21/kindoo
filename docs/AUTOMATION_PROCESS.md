@@ -114,7 +114,7 @@ Optional tuning:
 
 - `KINDOO_WORKER_ID`
 - `KINDOO_WORKER_CLAIM_LIMIT` (default 3)
-- `KINDOO_WORKER_INTERVAL_MS` (default 600000 ms)
+- `KINDOO_WORKER_INTERVAL_MS` (default 600000 ms). The worker reports its effective interval in every heartbeat, so the app does not need this value set in Vercel (see Worker heartbeat).
 - Playwright runtime values
 
 ## 6. Local and MacOS Operations
@@ -147,17 +147,26 @@ in Battery settings while on power, and avoid closing the lid unless using clams
 
 ### Worker heartbeat
 
-- Worker sends `POST /api/license-jobs/heartbeat` each cycle.
-- App stores in-memory heartbeat snapshots (`src/lib/license-worker-health.ts`).
+- Worker sends `POST /api/license-jobs/heartbeat` at the start of each cycle, with `mode`, `host` and `intervalMs`.
+- `intervalMs` is the worker's effective sleep between cycles: `max(KINDOO_WORKER_INTERVAL_MS or 600000, 5000)`. Invalid values fall back to 10 minutes on the worker.
+- App stores the latest heartbeat per worker in `license_worker_heartbeat`, including `interval_ms` (`src/lib/license-worker-health.ts`).
+- The server accepts `intervalMs` only as a finite integer from 5000 to 3600000. Anything else is ignored and stored as null.
+- Thresholds are derived from the stored interval, so nothing needs to be matched by hand in Vercel:
+  - Heartbeat is sent at cycle start, so the gap between two heartbeats is the interval plus the cycle run time. The buffers cover the run time.
+  - `healthy`: age up to 1.5 x interval + 5 minutes. `stale`: up to 4 x interval + 10 minutes. `down`: older.
+  - With the Mac's 10 minute interval that is healthy to 20 minutes, stale to 50 minutes.
+- Older workers that do not send `intervalMs` store null. For them the server falls back to `KINDOO_WORKER_INTERVAL_MS` in the app env (default 60000) with the legacy rule (1.5 x and 4 x, no buffer).
+- The `workerPollIntervalMs` field in the job and worker-health responses carries the same effective interval.
 
 ### Health endpoint
 
 - `GET /api/license-jobs/worker-health` (authenticated)
 - Returns status:
-  - `healthy`: heartbeat age within expected interval
+  - `healthy`: heartbeat age within the thresholds above
   - `stale`: delayed heartbeat
   - `down`: heartbeat too old
-  - `unknown`: no heartbeat yet in current process lifecycle
+  - `unknown`: no heartbeat recorded yet
+- The health object also returns `intervalMs`, `intervalSource` (`worker` or `env`), `healthyThresholdMs` and `staleThresholdMs`.
 
 ### Real-time job stream
 

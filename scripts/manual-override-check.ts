@@ -1056,6 +1056,182 @@ async function main() {
     assert.match(nextYear, /2027/);
   });
 
+  // ── 7. Audience: each person at most once ───────────────────────────────────
+  await check('mark text: creator who is also in the audience is texted exactly once', async () => {
+    providerCalls.length = 0;
+    setSmsEnv(true);
+    // The creator is a ward manager of the event's ward, opted in to "new booking" texts as well as
+    // "access ready" texts. They are in both groups but must receive one text.
+    await enableSms(wardMgr, '5555550142', true);
+    const eventId = id('sms-dedupe');
+    await db.insert(events).values({
+      id: eventId,
+      building: 'Stake Center',
+      eventDate: tomorrow,
+      startTime: '18:00',
+      endTime: '20:00',
+      contactId,
+      description: 'dedupe',
+      eventType: 'Ward',
+      userId: wardMgr.userId,
+    });
+    const r = await mo.markEventHandledManuallyForAccess(
+      admin,
+      { eventId, reason: 'worker_offline' },
+      configured
+    );
+    assert.equal(r.success, true);
+    const texted = textedNumbers();
+    assert.equal(new Set(texted).size, texted.length, 'no number texted twice');
+    assert.equal(texted.filter((n) => n === '+15555550142').length, 1, 'creator texted once');
+    assert.ok(texted.includes('+15555550141'), 'stake manager (audience) texted');
+    assert.equal(texted.includes('+15555550144'), false, 'acting admin not texted');
+    assert.equal(texted.includes('+15555550143'), false, 'other ward manager not texted');
+    await enableSms(wardMgr, '5555550142', false);
+  });
+
+  // ── 8. Worker heartbeat carries the worker's interval ────────────────────────
+  const health = await import('../src/lib/license-worker-health');
+  const heartbeatRoute = await import('../src/app/api/license-jobs/heartbeat/route');
+  const beat = async (workerId: string, body: Record<string, unknown>) => {
+    const res = await heartbeatRoute.POST(
+      new Request('http://localhost/api/license-jobs/heartbeat', {
+        method: 'POST',
+        headers: { ...workerHeaders, 'x-worker-id': workerId, 'content-type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+    );
+    assert.equal(res.status, 200);
+  };
+  const storedInterval = async (workerId: string) =>
+    (
+      await db
+        .select({ v: schema.licenseWorkerHeartbeats.intervalMs })
+        .from(schema.licenseWorkerHeartbeats)
+        .where(eq(schema.licenseWorkerHeartbeats.workerId, workerId))
+    )[0].v;
+  const setLastSeen = (workerId: string, ageMs: number) =>
+    db
+      .update(schema.licenseWorkerHeartbeats)
+      .set({ lastSeenAt: new Date(Date.now() - ageMs) })
+      .where(eq(schema.licenseWorkerHeartbeats.workerId, workerId));
+  const MIN = 60_000;
+  const hbId = id('hb-worker');
+  const savedEnvInterval = process.env.KINDOO_WORKER_INTERVAL_MS;
+
+  await check('heartbeat stores the interval the worker reports', async () => {
+    await beat(hbId, { mode: 'watch', host: 'check-host', intervalMs: 600_000 });
+    assert.equal(await storedInterval(hbId), 600_000);
+    await beat(hbId, { mode: 'watch', host: 'check-host', intervalMs: 300_000 });
+    assert.equal(await storedInterval(hbId), 300_000, 'the latest heartbeat wins');
+  });
+
+  await check('heartbeat interval is validated: bounds, integers and types', async () => {
+    const s = health.sanitizeWorkerIntervalMs;
+    assert.equal(s(5_000), 5_000);
+    assert.equal(s(3_600_000), 3_600_000);
+    assert.equal(s(4_999), null, 'below 5 seconds');
+    assert.equal(s(3_600_001), null, 'above 1 hour');
+    assert.equal(s(0), null);
+    assert.equal(s(-600_000), null);
+    assert.equal(s(600_000.5), null, 'not an integer');
+    assert.equal(s(Number.NaN), null);
+    assert.equal(s(Number.POSITIVE_INFINITY), null);
+    assert.equal(s('600000'), null, 'strings are ignored');
+    assert.equal(s(null), null);
+    assert.equal(s(undefined), null);
+    assert.equal(s({}), null);
+    for (const bad of [1, 4_999, 3_600_001, 1e12, -5, 12.5, 'abc', null, true]) {
+      await beat(hbId, { mode: 'watch', intervalMs: bad });
+      assert.equal(await storedInterval(hbId), null, `invalid value ${String(bad)} is not stored`);
+    }
+  });
+
+  await check(
+    'health thresholds come from the stored interval (1.5x + 5 min, 4x + 10 min)',
+    async () => {
+      const t = health.computeWorkerThresholds(600_000, 'worker');
+      assert.equal(t.healthyThresholdMs, 900_000 + 5 * MIN);
+      assert.equal(t.staleThresholdMs, 2_400_000 + 10 * MIN);
+      const small = health.computeWorkerThresholds(5_000, 'worker');
+      assert.equal(small.healthyThresholdMs, 7_500 + 5 * MIN);
+      assert.equal(small.staleThresholdMs, 20_000 + 10 * MIN);
+
+      // The Mac worker: a 10 minute interval, vercel env says 1 minute. Stored value must win.
+      process.env.KINDOO_WORKER_INTERVAL_MS = '60000';
+      await beat(hbId, { mode: 'watch', intervalMs: 600_000 });
+      // 18 minutes since the heartbeat started the last cycle: old rule would say "down" (> 4 min).
+      await setLastSeen(hbId, 18 * MIN);
+      let h = await health.getWorkerHealth();
+      assert.equal(h.workerId, hbId);
+      assert.equal(h.intervalMs, 600_000);
+      assert.equal(h.intervalSource, 'worker');
+      assert.equal(h.healthyThresholdMs, 20 * MIN);
+      assert.equal(h.staleThresholdMs, 50 * MIN);
+      assert.equal(h.status, 'healthy', '18 min < 20 min healthy threshold');
+      await setLastSeen(hbId, 21 * MIN);
+      assert.equal((await health.getWorkerHealth()).status, 'stale');
+      await setLastSeen(hbId, 49 * MIN);
+      assert.equal((await health.getWorkerHealth()).status, 'stale');
+      await setLastSeen(hbId, 51 * MIN);
+      assert.equal((await health.getWorkerHealth()).status, 'down');
+      await setLastSeen(hbId, 0);
+      h = await health.getWorkerHealth();
+      assert.equal(h.status, 'healthy');
+      assert.equal(
+        await health.getEffectiveWorkerPollIntervalMs(),
+        600_000,
+        'routes use the stored value'
+      );
+    }
+  );
+
+  await check(
+    'old worker without intervalMs: falls back to the env interval, legacy thresholds',
+    async () => {
+      await beat(hbId, { mode: 'watch', host: 'old-worker' });
+      assert.equal(await storedInterval(hbId), null);
+
+      process.env.KINDOO_WORKER_INTERVAL_MS = '120000';
+      const legacy = health.computeWorkerThresholds(120_000, 'env');
+      assert.equal(legacy.healthyThresholdMs, 180_000);
+      assert.equal(legacy.staleThresholdMs, 480_000);
+      let h = await health.getWorkerHealth();
+      assert.equal(h.intervalSource, 'env');
+      assert.equal(h.intervalMs, 120_000);
+      assert.equal(h.healthyThresholdMs, 180_000);
+      assert.equal(h.staleThresholdMs, 480_000);
+      assert.equal(h.status, 'healthy');
+      assert.equal(await health.getEffectiveWorkerPollIntervalMs(), 120_000);
+      await setLastSeen(hbId, 5 * MIN);
+      assert.equal((await health.getWorkerHealth()).status, 'stale');
+      await setLastSeen(hbId, 9 * MIN);
+      assert.equal((await health.getWorkerHealth()).status, 'down');
+
+      delete process.env.KINDOO_WORKER_INTERVAL_MS;
+      assert.equal(health.getEnvWorkerPollIntervalMs(), 60_000, 'default is 60 seconds');
+      process.env.KINDOO_WORKER_INTERVAL_MS = '100';
+      assert.equal(health.getEnvWorkerPollIntervalMs(), 5_000, 'env value is clamped to 5 seconds');
+      process.env.KINDOO_WORKER_INTERVAL_MS = 'nonsense';
+      assert.equal(health.getEnvWorkerPollIntervalMs(), 60_000);
+      await setLastSeen(hbId, 0);
+      h = await health.getWorkerHealth();
+      assert.equal(h.intervalSource, 'env');
+    }
+  );
+
+  await check('the freshest heartbeat decides when several workers report', async () => {
+    const other = id('hb-worker2');
+    await beat(other, { mode: 'watch', intervalMs: 30_000 });
+    await setLastSeen(hbId, 10 * MIN);
+    const h = await health.getWorkerHealth();
+    assert.equal(h.workerId, other);
+    assert.equal(h.intervalMs, 30_000);
+    assert.equal(await health.getEffectiveWorkerPollIntervalMs(), 30_000);
+  });
+  if (savedEnvInterval === undefined) delete process.env.KINDOO_WORKER_INTERVAL_MS;
+  else process.env.KINDOO_WORKER_INTERVAL_MS = savedEnvInterval;
+
   // ── Summary ──────────────────────────────────────────────────────────────────
   const failed = results.filter((r) => !r.ok);
   console.log(`\n${results.length - failed.length}/${results.length} checks passed.`);

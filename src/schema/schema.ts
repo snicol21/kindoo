@@ -453,6 +453,8 @@ export const licenseWorkerHeartbeats = sqliteTable(
     workerId: text('worker_id').primaryKey(),
     host: text('host'),
     mode: text('mode'),
+    // The poll interval the worker reported in its heartbeat (null for older workers).
+    intervalMs: integer('interval_ms'),
     lastSeenAt: integer('last_seen_at', { mode: 'timestamp_ms' })
       .notNull()
       .default(sql`(unixepoch() * 1000)`),
