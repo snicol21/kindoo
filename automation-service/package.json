@@ -4,6 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "test": "node --test src/server.test.js",
+    "api:probe": "node src/api-probe.js",
     "start": "node src/server.js",
     "start:dist": "node dist/src/server.js",
     "build": "rm -rf dist && mkdir -p dist && cp -R src dist/src",
@@ -17,7 +19,7 @@
     "worker:launchd:install": "bash macos/install-launchd-worker.sh",
     "worker:launchd:start": "launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.kindoo.license-worker.plist && launchctl kickstart -k gui/$(id -u)/com.kindoo.license-worker",
     "worker:launchd:stop": "launchctl bootout gui/$(id -u)/com.kindoo.license-worker",
-    "worker:launchd:restart": "launchctl kickstart -k gui/$(id -u)/com.kindoo.license-worker",
+    "worker:launchd:restart": "pnpm run build && launchctl kickstart -k gui/$(id -u)/com.kindoo.license-worker",
     "worker:launchd:status": "launchctl print gui/$(id -u)/com.kindoo.license-worker",
     "worker:launchd:logs": "tail -n 120 ~/Library/Logs/kindoo-license-worker.out.log; echo '---'; tail -n 120 ~/Library/Logs/kindoo-license-worker.err.log",
     "worker:launchd:logs:follow": "tail -f ~/Library/Logs/kindoo-license-worker.out.log ~/Library/Logs/kindoo-license-worker.err.log",

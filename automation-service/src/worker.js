@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import { randomUUID } from 'node:crypto';
 import { hostname } from 'node:os';
+import { join } from 'node:path';
 import {
   consumeAutomationRunLog,
   createAutomationRuntime,
@@ -127,6 +128,7 @@ async function sendHeartbeat(mode) {
     // The effective sleep between cycles, so the app can size its offline banner from the worker itself.
     intervalMs: WATCH_INTERVAL_MS,
   });
+  console.log(`[worker:${WORKER_ID}] heartbeat accepted at ${new Date().toISOString()}`);
 }
 
 async function scheduleDueEvents() {
@@ -181,7 +183,9 @@ async function runOneCycle() {
           continue;
         }
         if (!sharedRuntime) {
-          sharedRuntime = await createAutomationRuntime(requestId);
+          sharedRuntime = await createAutomationRuntime(requestId, {
+            userDataDir: join(process.cwd(), '.playwright', 'worker-profile'),
+          });
         }
         const result = await runAutomation(payload, requestId, sharedRuntime);
         await markJobCompleted(job.id, result, consumeAutomationRunLog(requestId));

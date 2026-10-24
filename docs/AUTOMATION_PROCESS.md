@@ -222,3 +222,120 @@ Yes. Claiming is optimistic and status-gated (`queued` -> `processing`) to avoid
 3. Check worker heartbeat (`/api/license-jobs/worker-health`).
 4. Inspect launchd status/logs if on macOS.
 5. Look for job errors in `failed` rows and retry strategy as needed.
+
+## 12. Read-only Kindoo API Discovery
+
+From `automation-service/`, run:
+
+```bash
+pnpm test
+pnpm run api:probe
+```
+
+For an existing user lookup, add an email:
+
+```bash
+pnpm run api:probe --email spencer.nicol@gmail.com
+```
+
+This opt-in mode includes selected profile values for exact email matches and
+records explicitly linked through their user IDs. Other users' profile values,
+tokens, passwords, and verification codes are excluded. Treat these targeted
+reports as private personal data. Each result identifies whether it came from
+an observed browser response or a direct API replay. A site rule appearing in
+the response is not treated as assigned access without verifying its assignment
+relationship. Rule creators and inviters are not necessarily access recipients.
+
+The probe uses the configured Kindoo login, opens the site and Users view, and
+observes API traffic without inviting users or saving access rights. It does not
+claim queue jobs. It replays observed GET requests and only the explicitly allowed
+`KindooPullAppStartupData`, `KindooInitializeApp`, and
+`KindooGetEnvironmentUsersLightWithTotalNumberOfRecords` POST operations.
+Authentication and SignalR endpoints are excluded from replay.
+
+Reports are written under `automation-service/.playwright/api-probe/`, which is
+git-ignored. They contain endpoint paths, query parameter names, HTTP statuses,
+and JSON structure, not credentials or session tokens. Response values are
+excluded except for the explicitly requested user lookup described above. Observed
+authentication headers and request bodies are retained only in memory for replay.
+
+The live web app has been observed using ASMX operations under
+`https://service89.kindoo.tech/WebService.asmx/`. This is an observed internal
+service, not a verified public partner API contract or a stable configured base
+URL. The probe discovers hosts from actual requests instead of hardcoding this
+host. SignalR query parameters include `sessionTokenID`; a successful request
+containing that parameter does not prove cookie-only authentication.
+
+On 2026-10-06, the probe successfully logged in, opened the site and Users view,
+and replayed `KindooPullAppStartupData` with HTTP 200 and the expected
+`UpdateStatus`/`Dictionary` response structure. Observed request bodies were
+non-JSON strings, so replay preserves their original encoding and content type.
+An email-specific probe also verified that direct `KindooInitializeApp` replay
+returns the logged-in user's profile and site membership. The Users view was
+observed calling `KindooGetEnvironmentUsersLightWithTotalNumberOfRecords`.
+On 2026-10-07, searching the Users view for an exact email and replaying its
+observed user-list request returned HTTP 200 and exactly one matching membership
+row. The lookup reports that row's EUID, invitation state, description, temporary
+status, and access dates. Access schedules and permissions are extracted only
+from the matching row, not from inviter or rule-owner references elsewhere.
+The tested membership returned empty `AccessSchedules` and `AccessPermissions`
+arrays. This does not establish absence of effective access: role-based rights
+or further details may be outside this light user-list response. A known
+non-manager user with explicit rule assignments should be verified next.
+Door-level effective access and user-management writes remain unverified. The
+queue worker has not been switched to API-based writes.
+
+Before replacing browser writes, verify the site/user retrieval and access-rule
+operations, their session-token requirements, and the resulting rights through a
+read-back. Do not automatically retry ambiguous invitation/save failures or fall
+back to browser writes without checking whether the original write succeeded.
+
+### Optional Single-Page Export
+
+```bash
+pnpm run api:probe --export-users-page
+```
+
+This exports selected user and assigned-rule values from one retrieved Users
+page, not a complete directory. Unlike the default shape-only report, this
+export contains other users' personal data. Keep it private in the ignored
+`.playwright/api-probe/` directory; do not attach it to commits or issues.
+
+### API Probe Next Steps
+
+1. With approval, compare a known non-manager user's explicit rule assignment
+   against the Users UI, including dates and time zones. Empty light-response
+   arrays must not be interpreted as proof of no effective door access.
+2. Verify pagination, search filtering, and site boundaries before claiming a
+   complete user directory or a definitive missing-user result.
+3. Establish which cookies, headers, and session tokens each read requires, and
+   how expiry is detected. An HTTP 200 alone does not prove business success or
+   a supported public API; confirm vendor support before relying on it.
+4. Expand offline fixtures for expired sessions, business errors, pagination,
+   and effective-rights relationships. Recheck report redaction before adding
+   endpoints or fields, and set a retention policy for private reports.
+5. Keep production access changes on the browser worker. Any future write
+   experiment needs separate approval, an isolated test user, read-back of the
+   resulting rights, and reconciliation after ambiguous failures before retry.
+
+## 13. Mac Worker Handoff
+
+- The worker uses `.playwright/worker-profile/` relative to its working directory
+  to preserve browser cookies and local storage between cycles and restarts.
+  Keep this ignored directory private and do not open it from two workers at
+  once. Kindoo can still expire sessions or require verification.
+- The launchd wrapper uses `caffeinate -is`: the display can sleep, but idle
+  sleep is inhibited while the worker runs. The system-sleep assertion applies
+  on AC power. This uses more energy and does not keep an off Mac running or
+  guarantee operation with the lid closed.
+- Successful heartbeats now emit a timestamped `heartbeat accepted` log line.
+  Log paths are `~/Library/Logs/kindoo-license-worker.out.log` and
+  `~/Library/Logs/kindoo-license-worker.err.log`. No log rotation is configured
+  by these changes; monitor their size.
+- The restart package script rebuilds the source snapshot in `dist/` before
+  restarting launchd. Use the existing launchd start, stop, status, and logs
+  scripts from `automation-service/`; do not also launch a foreground worker.
+- Offline browser tests cover profile persistence and timeout cleanup, not a
+  real queued job. The user-approved live handled-manually skip test remains
+  outstanding; identify the event before running it. Keep the conservative
+  claim limit of 1 during this verification.

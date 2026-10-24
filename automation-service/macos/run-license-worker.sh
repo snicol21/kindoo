@@ -24,14 +24,4 @@ if [[ ! -f "${WORKER_PATH}" ]]; then
 fi
 
 cd "${AUTOMATION_ROOT}"
-"${NODE_BIN}" "${WORKER_PATH}" "$@" &
-WORKER_PID=$!
-
-/usr/bin/caffeinate -dimsu -w "${WORKER_PID}" &
-CAFFEINATE_PID=$!
-
-wait "${WORKER_PID}"
-
-if kill -0 "${CAFFEINATE_PID}" >/dev/null 2>&1; then
-  kill "${CAFFEINATE_PID}" >/dev/null 2>&1 || true
-fi
+exec /usr/bin/caffeinate -is "${NODE_BIN}" "${WORKER_PATH}" "$@"

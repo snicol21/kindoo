@@ -89,20 +89,23 @@ function logAutomation(requestId, message, extra = undefined) {
   appendAutomationRunLog(requestId, prefix);
 }
 
-async function runStep(requestId, label, action) {
+export async function runStep(requestId, label, action, signal) {
+  signal?.throwIfAborted();
   const startedAt = Date.now();
   logAutomation(requestId, `step:start:${label}`);
   try {
     const result = await action();
+    signal?.throwIfAborted();
     logAutomation(requestId, `step:done:${label}`, { durationMs: Date.now() - startedAt });
     return result;
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error.';
+    const failure = signal?.aborted ? signal.reason : error;
+    const message = failure instanceof Error ? failure.message : 'Unknown error.';
     logAutomation(requestId, `step:fail:${label}`, {
       durationMs: Date.now() - startedAt,
       message,
     });
-    throw error;
+    throw failure;
   }
 }
 
@@ -121,18 +124,29 @@ async function retry(action, attempts = RETRY_COUNT) {
   throw lastError;
 }
 
-async function withRunTimeout(requestId, action, timeoutMs = RUN_TIMEOUT_MS) {
+export async function withRunTimeout(requestId, action, onTimeout, timeoutMs = RUN_TIMEOUT_MS) {
+  const controller = new globalThis.AbortController();
+  const actionPromise = Promise.resolve().then(() => action(controller.signal));
   let timer;
   try {
     return await Promise.race([
-      action(),
+      actionPromise,
       new Promise((_, reject) => {
         timer = globalThis.setTimeout(() => {
-          reject(new Error(`Automation exceeded ${timeoutMs}ms run timeout.`));
+          const error = new Error(`Automation exceeded ${timeoutMs}ms run timeout.`);
+          controller.abort(error);
+          reject(error);
         }, timeoutMs);
       }),
     ]);
   } catch (error) {
+    if (controller.signal.aborted) {
+      try {
+        await onTimeout();
+      } finally {
+        await actionPromise.catch(() => undefined);
+      }
+    }
     const message = error instanceof Error ? error.message : 'Unknown error.';
     logAutomation(requestId, 'run timeout/flow error', { timeoutMs, message });
     throw error;
@@ -452,7 +466,7 @@ async function detectPostSaveBlockingError(page, requestId) {
   return 'Expiry date already expired in Kindoo. Please provide a future expiry date/time.';
 }
 
-async function waitForPostLoginReady(page, requestId, timeoutMs = TIMEOUT_MS) {
+export async function waitForPostLoginReady(page, requestId, timeoutMs = TIMEOUT_MS) {
   const startedAt = Date.now();
   let lastUrl = page.url();
   let nonLoginIterations = 0;
@@ -466,15 +480,17 @@ async function waitForPostLoginReady(page, requestId, timeoutMs = TIMEOUT_MS) {
       lastUrl = currentUrl;
     }
 
+    if (
+      (await page.getByText('My sites', { exact: true }).first().isVisible()) ||
+      (await isUsersMenuVisible(page)) ||
+      (await isAddUserFormVisible(page))
+    ) {
+      return;
+    }
+
     const loginVisible = await isLoginScreenVisible(page);
     if (!loginVisible) {
       nonLoginIterations += 1;
-      if (await isUsersMenuVisible(page)) {
-        return;
-      }
-      if (await isAddUserFormVisible(page)) {
-        return;
-      }
       // If login is gone for a few checks, proceed and force a navigation to home.
       if (nonLoginIterations >= 3) {
         return;
@@ -528,7 +544,7 @@ async function captureDebugArtifacts(page, requestId, label) {
   }
 }
 
-async function performLogin({
+export async function performLogin({
   page,
   requestId,
   kindooUrl,
@@ -665,23 +681,29 @@ async function performLogin({
   }
 }
 
-async function isLoginScreenVisible(page) {
+async function isAnyLocatorVisible(candidates, timeoutMs = 0) {
+  if (timeoutMs > 0) {
+    return Promise.any(
+      candidates.map((candidate) => candidate.waitFor({ state: 'visible', timeout: timeoutMs }))
+    )
+      .then(() => true)
+      .catch(() => false);
+  }
+
+  const visible = await Promise.all(
+    candidates.map((candidate) => candidate.isVisible().catch(() => false))
+  );
+  return visible.some(Boolean);
+}
+
+export async function isLoginScreenVisible(page, timeoutMs = 0) {
   const emailCandidates = [
     page.getByRole('textbox', { name: 'Email' }).first(),
     page.getByRole('textbox', { name: /email/i }).first(),
     page.getByPlaceholder(/email/i).first(),
   ];
 
-  for (const candidate of emailCandidates) {
-    try {
-      await candidate.waitFor({ state: 'visible', timeout: 1500 });
-      return true;
-    } catch {
-      continue;
-    }
-  }
-
-  return false;
+  return isAnyLocatorVisible(emailCandidates, timeoutMs);
 }
 
 async function isAddUserFormVisible(page) {
@@ -690,16 +712,7 @@ async function isAddUserFormVisible(page) {
     page.getByRole('textbox', { name: /email of the new user/i }).first(),
   ];
 
-  for (const candidate of candidates) {
-    try {
-      await candidate.waitFor({ state: 'visible', timeout: 1500 });
-      return true;
-    } catch {
-      continue;
-    }
-  }
-
-  return false;
+  return isAnyLocatorVisible(candidates);
 }
 
 function usersMenuCandidates(page) {
@@ -717,22 +730,17 @@ function usersMenuCandidates(page) {
 async function isUsersMenuVisible(page) {
   const candidates = usersMenuCandidates(page);
 
-  for (const candidate of candidates) {
-    try {
-      await candidate.waitFor({ state: 'visible', timeout: 1200 });
-      return true;
-    } catch {
-      continue;
-    }
-  }
-
-  return false;
+  return isAnyLocatorVisible(candidates);
 }
 
-async function waitForKindooShell(page, timeoutMs = 15000) {
+export async function waitForKindooShell(page, timeoutMs = 15000) {
   const startedAt = Date.now();
 
   while (Date.now() - startedAt < timeoutMs) {
+    if (await page.getByText('My sites', { exact: true }).first().isVisible()) {
+      return false;
+    }
+
     if (await isAddUserFormVisible(page)) {
       return true;
     }
@@ -747,7 +755,7 @@ async function waitForKindooShell(page, timeoutMs = 15000) {
   return false;
 }
 
-async function enterSiteFromMySites(page, requestId) {
+export async function enterSiteFromMySites(page, requestId) {
   const mySitesHeader = page.getByText('My sites', { exact: true }).first();
   const onMySites = await mySitesHeader
     .waitFor({ state: 'visible', timeout: 2000 })
@@ -969,20 +977,29 @@ export function validatePayload(payload) {
   return null;
 }
 
-export async function createAutomationRuntime(requestId = randomUUID()) {
+export async function createAutomationRuntime(requestId = randomUUID(), { userDataDir } = {}) {
   let browser;
   let context;
   let page;
   try {
     logAutomation(requestId, 'launching chromium');
-    browser = await chromium.launch({ headless: HEADLESS });
-    logAutomation(requestId, 'creating browser context');
     const contextOptions = {
       viewport: { width: 1280, height: 800 },
     };
-    context = await browser.newContext(contextOptions);
+    if (userDataDir) {
+      await mkdir(userDataDir, { recursive: true, mode: 0o700 });
+      context = await chromium.launchPersistentContext(userDataDir, {
+        ...contextOptions,
+        headless: HEADLESS,
+      });
+      logAutomation(requestId, 'opened persistent worker browser profile');
+    } else {
+      browser = await chromium.launch({ headless: HEADLESS });
+      logAutomation(requestId, 'creating browser context');
+      context = await browser.newContext(contextOptions);
+    }
     logAutomation(requestId, 'creating page');
-    page = await context.newPage();
+    page = context.pages()[0] ?? (await context.newPage());
     page.setDefaultTimeout(TIMEOUT_MS);
     return { browser, context, page };
   } catch (error) {
@@ -1015,95 +1032,107 @@ export async function runAutomation(payload, requestId, runtime = null) {
   const { page } = runtime;
 
   try {
-    return await withRunTimeout(requestId, async () => {
-      logAutomation(requestId, 'starting automation run', {
-        email: payload.email,
-        startDate: payload.startDate,
-        startTime: payload.startTime,
-        endDate: payload.endDate,
-        endTime: payload.endTime,
-        kindooAccessRule: payload.kindooAccessRule ?? null,
-      });
-      logAutomation(requestId, 'navigating to kindoo');
-      await page.goto(kindooUrl, { waitUntil: 'domcontentloaded' });
-      logAutomation(requestId, 'kindoo page loaded');
-      const loginVisible = await isLoginScreenVisible(page);
-      const sessionReused = !loginVisible;
-      logAutomation(requestId, `login screen visible: ${loginVisible}`);
-      if (loginVisible) {
-        logAutomation(requestId, 'no valid session found; performing login');
-        await performLogin({
-          page,
-          requestId,
-          kindooUrl,
-          kindooEmail,
-          kindooChurchUsername,
-          kindooChurchPassword,
+    return await withRunTimeout(
+      requestId,
+      async (signal) => {
+        const step = (label, action) => runStep(requestId, label, action, signal);
+        logAutomation(requestId, 'starting automation run', {
+          timeoutMs: RUN_TIMEOUT_MS,
+          email: payload.email,
+          startDate: payload.startDate,
+          startTime: payload.startTime,
+          endDate: payload.endDate,
+          endTime: payload.endTime,
+          kindooAccessRule: payload.kindooAccessRule ?? null,
         });
-      } else {
-        logAutomation(requestId, 'reusing existing authenticated session');
-      }
+        logAutomation(requestId, 'navigating to kindoo');
+        await page.goto(kindooUrl, { waitUntil: 'domcontentloaded' });
+        logAutomation(requestId, 'kindoo page loaded');
+        const loginVisible = await isLoginScreenVisible(page, 1500);
+        const sessionReused = !loginVisible;
+        logAutomation(requestId, `login screen visible: ${loginVisible}`);
+        if (loginVisible) {
+          logAutomation(requestId, 'no valid session found; performing login');
+          await performLogin({
+            page,
+            requestId,
+            kindooUrl,
+            kindooEmail,
+            kindooChurchUsername,
+            kindooChurchPassword,
+          });
+        } else {
+          logAutomation(requestId, 'reusing existing authenticated session');
+        }
 
-      await runStep(requestId, 'open-add-user-flow', async () => {
-        await openAddUserFlow(page, requestId, kindooUrl);
-      });
+        await step('open-add-user-flow', async () => {
+          await openAddUserFlow(page, requestId, kindooUrl);
+        });
 
-      await runStep(requestId, 'fill-user-email', async () => {
-        await page.getByRole('textbox', { name: 'Email of the new user' }).fill(payload.email);
-      });
+        await step('fill-user-email', async () => {
+          await page.getByRole('textbox', { name: 'Email of the new user' }).fill(payload.email);
+        });
 
-      await runStep(requestId, 'toggle-temporary-user', async () => {
-        await enableTemporaryUser(page, requestId);
-      });
+        await step('toggle-temporary-user', async () => {
+          await enableTemporaryUser(page, requestId);
+        });
 
-      await runStep(requestId, 'fill-access-window', async () => {
-        await fillDateTimeRow(
-          page,
-          'Rights activated starting:',
-          payload.startDate,
-          payload.startTime
-        );
-        await fillDateTimeRow(page, 'User expiry date and time', payload.endDate, payload.endTime);
-      });
+        await step('fill-access-window', async () => {
+          await fillDateTimeRow(
+            page,
+            'Rights activated starting:',
+            payload.startDate,
+            payload.startTime
+          );
+          await fillDateTimeRow(
+            page,
+            'User expiry date and time',
+            payload.endDate,
+            payload.endTime
+          );
+        });
 
-      await runStep(requestId, 'save-user', async () => {
-        await page.getByRole('textbox', { name: 'Description' }).fill(payload.description);
-        await page.getByText('SAVE').click();
-      });
+        await step('save-user', async () => {
+          await page.getByRole('textbox', { name: 'Description' }).fill(payload.description);
+          await page.getByText('SAVE').click();
+        });
 
-      const postSaveError = await detectPostSaveBlockingError(page, requestId);
-      if (postSaveError) {
-        throw new Error(postSaveError);
-      }
+        const postSaveError = await detectPostSaveBlockingError(page, requestId);
+        if (postSaveError) {
+          throw new Error(postSaveError);
+        }
 
-      if (await checkAlreadyInvited(page, requestId, payload.email)) {
+        if (await checkAlreadyInvited(page, requestId, payload.email)) {
+          signal.throwIfAborted();
+          return {
+            status: 'completed',
+            completionType: 'existing-active-license',
+            statusDetails: 'User already has an active Kindoo license.',
+            sessionReused,
+            durationMs: Date.now() - automationStartedAt,
+          };
+        }
+        await step('confirm-save', async () => {
+          await confirmSaveDialogs(page, requestId);
+          await acceptAccessRightsPrompt(page, requestId);
+          await waitForPostSaveTransition(page, requestId);
+        });
+        await step('select-access-rule', async () => {
+          await selectAccessRule(page, payload.kindooAccessRule, requestId);
+        });
+
+        logAutomation(requestId, 'automation run completed');
+
         return {
           status: 'completed',
-          completionType: 'existing-active-license',
-          statusDetails: 'User already has an active Kindoo license.',
+          completionType: 'temporary-license-created',
+          statusDetails: 'Temporary Kindoo license was created successfully.',
           sessionReused,
           durationMs: Date.now() - automationStartedAt,
         };
-      }
-      await runStep(requestId, 'confirm-save', async () => {
-        await confirmSaveDialogs(page, requestId);
-        await acceptAccessRightsPrompt(page, requestId);
-        await waitForPostSaveTransition(page, requestId);
-      });
-      await runStep(requestId, 'select-access-rule', async () => {
-        await selectAccessRule(page, payload.kindooAccessRule, requestId);
-      });
-
-      logAutomation(requestId, 'automation run completed');
-
-      return {
-        status: 'completed',
-        completionType: 'temporary-license-created',
-        statusDetails: 'Temporary Kindoo license was created successfully.',
-        sessionReused,
-        durationMs: Date.now() - automationStartedAt,
-      };
-    });
+      },
+      () => disposeAutomationRuntime(runtime)
+    );
   } finally {
     if (ownsRuntime) {
       await disposeAutomationRuntime(runtime);

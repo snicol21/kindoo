@@ -1,0 +1,22 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Kindoo Mac worker: safe recovery status",
+      "type": "shell",
+      "command": "/opt/homebrew/bin/node",
+      "args": [
+        "-e",
+        "'const fs=require(\"fs\");const cp=require(\"child_process\");const text=fs.readFileSync(process.env.HOME+\"/Library/Logs/kindoo-license-worker.out.log\",\"utf8\");for(const line of text.split(\"\\n\").filter(line=>line.startsWith(\"[mac-setup]\")).slice(-4))console.log(line);try{const text=cp.execFileSync(\"/bin/launchctl\",[\"print\",\"gui/\"+process.getuid()+\"/com.kindoo.license-worker\"],{encoding:\"utf8\",stdio:[\"ignore\",\"pipe\",\"pipe\"]});console.log(text.split(\"\\n\").filter(line=>/^\\s*(state|pid) =/.test(line)).join(\"\\n\"));}catch{console.log(\"worker launch agent is stopped\");}'"
+      ],
+      "isBackground": false,
+      "options": {
+        "shell": {
+          "executable": "/bin/bash",
+          "args": ["-c"]
+        }
+      },
+      "problemMatcher": []
+    }
+  ]
+}
