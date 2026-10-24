@@ -25,7 +25,7 @@ import {
 } from '@/components/_ui/select';
 import { Textarea } from '@/components/_ui/textarea';
 import { useMarkEventHandledManually, useReopenEventForAutomation } from '@/hooks/useEvents';
-import { describePriorAutomation } from '@/lib/manual-override-format';
+import { describePriorAutomation, describeSmsSummary } from '@/lib/manual-override-format';
 import {
   MANUAL_OVERRIDE_NOTE_MAX_LENGTH,
   MANUAL_OVERRIDE_REASONS,
@@ -116,8 +116,15 @@ export function ManualOverrideDialog({
     if (!event || !reason) return;
     setError(null);
     try {
-      await markMutation.mutateAsync({ eventId: event.id, reason, note: note.trim() || null });
-      toast.success('Marked as handled manually. The worker will skip this event.');
+      const result = await markMutation.mutateAsync({
+        eventId: event.id,
+        reason,
+        note: note.trim() || null,
+      });
+      const texted = describeSmsSummary(result.sms);
+      toast.success(
+        `Marked as handled manually. The worker will skip this event.${texted ? ` ${texted}.` : ''}`
+      );
       onCloseAction();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to mark the event.');
@@ -128,8 +135,9 @@ export function ManualOverrideDialog({
     if (!event) return;
     setError(null);
     try {
-      await reopenMutation.mutateAsync({ eventId: event.id });
-      toast.success('Reopened for automation.');
+      const result = await reopenMutation.mutateAsync({ eventId: event.id });
+      const texted = describeSmsSummary(result.sms);
+      toast.success(`Reopened for automation.${texted ? ` ${texted}.` : ''}`);
       onCloseAction();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to reopen the event.');
@@ -158,6 +166,10 @@ export function ManualOverrideDialog({
               <p className="text-sm text-muted-foreground">
                 The worker will skip this event from now on. Nothing is revoked, and a grant that is
                 already running cannot be undone. You can reopen it later.
+              </p>
+              <p className="text-sm text-muted-foreground">
+                People who are subscribed to texts for this event get a short text that access is
+                handled by hand. Your note is never included.
               </p>
 
               <div className="space-y-2">
@@ -233,7 +245,8 @@ export function ManualOverrideDialog({
 
             <div className="space-y-3">
               <p className="text-sm text-muted-foreground">
-                The event goes back to the state automation had before it was marked.
+                The event goes back to the state automation had before it was marked. If a text went
+                out when it was marked, a short correction text goes out now.
               </p>
               <div
                 className={`rounded-md border px-3 py-2 text-sm ${

@@ -11,6 +11,7 @@ import {
   buildAuditLine,
   describeLateWorkerResult,
   describePriorAutomation,
+  describeSmsSummary,
   formatOverrideTimestamp,
   reasonLabel,
 } from '@/lib/manual-override-format';
@@ -137,6 +138,9 @@ export function ManualOverrideSection({
                   {entry.note ? `. Note: ${entry.note}` : ''}
                   {entry.details && 'worker' in entry.details
                     ? `. ${describeLateWorkerResult({ at: entry.at, worker: entry.details.worker })}`
+                    : ''}
+                  {entry.details && 'automation' in entry.details && entry.details.sms
+                    ? `. ${describeSmsSummary(entry.details.sms)}`
                     : ''}
                 </li>
               ))}

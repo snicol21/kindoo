@@ -1,4 +1,8 @@
-import type { ManualOverrideAudit, ManualPriorState } from '@/lib/manual-override';
+import type {
+  ManualOverrideAudit,
+  ManualOverrideSmsSummary,
+  ManualPriorState,
+} from '@/lib/manual-override';
 import { MANUAL_OVERRIDE_REASON_LABELS, type ManualOverrideReason } from '@/schema/schema';
 
 /**
@@ -89,4 +93,15 @@ export function describeLateWorkerResult(
   return result.worker.completionType === 'existing-active-license'
     ? `Worker also finished at ${when} after the manual mark (active license already existed).`
     : `Worker also finished at ${when} after the manual mark and created a license.`;
+}
+
+/** One short phrase about the texts a mark or reopen sent, for the history and the toast. */
+export function describeSmsSummary(sms: ManualOverrideSmsSummary | null | undefined) {
+  if (!sms) return null;
+  if (sms.sent > 0) {
+    return `Texted ${sms.sent} ${sms.sent === 1 ? 'person' : 'people'}`;
+  }
+  if (sms.skippedReason === 'sms-not-configured') return 'No texts sent (texting is not set up)';
+  if (sms.failed > 0) return 'Texts could not be sent';
+  return 'No texts sent (nobody is subscribed)';
 }
