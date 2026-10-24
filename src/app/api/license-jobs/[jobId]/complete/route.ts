@@ -1,4 +1,5 @@
 import { db } from '@/lib/db';
+import { resolveLicenseJobSmsRecipientIds } from '@/lib/license-job-recipients';
 import { loadEventSmsDetails } from '@/lib/license-job-sms';
 import { isEventHandledManually, logWorkerResultAfterOverride } from '@/lib/manual-override';
 import { sendNotificationEventSms } from '@/lib/notifications';
@@ -133,7 +134,7 @@ export async function POST(request: Request, context: { params: Promise<{ jobId:
 
       await sendNotificationEventSms({
         eventKey: 'license_job_completed',
-        recipientUserIds: [job.requestedByUserId],
+        recipientUserIds: await resolveLicenseJobSmsRecipientIds(job.requestedByUserId),
         message: buildLicenseJobCompletedSms({ ...eventDetails }),
       });
     } catch (error) {

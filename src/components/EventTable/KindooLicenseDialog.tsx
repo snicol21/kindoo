@@ -819,8 +819,8 @@ export function KindooLicenseDialog({
                                     <Button
                                       type="button"
                                       variant="ghost"
-                                      size="icon"
-                                      className="h-6 w-6"
+                                      size="sm"
+                                      className="h-6 gap-1 px-1.5 text-xs"
                                       onClick={retryFailedJob}
                                       disabled={isRetrying}
                                       aria-label="Retry failed job"
@@ -830,6 +830,7 @@ export function KindooLicenseDialog({
                                       ) : (
                                         <RotateCw className="h-3.5 w-3.5" />
                                       )}
+                                      Retry
                                     </Button>
                                   </TooltipTrigger>
                                   <TooltipContent>Retry failed job</TooltipContent>

@@ -28,8 +28,8 @@ assert.equal(formatEventDate('2026-10-17'), 'Sat Oct 17');
 assert.equal(formatTimeRange('18:00', '21:00'), '6:00-9:00 PM');
 assert.equal(formatTimeRange('11:00', '13:00'), '11:00 AM-1:00 PM');
 assert.equal(formatTimeRange('00:30', '12:00'), '12:30 AM-12:00 PM');
-assert.equal(friendlyFailureReason('Login did not reach an authenticated page before timeout.'), 'Kindoo login timed out');
-assert.equal(friendlyFailureReason('weird'), 'Automation error, see dashboard');
+assert.equal(friendlyFailureReason('Login did not reach an authenticated page before timeout.'), 'Kindoo sign-in timed out.');
+assert.equal(friendlyFailureReason('weird'), 'something unexpected happened.');
 
 const samples = {
   created: buildEventCreatedSms(ev),
