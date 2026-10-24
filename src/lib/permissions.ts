@@ -92,3 +92,16 @@ export function canMutateEvent(args: {
   if (args.role === 'ward_manager') return args.userWard === args.eventWard;
   return args.userId === args.eventUserId && args.userWard === args.eventWard;
 }
+
+/**
+ * "Mark as handled manually" and reopen are admin only. Callers must pass the effective role
+ * (the server actions already apply the ADMIN_EMAILS override). The note on an override is
+ * visible to admin and stake_manager, never to ward roles.
+ */
+export function canMarkEventHandledManually(role: UserRole) {
+  return role === 'admin';
+}
+
+export function canViewManualOverrideNote(role: UserRole) {
+  return role === 'admin' || role === 'stake_manager';
+}
