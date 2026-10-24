@@ -91,6 +91,8 @@ export function DashboardStats({
       contactId: 'preview-contact',
       description: 'Preview event',
       kindooLicenseCreated: false,
+      manualHandledAt: null,
+      manualReason: null,
       userId: 'preview-user',
       createdAt: new Date(),
       creatorName: 'Preview Creator 1',
@@ -131,7 +133,8 @@ export function DashboardStats({
   const upcomingEvents =
     dashboardCounts.pendingLicense[activeBuildingKey] +
     dashboardCounts.activeLicense[activeBuildingKey] +
-    dashboardCounts.upcoming[activeBuildingKey];
+    dashboardCounts.upcoming[activeBuildingKey] +
+    dashboardCounts.handledManually[activeBuildingKey];
   const [displayUpcomingEvents, setDisplayUpcomingEvents] = useState(upcomingEvents);
 
   useEffect(() => {
@@ -256,6 +259,14 @@ export function DashboardStats({
             {dashboardCounts.past[activeBuildingKey]}
           </span>
         </div>
+        {dashboardCounts.handledManually[activeBuildingKey] > 0 && (
+          <div className="mt-1 text-sm text-muted-foreground">
+            Handled manually{' '}
+            <span className="font-medium text-violet-700 dark:text-violet-300">
+              {dashboardCounts.handledManually[activeBuildingKey]}
+            </span>
+          </div>
+        )}
       </div>
     );
   };

@@ -24,10 +24,15 @@ import { DeleteEventDialog } from '@/components/EventTable/DeleteEventDialog';
 import { EditEventDialog } from '@/components/EventTable/EditEventDialog';
 import { EventMessagesDialog } from '@/components/EventTable/EventMessagesDialog';
 import { KindooLicenseDialog } from '@/components/EventTable/KindooLicenseDialog';
+import {
+  ManualOverrideDialog,
+  type ManualOverrideDialogState,
+} from '@/components/EventTable/ManualOverrideDialog';
 import type { EventTableProps, SortDir, SortKey } from '@/components/EventTable/types';
 import { useContactChangeState } from '@/hooks/useContactChangeState';
 import { useContactSearch } from '@/hooks/useContacts';
 import { findExactContact, getContactSuggestions } from '@/lib/contact-matching';
+import { eventEndsInFuture } from '@/lib/license-schedule';
 import { formatWardLabel, isOtherWard, validateOtherWardName } from '@/lib/ward-utils';
 import type { Building, EventType, Ward } from '@/schema/schema';
 import { formatDate, getDaysUntil, getDaysUntilValue, toLocalDateTime } from '@/utils/dateUtils';
@@ -50,6 +55,7 @@ import {
   Copy,
   CopyPlus,
   FileText,
+  Hand,
   Inbox,
   Loader2,
   Mail,
@@ -138,6 +144,15 @@ function getLicenseOutcomeVisual(outcome: string) {
       'border border-amber-300 bg-amber-100/80 dark:border-amber-700/60 dark:bg-amber-900/30',
     icon: <Clock className="h-3.5 w-3.5" />,
   };
+
+  if (outcome === 'Handled manually') {
+    return {
+      textClassName: 'text-violet-700 dark:text-violet-300',
+      badgeClassName:
+        'border border-violet-300 bg-violet-100/80 dark:border-violet-700/60 dark:bg-violet-900/30',
+      icon: <Hand className="h-3.5 w-3.5" />,
+    };
+  }
 
   if (outcome === 'Retry in progress') {
     return inProgressBadge;
@@ -241,6 +256,7 @@ export function EventTable({
   selectedIds,
   onSelectionChange,
   canSelectOtherWard = false,
+  canMarkHandledManually = false,
 }: EventTableProps) {
   // Adjust this value to control when the table collapses from Event+Contact to Event-only.
   const SINGLE_COLUMN_MAX_WIDTH = 639;
@@ -254,6 +270,7 @@ export function EventTable({
   const [editingEvent, setEditingEvent] = useState<EventWithCreator | null>(null);
   const [licenseEvent, setLicenseEvent] = useState<EventWithCreator | null>(null);
   const [licenseOutcomePreview, setLicenseOutcomePreview] = useState<string | null>(null);
+  const [manualOverrideState, setManualOverrideState] = useState<ManualOverrideDialogState>(null);
   const [isSavingLicenseStatus, setIsSavingLicenseStatus] = useState(false);
   const submitKindooLicenseStatus = async (event: EventWithCreator, nextValue: boolean) => {
     if (!onSetKindooLicenseCreated || isSavingLicenseStatus) return;
@@ -343,7 +360,8 @@ export function EventTable({
 
   useEffect(() => {
     const trackedEvents = events
-      .filter((event) => !event.id.startsWith('optimistic-'))
+      // Events marked as handled manually have no automation to poll for.
+      .filter((event) => !event.id.startsWith('optimistic-') && !event.manualHandledAt)
       .map((event) => {
         const isDueNow = isAutoScheduleDueNow(event.eventDate, event.startTime, event.endTime);
         const hasContactEmail = !!event.contactEmail?.trim();
@@ -1156,10 +1174,17 @@ export function EventTable({
           <TableBody>
             {pagedEvents.map((event) => {
               const isOptimistic = event.id.startsWith('optimistic-');
-              const licenseOutcome = licenseOutcomeByEvent[event.id] ?? null;
+              const isHandledManually = !!event.manualHandledAt;
+              const licenseOutcome = isHandledManually
+                ? 'Handled manually'
+                : (licenseOutcomeByEvent[event.id] ?? null);
               const hasLicenseStatus = !!licenseOutcome;
               const isLicenseOutcomeLoading =
-                !isOptimistic && !licenseOutcomeLoadedByEvent[event.id];
+                !isOptimistic && !isHandledManually && !licenseOutcomeLoadedByEvent[event.id];
+              const canShowManualOverride =
+                canMarkHandledManually &&
+                !isOptimistic &&
+                eventEndsInFuture(event.eventDate, event.endTime);
               const shouldShowLicensePlaceholder =
                 !isOptimistic && (hasLicenseStatus || isLicenseOutcomeLoading);
               const isDayOfEvent = getDaysUntilValue(event.eventDate) === 0;
@@ -1171,6 +1196,7 @@ export function EventTable({
               const hasEmail = !!event.contactEmail?.trim();
               const shouldShowScheduleCountdown =
                 !isOptimistic &&
+                !isHandledManually &&
                 !event.kindooLicenseCreated &&
                 hasEmail &&
                 isDayOfEvent &&
@@ -1184,14 +1210,16 @@ export function EventTable({
                   licenseOutcome === 'Scheduled for license');
               const shouldShowPastSchedulingWindowPassed =
                 eventEnded && !!licenseOutcome && PAST_SCHEDULE_WINDOW_OUTCOMES.has(licenseOutcome);
-              const shouldShowExpiredLicense = !!event.kindooLicenseCreated && licenseWindowEnded;
+              const shouldShowExpiredLicense =
+                !isHandledManually && !!event.kindooLicenseCreated && licenseWindowEnded;
               const shouldShowPastExistingLicenseLabel =
                 eventEnded && licenseOutcome === 'Active license already existed';
               const msUntilLicenseExpires =
-                !!event.kindooLicenseCreated && nowMs !== null
+                !isHandledManually && !!event.kindooLicenseCreated && nowMs !== null
                   ? getLicenseWindowEndTimestamp(event) - nowMs
                   : null;
               const shouldShowLicenseExpiryCountdown =
+                !isHandledManually &&
                 !!event.kindooLicenseCreated &&
                 !shouldShowExpiredLicense &&
                 msUntilLicenseExpires !== null &&
@@ -1329,6 +1357,21 @@ export function EventTable({
                                 <MessageSquare className="h-4 w-4" />
                                 Event messages
                               </DropdownMenuItem>
+                              {canShowManualOverride && (
+                                <DropdownMenuItem
+                                  onSelect={() =>
+                                    setManualOverrideState({
+                                      event,
+                                      mode: isHandledManually ? 'reopen' : 'mark',
+                                    })
+                                  }
+                                >
+                                  <Hand className="h-4 w-4" />
+                                  {isHandledManually
+                                    ? 'Reopen for automation'
+                                    : 'Mark as handled manually'}
+                                </DropdownMenuItem>
+                              )}
                               <DropdownMenuSeparator />
                               <DropdownMenuItem
                                 className="text-destructive focus:text-destructive"
@@ -1566,6 +1609,21 @@ export function EventTable({
                               <MessageSquare className="h-4 w-4" />
                               Event messages
                             </DropdownMenuItem>
+                            {canShowManualOverride && (
+                              <DropdownMenuItem
+                                onSelect={() =>
+                                  setManualOverrideState({
+                                    event,
+                                    mode: isHandledManually ? 'reopen' : 'mark',
+                                  })
+                                }
+                              >
+                                <Hand className="h-4 w-4" />
+                                {isHandledManually
+                                  ? 'Reopen for automation'
+                                  : 'Mark as handled manually'}
+                              </DropdownMenuItem>
+                            )}
                             <DropdownMenuSeparator />
                             <DropdownMenuItem
                               className="text-destructive focus:text-destructive"
@@ -1997,6 +2055,19 @@ export function EventTable({
         }}
         submitKindooLicenseStatusAction={submitKindooLicenseStatus}
         getLicenseTimesAction={getLicenseTimes}
+        formatDateAction={formatDate}
+        formatTimeRangeAction={formatTimeRange}
+        canMarkHandledManually={canMarkHandledManually}
+        onOpenManualOverrideAction={(event, mode) => {
+          setLicenseEvent(null);
+          setLicenseOutcomePreview(null);
+          setManualOverrideState({ event, mode });
+        }}
+      />
+
+      <ManualOverrideDialog
+        state={manualOverrideState}
+        onCloseAction={() => setManualOverrideState(null)}
         formatDateAction={formatDate}
         formatTimeRangeAction={formatTimeRange}
       />

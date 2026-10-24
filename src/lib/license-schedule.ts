@@ -86,3 +86,15 @@ export function getLicenseWindow(eventDate: string, startTime: string, endTime: 
     endTime: minutesToTime(windowEnd),
   };
 }
+
+/** True while the event has not ended yet, judged in the given zone (default Mountain). */
+export function eventEndsInFuture(
+  eventDate: string,
+  endTime: string,
+  timeZone: string = SCHEDULE_TIMEZONE
+) {
+  const now = getCurrentYmdHmInTimeZone(timeZone);
+  if (eventDate > now.ymd) return true;
+  if (eventDate < now.ymd) return false;
+  return endTime >= now.hm;
+}

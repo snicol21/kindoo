@@ -16,6 +16,8 @@ type EventsTabPanelProps = {
   messageTemplates: MessageTemplateMap;
   defaultSortDir?: SortDir;
   searchQuery?: string;
+  isStatusFiltered?: boolean;
+  canMarkHandledManually?: boolean;
   emptyStateTitle?: string;
   emptyStateMessage?: string;
   selectedIds: string[];
@@ -40,6 +42,8 @@ export function EventsTabPanel({
   messageTemplates,
   defaultSortDir,
   searchQuery,
+  isStatusFiltered = false,
+  canMarkHandledManually = false,
   emptyStateTitle,
   emptyStateMessage,
   selectedIds,
@@ -53,7 +57,7 @@ export function EventsTabPanel({
   onOpenBulkDeleteAction,
 }: EventsTabPanelProps) {
   const normalizedSearch = searchQuery?.trim() ?? '';
-  const isSearching = normalizedSearch.length > 0;
+  const isSearching = normalizedSearch.length > 0 || isStatusFiltered;
 
   return (
     <div className="space-y-3">
@@ -79,7 +83,7 @@ export function EventsTabPanel({
             defaultSortDir={defaultSortDir}
             emptyStateTitle={isSearching ? 'No matching events' : emptyStateTitle}
             emptyStateMessage={
-              isSearching ? 'Try a different search or clear the filter.' : emptyStateMessage
+              isSearching ? 'Try a different search or status filter.' : emptyStateMessage
             }
             messageTemplates={messageTemplates}
             onDelete={onDeleteAction}
@@ -88,6 +92,7 @@ export function EventsTabPanel({
             onEdit={onEditAction}
             onClone={onCloneAction}
             canSelectOtherWard={canSelectOtherWard}
+            canMarkHandledManually={canMarkHandledManually}
             onSetKindooLicenseCreated={onSetKindooLicenseCreatedAction}
           />
         </CardContent>

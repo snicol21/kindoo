@@ -17,8 +17,10 @@ import {
   buildingToTab,
   isOutsideDashboardWindow,
   isPastEvent,
+  matchesEventStatusFilter,
   normalizeTab,
   tabToBuilding,
+  type EventStatusFilter,
 } from '@/components/DashboardClient/utils';
 import { PageContainer } from '@/components/PageContainer';
 import {
@@ -29,7 +31,7 @@ import {
   useSetKindooLicenseCreated,
   useUpdateEvent,
 } from '@/hooks/useEvents';
-import type { Building } from '@/schema/schema';
+import { MANUAL_OVERRIDE_REASON_LABELS, type Building } from '@/schema/schema';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 
@@ -47,6 +49,8 @@ const buildEventSearchHaystack = (event: EventWithCreator) =>
     event.endTime,
     event.creatorName,
     event.creatorEmail,
+    event.manualHandledAt ? 'handled manually' : null,
+    event.manualReason ? MANUAL_OVERRIDE_REASON_LABELS[event.manualReason] : null,
   ]
     .filter(Boolean)
     .join(' ')
@@ -83,6 +87,7 @@ export function DashboardClient({
     fixedTabForWardUsers ?? initialTab ?? buildingToTab(initialDefaultBuilding)
   );
   const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<EventStatusFilter>('all');
   const [selectedStakeIds, setSelectedStakeIds] = useState<string[]>([]);
   const [selectedStakePastIds, setSelectedStakePastIds] = useState<string[]>([]);
   const [selectedMaplesIds, setSelectedMaplesIds] = useState<string[]>([]);
@@ -144,32 +149,40 @@ export function DashboardClient({
   const normalizedSearch = searchQuery.trim().toLowerCase();
 
   const filteredStakeUpcoming = useMemo(() => {
-    if (!normalizedSearch) return stakeMainEvents;
-    return stakeMainEvents.filter((event) =>
-      buildEventSearchHaystack(event).includes(normalizedSearch)
+    if (!normalizedSearch && statusFilter === 'all') return stakeMainEvents;
+    return stakeMainEvents.filter(
+      (event) =>
+        matchesEventStatusFilter(event, statusFilter) &&
+        (!normalizedSearch || buildEventSearchHaystack(event).includes(normalizedSearch))
     );
-  }, [normalizedSearch, stakeMainEvents]);
+  }, [normalizedSearch, statusFilter, stakeMainEvents]);
 
   const filteredMaplesUpcoming = useMemo(() => {
-    if (!normalizedSearch) return maplesMainEvents;
-    return maplesMainEvents.filter((event) =>
-      buildEventSearchHaystack(event).includes(normalizedSearch)
+    if (!normalizedSearch && statusFilter === 'all') return maplesMainEvents;
+    return maplesMainEvents.filter(
+      (event) =>
+        matchesEventStatusFilter(event, statusFilter) &&
+        (!normalizedSearch || buildEventSearchHaystack(event).includes(normalizedSearch))
     );
-  }, [normalizedSearch, maplesMainEvents]);
+  }, [normalizedSearch, statusFilter, maplesMainEvents]);
 
   const filteredStakePast = useMemo(() => {
-    if (!normalizedSearch) return stakePastEvents;
-    return stakePastEvents.filter((event) =>
-      buildEventSearchHaystack(event).includes(normalizedSearch)
+    if (!normalizedSearch && statusFilter === 'all') return stakePastEvents;
+    return stakePastEvents.filter(
+      (event) =>
+        matchesEventStatusFilter(event, statusFilter) &&
+        (!normalizedSearch || buildEventSearchHaystack(event).includes(normalizedSearch))
     );
-  }, [normalizedSearch, stakePastEvents]);
+  }, [normalizedSearch, statusFilter, stakePastEvents]);
 
   const filteredMaplesPast = useMemo(() => {
-    if (!normalizedSearch) return maplesPastEvents;
-    return maplesPastEvents.filter((event) =>
-      buildEventSearchHaystack(event).includes(normalizedSearch)
+    if (!normalizedSearch && statusFilter === 'all') return maplesPastEvents;
+    return maplesPastEvents.filter(
+      (event) =>
+        matchesEventStatusFilter(event, statusFilter) &&
+        (!normalizedSearch || buildEventSearchHaystack(event).includes(normalizedSearch))
     );
-  }, [normalizedSearch, maplesPastEvents]);
+  }, [normalizedSearch, statusFilter, maplesPastEvents]);
 
   const dashboardCounts = useMemo(
     () => buildDashboardCounts(stakeCenterEvents, maplesEvents),
@@ -294,6 +307,8 @@ export function DashboardClient({
           maplesCount={maplesMainEvents.length}
           searchValue={searchQuery}
           onSearchChangeAction={setSearchQuery}
+          statusFilter={statusFilter}
+          onStatusFilterChangeAction={setStatusFilter}
           canToggleBuildings={canToggleBuildings}
           fixedBuildingLabel={fixedBuildingForWardUsers}
         />
@@ -324,6 +339,8 @@ export function DashboardClient({
             building="Stake Center"
             messageTemplates={messageTemplates}
             searchQuery={searchQuery}
+            isStatusFiltered={statusFilter !== 'all'}
+            canMarkHandledManually={currentUserRole === 'admin'}
             onDeleteAction={(eventId) =>
               deleteStakeCenterEvent.mutateAsync(eventId).then(() => undefined)
             }
@@ -371,6 +388,8 @@ export function DashboardClient({
                   messageTemplates={messageTemplates}
                   defaultSortDir="desc"
                   searchQuery={searchQuery}
+                  isStatusFiltered={statusFilter !== 'all'}
+                  canMarkHandledManually={currentUserRole === 'admin'}
                   emptyStateTitle="No past events"
                   emptyStateMessage="Completed events appear here."
                   onDeleteAction={(eventId) =>
@@ -402,6 +421,8 @@ export function DashboardClient({
             building="Maples Building"
             messageTemplates={messageTemplates}
             searchQuery={searchQuery}
+            isStatusFiltered={statusFilter !== 'all'}
+            canMarkHandledManually={currentUserRole === 'admin'}
             onDeleteAction={(eventId) =>
               deleteMaplesEvent.mutateAsync(eventId).then(() => undefined)
             }
@@ -449,6 +470,8 @@ export function DashboardClient({
                   messageTemplates={messageTemplates}
                   defaultSortDir="desc"
                   searchQuery={searchQuery}
+                  isStatusFiltered={statusFilter !== 'all'}
+                  canMarkHandledManually={currentUserRole === 'admin'}
                   emptyStateTitle="No past events"
                   emptyStateMessage="Completed events appear here."
                   onDeleteAction={(eventId) =>

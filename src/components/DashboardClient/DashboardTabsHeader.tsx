@@ -1,6 +1,18 @@
 'use client';
 
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/_ui/select';
 import { TabsList, TabsTrigger } from '@/components/_ui/tabs';
+import {
+  EVENT_STATUS_FILTERS,
+  EVENT_STATUS_FILTER_LABELS,
+  type EventStatusFilter,
+} from '@/components/DashboardClient/utils';
 import { SearchInput } from '@/components/SearchInput';
 import { Building2 } from 'lucide-react';
 
@@ -9,6 +21,8 @@ type DashboardTabsHeaderProps = {
   maplesCount: number;
   searchValue: string;
   onSearchChangeAction: (value: string) => void;
+  statusFilter: EventStatusFilter;
+  onStatusFilterChangeAction: (value: EventStatusFilter) => void;
   canToggleBuildings?: boolean;
   fixedBuildingLabel?: 'Stake Center' | 'Maples Building';
 };
@@ -18,6 +32,8 @@ export function DashboardTabsHeader({
   maplesCount,
   searchValue,
   onSearchChangeAction,
+  statusFilter,
+  onStatusFilterChangeAction,
   canToggleBuildings = true,
   fixedBuildingLabel,
 }: DashboardTabsHeaderProps) {
@@ -49,12 +65,29 @@ export function DashboardTabsHeader({
           </span>
         </div>
       )}
-      <SearchInput
-        value={searchValue}
-        onValueChangeAction={onSearchChangeAction}
-        placeholder="Search events"
-        className="w-full sm:w-64"
-      />
+      <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
+        <Select
+          value={statusFilter}
+          onValueChange={(value) => onStatusFilterChangeAction(value as EventStatusFilter)}
+        >
+          <SelectTrigger aria-label="Filter by status" className="w-full sm:w-44">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {EVENT_STATUS_FILTERS.map((value) => (
+              <SelectItem key={value} value={value}>
+                {EVENT_STATUS_FILTER_LABELS[value]}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <SearchInput
+          value={searchValue}
+          onValueChangeAction={onSearchChangeAction}
+          placeholder="Search events"
+          className="w-full sm:w-64"
+        />
+      </div>
     </div>
   );
 }

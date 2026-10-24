@@ -2,8 +2,8 @@ import 'server-only';
 
 import { db } from '@/lib/db';
 import type { AccessContext, ActionResult } from '@/lib/events-service';
-import { EVENT_TIMEZONE, eventEndsInFuture } from '@/lib/events-service';
-import { isDueForQueue } from '@/lib/license-schedule';
+import { EVENT_TIMEZONE } from '@/lib/events-service';
+import { eventEndsInFuture, isDueForQueue } from '@/lib/license-schedule';
 import {
   canMarkEventHandledManually,
   canViewEvent,
@@ -79,6 +79,8 @@ export interface ManualOverrideAudit {
   note: string | null;
   /** Automation state recorded when the event was marked. */
   prior: ManualPriorState | null;
+  /** Automation state right now, whether or not the event is marked. */
+  automation: ManualPriorState;
   /** Worker results that landed after the mark (newest first). */
   lateWorkerResults: { at: string; worker: WorkerResultDetails }[];
   /** Full history, only for roles that may see notes (admin, stake_manager). */
@@ -545,6 +547,7 @@ export async function getManualOverrideAuditForAccess(
         reason: event.reason ?? null,
         note: canSeeNote ? (event.note ?? null) : null,
         prior,
+        automation: await snapshotAutomationState(event.id),
         lateWorkerResults,
         history: canSeeNote ? [...entries].reverse() : [],
       },
