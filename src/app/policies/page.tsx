@@ -12,9 +12,31 @@ const SUPPORT_EMAIL = 'spencer.nicol@gmail.com';
 const EFFECTIVE_DATE = 'March 27, 2026';
 
 const SAMPLE_MESSAGES = [
-  'DigitalFob: New access request from Jane Doe (3rd Ward). Review in the admin access requests queue.',
-  'DigitalFob: Kindoo license job failed for 2026-03-21 18:00–20:00 (Stake Center). Review in dashboard.',
-  'DigitalFob: License job completed for 2026-03-21 18:00–20:00 (Stake Center).',
+  `DigitalFob: New access request
+From: Jane Smith
+Ward: 3rd Ward
+Email: jane.smith@example.com
+Please approve or deny it in DigitalFob when you can. No rush.`,
+  `DigitalFob: New booking added
+Youth Activity Night (Ward event)
+For: Jane Smith, 801-555-0123
+Ward: 3rd Ward
+Where: Stake Center
+When: Sat Nov 7, 6:00-9:00 PM MT
+Nothing needed from you. Door access is added in Kindoo automatically, usually about 4 hours before the start.`,
+  `DigitalFob: Door access is set up
+Youth Activity Night (Ward event)
+For: Jane Smith, 3rd Ward
+Where: Stake Center
+When: Sat Nov 7, 6:00-9:00 PM MT
+Nothing needed from you. Access works from about 2 hours before the start until about 2 hours after the end.`,
+  `DigitalFob: Door access was not set up
+Youth Activity Night (Ward event)
+For: Jane Smith, 3rd Ward
+Where: Stake Center
+When: Sat Nov 7, 6:00-9:00 PM MT
+Why: Kindoo sign-in timed out.
+Please do one of these before the event starts: tap Retry on this event in DigitalFob, or add access in Kindoo.`,
 ];
 
 const PROGRAM_DETAILS: [string, string][] = [
