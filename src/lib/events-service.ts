@@ -381,20 +381,7 @@ export async function createEventForAccess(
     let notificationDelivery: NotificationDeliverySummary | undefined;
 
     try {
-      const recipients = await db
-        .select({ id: users.id, role: users.role, ward: users.ward })
-        .from(users)
-        .where(
-          or(
-            eq(users.role, 'admin'),
-            eq(users.role, 'stake_manager'),
-            and(eq(users.role, 'ward_manager'), eq(users.ward, normalizedInput.ward))
-          )
-        );
-
-      const recipientUserIds = recipients
-        .map((candidate) => candidate.id)
-        .filter((candidateId) => candidateId !== userId);
+      const recipientUserIds = await listEventCreatedRecipientIds(normalizedInput.ward, userId);
 
       notificationDelivery = {
         attempted: recipientUserIds.length,
@@ -451,6 +438,24 @@ export async function createEventForAccess(
       error: 'Failed to add event. Please try again.',
     };
   }
+}
+
+/**
+ * Users who get the "new booking" text for an event in this ward: admins, stake managers and the
+ * ward's managers, never the person who made the change. Shared with the handled-manually texts.
+ */
+export async function listEventCreatedRecipientIds(ward: Ward, excludeUserId: string) {
+  const recipients = await db
+    .select({ id: users.id })
+    .from(users)
+    .where(
+      or(
+        eq(users.role, 'admin'),
+        eq(users.role, 'stake_manager'),
+        and(eq(users.role, 'ward_manager'), eq(users.ward, ward))
+      )
+    );
+  return recipients.map((candidate) => candidate.id).filter((id) => id !== excludeUserId);
 }
 
 function buildRoleScopedBuildingPredicate(

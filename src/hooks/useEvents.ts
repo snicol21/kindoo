@@ -394,6 +394,7 @@ export function useMarkEventHandledManually() {
     mutationFn: async (input: { eventId: string; reason: string; note?: string | null }) => {
       const result = await markEventHandledManually(input);
       if (!result.success) throw new Error(result.error);
+      return result.data!;
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: eventKeys.all });

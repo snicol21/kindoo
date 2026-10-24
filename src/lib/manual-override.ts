@@ -5,6 +5,11 @@ import type { AccessContext, ActionResult } from '@/lib/events-service';
 import { EVENT_TIMEZONE } from '@/lib/events-service';
 import { eventEndsInFuture, isDueForQueue } from '@/lib/license-schedule';
 import {
+  notifyManualOverrideChange,
+  type ManualOverrideSmsDeps,
+  type ManualOverrideSmsSummary,
+} from '@/lib/manual-override-sms';
+import {
   canMarkEventHandledManually,
   canViewEvent,
   canViewManualOverrideNote,
@@ -22,7 +27,7 @@ import {
   type ManualOverrideLogAction,
   type ManualOverrideReason,
 } from '@/schema/schema';
-import { and, asc, desc, eq, isNotNull, isNull } from 'drizzle-orm';
+import { and, asc, desc, eq, isNotNull, isNull, sql } from 'drizzle-orm';
 import { revalidateTag } from 'next/cache';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -50,7 +55,13 @@ export interface WorkerResultDetails {
 }
 
 export type ManualOverrideLogDetails =
-  { automation: ManualPriorState } | { worker: WorkerResultDetails };
+  | { automation: ManualPriorState; sms?: ManualOverrideSmsSummary }
+  | { worker: WorkerResultDetails };
+
+export type { ManualOverrideSmsDeps, ManualOverrideSmsSummary };
+
+/** What a mark or reopen returns about the texts it sent (null when none was attempted). */
+export type ManualOverrideSmsResult = { sms: ManualOverrideSmsSummary | null };
 
 export type ReopenOutlook = 'will-run-next-cycle' | 'will-queue-when-due' | 'no-automatic-action';
 
@@ -278,9 +289,14 @@ async function loadActorName(userId: string) {
 }
 
 function revalidateEventTags(event: { userId: string; building: string }, actorUserId: string) {
-  revalidateTag(`events-${event.userId}`, 'max');
-  revalidateTag(`events-${event.userId}-${event.building}`, 'max');
-  revalidateTag(`events-${actorUserId}`, 'max');
+  // The change is already committed, so a cache invalidation problem must not fail the request.
+  try {
+    revalidateTag(`events-${event.userId}`, 'max');
+    revalidateTag(`events-${event.userId}-${event.building}`, 'max');
+    revalidateTag(`events-${actorUserId}`, 'max');
+  } catch (error) {
+    console.error('[manual-override] Failed to revalidate event tags:', error);
+  }
 }
 
 const NOT_ALLOWED = 'Only admins can mark events as handled manually.';
@@ -288,10 +304,47 @@ const ENDED = 'This event has already ended, so it can no longer be changed.';
 
 // ─── Actions (called from src/actions/events.ts) ──────────────────────────────
 
+async function recordSmsOnLog(
+  logId: string,
+  details: Extract<ManualOverrideLogDetails, { automation: ManualPriorState }>,
+  sms: ManualOverrideSmsSummary
+): Promise<void> {
+  try {
+    await db
+      .update(eventManualOverrideLog)
+      .set({ details: JSON.stringify({ ...details, sms }) })
+      .where(eq(eventManualOverrideLog.id, logId));
+  } catch (error) {
+    console.error('[manual-override] Failed to record text summary:', error);
+  }
+}
+
+async function wasMarkedTextSent(eventId: string): Promise<boolean> {
+  try {
+    const [row] = await db
+      .select({ details: eventManualOverrideLog.details })
+      .from(eventManualOverrideLog)
+      .where(
+        and(
+          eq(eventManualOverrideLog.eventId, eventId),
+          eq(eventManualOverrideLog.action, 'marked')
+        )
+      )
+      .orderBy(desc(eventManualOverrideLog.createdAt), desc(sql`rowid`))
+      .limit(1);
+    const parsed = parseDetails(row?.details ?? null);
+    return Boolean(parsed && 'sms' in parsed && parsed.sms && parsed.sms.sent > 0);
+  } catch (error) {
+    console.error('[manual-override] Failed to read mark text summary:', error);
+    return false;
+  }
+}
+
 export async function markEventHandledManuallyForAccess(
   access: AccessContext,
-  input: { eventId: string; reason: string; note?: string | null }
-): Promise<ActionResult<void>> {
+  input: { eventId: string; reason: string; note?: string | null },
+  deps: ManualOverrideSmsDeps = {}
+): Promise<ActionResult<ManualOverrideSmsResult>> {
   try {
     if (!canMarkEventHandledManually(access.role)) {
       return { success: false, error: NOT_ALLOWED };
@@ -331,6 +384,7 @@ export async function markEventHandledManuallyForAccess(
     const now = new Date();
     const details: ManualOverrideLogDetails = { automation: prior };
 
+    const logId = crypto.randomUUID();
     const marked = await db.transaction(async (tx) => {
       const [updated] = await tx
         .update(events)
@@ -345,6 +399,7 @@ export async function markEventHandledManuallyForAccess(
       if (!updated) return false;
 
       await tx.insert(eventManualOverrideLog).values({
+        id: logId,
         eventId: event.id,
         action: 'marked',
         actorUserId: access.userId,
@@ -362,7 +417,14 @@ export async function markEventHandledManuallyForAccess(
     }
 
     revalidateEventTags(event, access.userId);
-    return { success: true };
+
+    // Texts are best effort and never undo or block the mark.
+    const sms = await notifyManualOverrideChange(
+      { eventId: event.id, actorUserId: access.userId, kind: 'marked', reason },
+      deps
+    );
+    await recordSmsOnLog(logId, details, sms);
+    return { success: true, data: { sms } };
   } catch (error) {
     console.error('[markEventHandledManuallyForAccess] Error:', error);
     return { success: false, error: 'Failed to mark the event as handled manually.' };
@@ -389,8 +451,9 @@ export async function previewReopenForAccess(
 
 export async function reopenEventForAutomationForAccess(
   access: AccessContext,
-  input: { eventId: string }
-): Promise<ActionResult<ReopenPreview>> {
+  input: { eventId: string },
+  deps: ManualOverrideSmsDeps = {}
+): Promise<ActionResult<ReopenPreview & ManualOverrideSmsResult>> {
   try {
     if (!canMarkEventHandledManually(access.role)) {
       return { success: false, error: NOT_ALLOWED };
@@ -424,6 +487,8 @@ export async function reopenEventForAutomationForAccess(
     const now = new Date();
     const details: ManualOverrideLogDetails = { automation: state };
 
+    const markedTextWasSent = await wasMarkedTextSent(event.id);
+    const logId = crypto.randomUUID();
     const reopened = await db.transaction(async (tx) => {
       const [updated] = await tx
         .update(events)
@@ -438,6 +503,7 @@ export async function reopenEventForAutomationForAccess(
       if (!updated) return false;
 
       await tx.insert(eventManualOverrideLog).values({
+        id: logId,
         eventId: event.id,
         action: 'reopened',
         actorUserId: access.userId,
@@ -455,7 +521,18 @@ export async function reopenEventForAutomationForAccess(
     }
 
     revalidateEventTags(event, access.userId);
-    return { success: true, data: preview };
+
+    // A correction text goes out only if the "handled manually" text actually reached someone.
+    // The event is still upcoming here (ended events cannot be reopened).
+    let sms: ManualOverrideSmsSummary | null = null;
+    if (markedTextWasSent) {
+      sms = await notifyManualOverrideChange(
+        { eventId: event.id, actorUserId: access.userId, kind: 'reopened' },
+        deps
+      );
+      await recordSmsOnLog(logId, details, sms);
+    }
+    return { success: true, data: { ...preview, sms } };
   } catch (error) {
     console.error('[reopenEventForAutomationForAccess] Error:', error);
     return { success: false, error: 'Failed to reopen the event.' };
@@ -503,7 +580,8 @@ export async function getManualOverrideAuditForAccess(
       .select()
       .from(eventManualOverrideLog)
       .where(eq(eventManualOverrideLog.eventId, event.id))
-      .orderBy(asc(eventManualOverrideLog.createdAt), asc(eventManualOverrideLog.id));
+      // createdAt has one-second resolution, so rowid (insert order) breaks ties.
+      .orderBy(asc(eventManualOverrideLog.createdAt), asc(sql`rowid`));
 
     const entries: ManualOverrideHistoryEntry[] = logRows.map((row) => ({
       id: row.id,

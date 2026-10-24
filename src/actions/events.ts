@@ -24,6 +24,7 @@ import {
   previewReopenForAccess,
   reopenEventForAutomationForAccess,
   type ManualOverrideAudit,
+  type ManualOverrideSmsResult,
   type ReopenPreview,
 } from '@/lib/manual-override';
 import { users, type Building, type Event, type UserRole } from '@/schema/schema';
@@ -123,7 +124,7 @@ export async function markEventHandledManually(input: {
   eventId: string;
   reason: string;
   note?: string | null;
-}): Promise<ActionResult<void>> {
+}): Promise<ActionResult<ManualOverrideSmsResult>> {
   const access = await resolveAccessContext();
   if (!access.success || !access.data) return { success: false, error: access.error };
   return markEventHandledManuallyForAccess(access.data, input);
@@ -139,7 +140,7 @@ export async function previewReopenEventForAutomation(input: {
 
 export async function reopenEventForAutomation(input: {
   eventId: string;
-}): Promise<ActionResult<ReopenPreview>> {
+}): Promise<ActionResult<ReopenPreview & ManualOverrideSmsResult>> {
   const access = await resolveAccessContext();
   if (!access.success || !access.data) return { success: false, error: access.error };
   return reopenEventForAutomationForAccess(access.data, input);
