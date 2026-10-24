@@ -128,7 +128,9 @@ export async function POST(request: Request) {
 
   if (eventRecord.manualHandledAt) {
     return NextResponse.json(
-      { error: 'This event is marked as handled manually. Reopen it before requesting a license.' },
+      {
+        error: 'This event is marked as handled manually. Reopen it before requesting door access.',
+      },
       { status: 409 }
     );
   }
@@ -171,7 +173,7 @@ export async function POST(request: Request) {
         jobId: existing.id,
         requestId,
         workerPollIntervalMs,
-        message: 'A queued license job already exists for this event.',
+        message: 'A queued door access job already exists for this event.',
       },
       { status: 200 }
     );
@@ -202,7 +204,7 @@ export async function POST(request: Request) {
       jobId: job.id,
       requestId,
       workerPollIntervalMs,
-      message: 'License request queued for local worker processing.',
+      message: 'Door access request queued for local worker processing.',
     },
     { status: 202 }
   );

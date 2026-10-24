@@ -1,10 +1,10 @@
 # Kindoo Automation Process Runbook
 
-This runbook documents how the Kindoo license automation queue works end-to-end and how to operate it in production-like environments.
+This runbook documents how the door access automation queue works end-to-end and how to operate it in production-like environments.
 
 ## 1. Purpose
 
-Automation converts due events into queue jobs and executes browser automation (Playwright) to create temporary Kindoo licenses without requiring manual action in the web UI.
+Automation converts due events into queue jobs and executes browser automation (Playwright) to create temporary door access in Kindoo without requiring manual action in the web UI.
 
 ## 2. Components
 

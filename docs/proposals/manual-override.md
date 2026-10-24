@@ -39,7 +39,7 @@ Texts use the existing sender (`sendNotificationEventSms`), the existing per-use
 
 **When an admin marks an event handled manually**, a text goes to:
 
-- the event's creator, under the same opt-in as the "Kindoo access ready" text (`license_job_completed`)
+- the event's creator, under the same opt-in as the "Door access set up" text (`license_job_completed`)
 - admins, stake managers and the event ward's managers who opted in to "new booking" texts (`event_created`), the same audience as the new booking text
 
 The admin who made the change is never texted. Each person gets at most one text. If SMS is not configured, nothing is attempted. A text problem never blocks or rolls back the mark.
@@ -56,25 +56,25 @@ The admin who made the change is never texted. Each person gets at most one text
 Example (granted directly):
 
 ```
-DigitalFob: Kindoo access is taken care of
+DigitalFob: Door access is taken care of
 Youth Night (Ward event)
 For: Jane Smith, 3rd Ward
 Where: Stake Center
 When: Sat Oct 17, 6:00-9:00 PM MT
-Access was granted directly in Kindoo.
+Door access was granted directly in Kindoo.
 Nothing needed from you. Automation will skip this event.
 ```
 
 Example (reopen):
 
 ```
-DigitalFob: Correction, access is automatic
+DigitalFob: Correction, door access is automatic
 Youth Night (Ward event)
 For: Jane Smith, 3rd Ward
 Where: Stake Center
 When: Sat Oct 17, 6:00-9:00 PM MT
 Please disregard our earlier text.
-Access will be set up as usual, about 4 hours before the event. Nothing needed from you.
+Door access will be set up as usual, about 4 hours before the event. Nothing needed from you.
 ```
 
 **Override log.** The `marked` and `reopened` rows record a text summary in `details.sms`: `attempted`, `sent`, `skipped`, `failed`, and a `skippedReason` when nothing was attempted on purpose (`sms-not-configured`, `no-recipients`). The history in the audit dialog shows it, for example "Texted 2 people".

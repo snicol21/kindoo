@@ -205,14 +205,14 @@ function describeReopenOutlook(
       return {
         outlook: 'will-run-next-cycle',
         message:
-          'A queued automation job exists. The worker will pick it up on its next run and try to grant access.',
+          'A queued automation job exists. The worker will pick it up on its next run and try to grant door access.',
       };
     }
     if (job.status === 'processing') {
       return {
         outlook: 'will-run-next-cycle',
         message:
-          'An automation job is marked in progress. If it is stuck, it is reset after the stale window and the worker will try to grant access.',
+          'An automation job is marked in progress. If it is stuck, it is reset after the stale window and the worker will try to grant door access.',
       };
     }
     if (job.status === 'failed') {
@@ -231,7 +231,7 @@ function describeReopenOutlook(
   if (state.licenseCreated) {
     return {
       outlook: 'no-automatic-action',
-      message: 'The license is already marked as created. Nothing will run.',
+      message: 'Door access is already marked as created. Nothing will run.',
     };
   }
 
@@ -239,7 +239,7 @@ function describeReopenOutlook(
     return {
       outlook: 'will-run-next-cycle',
       message:
-        'This event is inside its automation window. The worker will queue it on its next run and try to grant access.',
+        'This event is inside its automation window. The worker will queue it on its next run and try to grant door access.',
     };
   }
 

@@ -168,9 +168,8 @@ export function ManualOverrideDialog({
                 already running cannot be undone. You can reopen it later.
               </p>
               <p className="text-sm text-muted-foreground">
-                People who are subscribed to texts for this event get a short text that Kindoo
-                access is taken care of and nothing is needed from them. Your note is never
-                included.
+                People who are subscribed to texts for this event get a short text that door access
+                is taken care of and nothing is needed from them. Your note is never included.
               </p>
 
               <div className="space-y-2">
@@ -260,7 +259,7 @@ export function ManualOverrideDialog({
                   ? 'Checking what the worker will do…'
                   : reopenPreview.outlook === 'no-automatic-action'
                     ? reopenPreview.message
-                    : `Reopening lets the worker try to grant access to this event. ${reopenPreview.message}`}
+                    : `Reopening lets the worker try to grant door access to this event. ${reopenPreview.message}`}
               </div>
               {error && <p className="text-sm text-destructive">{error}</p>}
             </div>

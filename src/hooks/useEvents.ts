@@ -348,7 +348,7 @@ export function useSetKindooLicenseCreated() {
       if (context?.previousMaples !== undefined) {
         queryClient.setQueryData(context.maplesKey, context.previousMaples);
       }
-      toast.error(error.message ?? 'Failed to update Kindoo license status.');
+      toast.error(error.message ?? 'Failed to update door access status.');
     },
 
     onSettled: () => {
@@ -358,8 +358,8 @@ export function useSetKindooLicenseCreated() {
     onSuccess: (event) => {
       toast.success(
         event.kindooLicenseCreated
-          ? 'Kindoo license marked as completed.'
-          : 'Kindoo license marked as not completed.'
+          ? 'Door access marked as completed.'
+          : 'Door access marked as not completed.'
       );
     },
   });

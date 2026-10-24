@@ -56,7 +56,7 @@ export function describePriorAutomation(
   const job = prior.job;
   if (!job) {
     return prior.licenseCreated
-      ? 'The license was already marked as created.'
+      ? 'Door access was already marked as created.'
       : 'No automation run yet.';
   }
   switch (job.status) {
@@ -73,9 +73,9 @@ export function describePriorAutomation(
     case 'completed': {
       const when = job.completedAt ? ` at ${formatOverrideTimestamp(job.completedAt, now)}` : '';
       if (job.completionType === 'existing-active-license') {
-        return `Automation found an active license already in place${when}.`;
+        return `Automation found door access already in place${when}.`;
       }
-      return `Worker had already granted access${when} (temporary license created).`;
+      return `Worker had already granted door access${when} (temporary door access created).`;
     }
     default:
       return null;
@@ -91,8 +91,8 @@ export function describeLateWorkerResult(
     return `Worker also reported a failure at ${when} after the manual mark.`;
   }
   return result.worker.completionType === 'existing-active-license'
-    ? `Worker also finished at ${when} after the manual mark (active license already existed).`
-    : `Worker also finished at ${when} after the manual mark and created a license.`;
+    ? `Worker also finished at ${when} after the manual mark (door access already existed).`
+    : `Worker also finished at ${when} after the manual mark and created door access.`;
 }
 
 /** One short phrase about the texts a mark or reopen sent, for the history and the toast. */

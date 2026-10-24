@@ -81,9 +81,9 @@ const HIDE_SCHEDULE_COUNTDOWN_OUTCOMES = new Set([
   'Retry in progress',
   'Request failed',
   'Retry failed',
-  'Temporary license created',
-  'Active license already existed',
-  'License created',
+  'Temporary door access created',
+  'Door access already existed',
+  'Door access created',
 ]);
 
 const PERSIST_PENDING_OUTCOMES = new Set([
@@ -92,10 +92,13 @@ const PERSIST_PENDING_OUTCOMES = new Set([
   'Retry queued',
   'Retry in progress',
   'Auto-schedule pending',
-  'Scheduled for license',
+  'Scheduled for door access',
 ]);
 
-const PAST_SCHEDULE_WINDOW_OUTCOMES = new Set(['Auto-schedule pending', 'Scheduled for license']);
+const PAST_SCHEDULE_WINDOW_OUTCOMES = new Set([
+  'Auto-schedule pending',
+  'Scheduled for door access',
+]);
 
 function getLicenseOutcomeVisual(outcome: string) {
   const queuedBadge = {
@@ -178,7 +181,7 @@ function getLicenseOutcomeVisual(outcome: string) {
     return failedBadge;
   }
 
-  if (outcome === 'Scheduled for license') {
+  if (outcome === 'Scheduled for door access') {
     return futureScheduledBadge;
   }
 
@@ -190,7 +193,7 @@ function getLicenseOutcomeVisual(outcome: string) {
     return automationQueuedBadge;
   }
 
-  if (outcome === 'License expired') {
+  if (outcome === 'Door access expired') {
     return expiredBadge;
   }
 
@@ -288,7 +291,7 @@ export function EventTable({
       setLicenseEvent((prev) =>
         prev && prev.id === event.id ? { ...prev, kindooLicenseCreated: previousValue } : prev
       );
-      toast.error('Failed to update license status.');
+      toast.error('Failed to update door access status.');
     } finally {
       setIsSavingLicenseStatus(false);
     }
@@ -391,9 +394,9 @@ export function EventTable({
       shouldShowAutoSchedule,
     }: (typeof trackedEvents)[number]) =>
       isCompleted
-        ? 'License created'
+        ? 'Door access created'
         : shouldShowScheduled
-          ? 'Scheduled for license'
+          ? 'Scheduled for door access'
           : shouldShowAutoSchedule
             ? 'Auto-schedule pending'
             : null;
@@ -434,10 +437,10 @@ export function EventTable({
           return [eventId, isCompleted ? 'Retry failed' : 'Request failed'] as const;
         }
         if (job?.completionType === 'existing-active-license') {
-          return [eventId, 'Active license already existed'] as const;
+          return [eventId, 'Door access already existed'] as const;
         }
         if (job?.completionType === 'temporary-license-created') {
-          return [eventId, 'Temporary license created'] as const;
+          return [eventId, 'Temporary door access created'] as const;
         }
         return [eventId, fallbackOutcome(tracked)] as const;
       });
@@ -1207,13 +1210,13 @@ export function EventTable({
                 shouldShowScheduleCountdown &&
                 !!licenseOutcome &&
                 (licenseOutcome === 'Auto-schedule pending' ||
-                  licenseOutcome === 'Scheduled for license');
+                  licenseOutcome === 'Scheduled for door access');
               const shouldShowPastSchedulingWindowPassed =
                 eventEnded && !!licenseOutcome && PAST_SCHEDULE_WINDOW_OUTCOMES.has(licenseOutcome);
               const shouldShowExpiredLicense =
                 !isHandledManually && !!event.kindooLicenseCreated && licenseWindowEnded;
               const shouldShowPastExistingLicenseLabel =
-                eventEnded && licenseOutcome === 'Active license already existed';
+                eventEnded && licenseOutcome === 'Door access already existed';
               const msUntilLicenseExpires =
                 !isHandledManually && !!event.kindooLicenseCreated && nowMs !== null
                   ? getLicenseWindowEndTimestamp(event) - nowMs
@@ -1226,18 +1229,18 @@ export function EventTable({
                 Number.isFinite(msUntilLicenseExpires) &&
                 msUntilLicenseExpires > 0;
               const displayedOutcome = shouldShowExpiredLicense
-                ? 'License expired'
+                ? 'Door access expired'
                 : shouldShowPastSchedulingWindowPassed
                   ? 'Scheduling window passed'
                   : licenseOutcome;
               const licenseOutcomeLabel = shouldUseCountdownAsOutcomeLabel
                 ? msUntilDue !== null && msUntilDue > 0
-                  ? `License schedules in ${formatCountdownMs(msUntilDue)}`
+                  ? `Door access schedules in ${formatCountdownMs(msUntilDue)}`
                   : 'Scheduling queued'
                 : shouldShowLicenseExpiryCountdown
-                  ? `License expires in ${formatCountdownMs(msUntilLicenseExpires)}`
+                  ? `Door access expires in ${formatCountdownMs(msUntilLicenseExpires)}`
                   : shouldShowPastExistingLicenseLabel
-                    ? 'Active license existed at event time'
+                    ? 'Door access existed at event time'
                     : displayedOutcome;
               const scheduleTimeReached =
                 shouldUseCountdownAsOutcomeLabel && (msUntilDue === null || msUntilDue <= 0);

@@ -364,10 +364,10 @@ async function main() {
         assert.equal(p.job?.status, 'completed');
         assert.equal(p.licenseCreated, true);
       },
-      line: /Worker had already granted access at .* \(temporary license created\)/,
+      line: /Worker had already granted door access at .* \(temporary door access created\)/,
     },
     {
-      name: 'active license already existed',
+      name: 'door access already existed',
       setup: async () => {
         const e = await mkEvent('p-existing', { licenseCreated: true });
         await mkJob('p-existing-j', e, 'completed', {
@@ -377,7 +377,7 @@ async function main() {
         return e;
       },
       expect: (p) => assert.equal(p.job?.completionType, 'existing-active-license'),
-      line: /active license already in place/,
+      line: /door access already in place/,
     },
   ];
   for (const c of priorCases) {
@@ -645,7 +645,7 @@ async function main() {
       assert.equal(late.length, 1);
       const audit = (await mo.getManualOverrideAuditForAccess(admin, { eventId })).data!;
       assert.equal(audit.lateWorkerResults.length, 1);
-      assert.match(fmt.describeLateWorkerResult(audit.lateWorkerResults[0]), /created a license/);
+      assert.match(fmt.describeLateWorkerResult(audit.lateWorkerResults[0]), /created door access/);
     }
   );
 
@@ -783,8 +783,8 @@ async function main() {
         assert.match(
           body,
           reason === 'not_needed'
-            ? /^DigitalFob: No Kindoo access needed/
-            : /^DigitalFob: Kindoo access is taken care of/
+            ? /^DigitalFob: No door access needed/
+            : /^DigitalFob: Door access is taken care of/
         );
         assert.match(body, /Nothing needed from you/);
         assert.match(body, /Where: Stake Center/);
@@ -845,7 +845,7 @@ async function main() {
       assert.equal(r.success, true);
       assert.deepEqual(textedNumbers(), ['+15555550123', '+15555550141']);
       const body = providerCalls[0].body;
-      assert.match(body, /^DigitalFob: Correction, access is automatic/);
+      assert.match(body, /^DigitalFob: Correction, door access is automatic/);
       assert.match(body, /disregard our earlier text/);
       assert.match(body, /Nothing needed from you/);
       assert.match(body, /about 4 hours before the event/);
