@@ -208,3 +208,55 @@ export function buildAccessRequestSubmittedSms(input: {
     ])
   );
 }
+
+// ─── Handled manually (admin override) ───────────────────────────────────────
+// Wording for the texts sent when an admin marks an event as handled manually and when they
+// reopen it. Kept here, next to the other templates, so all SMS wording can be reviewed and
+// reworded in one place. Never include the admin's note or any internal detail.
+
+export type HandledManuallyReason = 'worker_offline' | 'granted_directly' | 'not_needed' | 'other';
+
+const HANDLED_MANUALLY_REASON_LINES: Record<HandledManuallyReason, string> = {
+  worker_offline: 'Access was handled by hand because automation was unavailable.',
+  granted_directly: 'Access was granted directly in Kindoo.',
+  not_needed: 'Kindoo access is not needed for this event.',
+  other: 'Access is being handled by hand.',
+};
+
+export function buildEventHandledManuallySms(
+  input: EventSmsInput & { reason: HandledManuallyReason }
+): string {
+  const building = truncate(clean(input.building), 40);
+  const reasonLine =
+    HANDLED_MANUALLY_REASON_LINES[input.reason] ?? HANDLED_MANUALLY_REASON_LINES.other;
+  const headline =
+    input.reason === 'not_needed'
+      ? 'DigitalFob: No Kindoo access needed'
+      : 'DigitalFob: Kindoo access is taken care of';
+  return fitToLimit((descMax) =>
+    joinLines([
+      headline,
+      titleLine(input, descMax),
+      forNameWard(input),
+      building && `Where: ${building}`,
+      whenLine(input),
+      reasonLine,
+      'Nothing needed from you. Automation will skip this event.',
+    ])
+  );
+}
+
+export function buildEventHandledManuallyReopenedSms(input: EventSmsInput): string {
+  const building = truncate(clean(input.building), 40);
+  return fitToLimit((descMax) =>
+    joinLines([
+      'DigitalFob: Correction, access is automatic',
+      titleLine(input, descMax),
+      forNameWard(input),
+      building && `Where: ${building}`,
+      whenLine(input),
+      'Please disregard our earlier text.',
+      'Access will be set up as usual, about 4 hours before the event. Nothing needed from you.',
+    ])
+  );
+}

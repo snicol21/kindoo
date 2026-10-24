@@ -23,6 +23,7 @@ export type DashboardCounts = {
   activeLicense: { stake: number; maples: number; total: number };
   upcoming: { stake: number; maples: number; total: number };
   past: { stake: number; maples: number; total: number };
+  handledManually: { stake: number; maples: number; total: number };
 };
 
 export type WardBreakdownRow = {

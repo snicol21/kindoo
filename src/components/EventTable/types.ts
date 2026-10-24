@@ -19,6 +19,8 @@ export interface EventTableProps {
   }) => Promise<void>;
   /** Show the stake-level-only "Other" ward in edit and clone. */
   canSelectOtherWard?: boolean;
+  /** Admin only. Shows Mark as handled manually and Reopen. The server enforces it too. */
+  canMarkHandledManually?: boolean;
   selectedIds?: string[];
   onSelectionChange?: (eventIds: string[]) => void;
 }
