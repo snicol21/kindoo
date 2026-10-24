@@ -3,7 +3,7 @@
 
 const MAX_GSM_UNITS = 306; // two concatenated GSM-7 segments
 const DESCRIPTION_MAX = 40;
-const REASON_MAX = 60;
+const FIELD_MAX = 60;
 
 const GSM_BASIC =
   '@£$¥èéùìòÇ\nØø\rÅåΔ_ΦΓΛΩΠΨΣΘΞÆæßÉ !"#¤%&\'()*+,-./0123456789:;<=>?¡ABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÑÜ§¿abcdefghijklmnopqrstuvwxyzäöñüà';
@@ -77,20 +77,48 @@ export function formatTimeRange(startTime: string, endTime: string): string {
     : `${fmt(start)} ${start.mer}-${fmt(end)} ${end.mer}`;
 }
 
-/** Map raw worker failure details to a short, friendly reason. Never echoes raw text. */
-export function friendlyFailureReason(details: string | null | undefined): string {
+export type FailureKind =
+  | 'already-exists'
+  | 'time-passed'
+  | 'user-not-found'
+  | 'sign-in'
+  | 'slow'
+  | 'unexpected';
+
+/** Sort raw worker failure details into one of a few kinds. Never echoes raw text. */
+export function classifyFailure(details: string | null | undefined): FailureKind {
   const text = (details ?? '').toLowerCase();
-  if (/expiry date already expired/.test(text)) return 'Event time already passed in Kindoo';
+  if (/expiry date already expired/.test(text)) return 'time-passed';
   if (/already (exists|licensed|active)|existing[- ]active[- ]license/.test(text))
-    return 'Access already exists';
-  if (/user not found|no (matching )?user|not found in kindoo/.test(text))
-    return 'Kindoo user not found';
-  if (/login|password|username|authenticat|sign[- ]?in/.test(text))
-    return 'Kindoo login timed out';
+    return 'already-exists';
+  if (/user not found|no (matching )?user|not found in kindoo/.test(text)) return 'user-not-found';
+  if (/login|password|username|authenticat|sign[- ]?in/.test(text)) return 'sign-in';
   if (/timeout|timed out|exceeded .*ms|selector|not visible|unable to open|did not become ready|not clickable/.test(text))
-    return 'Kindoo page timed out';
-  return 'Automation error, see dashboard';
+    return 'slow';
+  return 'unexpected';
 }
+
+const FAILURE_WHY: Record<FailureKind, string> = {
+  'already-exists': 'Kindoo already shows access for this person.',
+  'time-passed': 'Kindoo saw this time as already past.',
+  'user-not-found': 'this email was not found in Kindoo.',
+  'sign-in': 'Kindoo sign-in timed out.',
+  slow: 'Kindoo was slow to respond.',
+  unexpected: 'something unexpected happened.',
+};
+
+/** The plain-English reason shown on the "Why:" line of a failure text. */
+export function friendlyFailureReason(details: string | null | undefined): string {
+  return FAILURE_WHY[classifyFailure(details)];
+}
+
+/** How Kindoo access will (or will not) be added for a new booking. */
+export type KindooAccessPlan =
+  | 'automatic'
+  | 'automatic-soon'
+  | 'no-email'
+  | 'unsupported-building'
+  | 'ended';
 
 export interface EventSmsInput {
   description?: string | null;
@@ -104,9 +132,14 @@ export interface EventSmsInput {
   contactPhone?: string | null;
 }
 
+function detailWhere(input: EventSmsInput, fieldMax: number): string {
+  const building = truncate(clean(input.building), Math.min(40, fieldMax));
+  return building && `Where: ${building}`;
+}
+
 function titleLine(input: EventSmsInput, descMax: number): string {
   const eventType = clean(input.eventType) || 'Private';
-  const description = truncate(clean(input.description), descMax);
+  const description = descMax > 0 ? truncate(clean(input.description), descMax) : '';
   return description ? `${description} (${eventType} event)` : `${eventType} event`;
 }
 
@@ -118,93 +151,159 @@ function joinLines(lines: Array<string | null | undefined | false>): string {
   return lines.filter((line): line is string => Boolean(line)).join('\n');
 }
 
-/** Build with shrinking description (then reason) until within 2 GSM-7 segments. */
-function fitToLimit(build: (descMax: number, reasonMax: number) => string): string {
+/** Build with a shrinking description, then shrinking name, ward and building fields, until within the limit (2 GSM-7 segments by default). The closing action line is never cut. */
+function fitToLimit(
+  build: (descMax: number, fieldMax: number) => string,
+  maxUnits: number = MAX_GSM_UNITS
+): string {
   let descMax = DESCRIPTION_MAX;
-  let reasonMax = REASON_MAX;
-  let message = build(descMax, reasonMax);
-  while (gsmLength(message) > MAX_GSM_UNITS && descMax > 10) {
+  let fieldMax = FIELD_MAX;
+  let message = build(descMax, fieldMax);
+  while (gsmLength(message) > maxUnits && descMax > 10) {
     descMax -= 5;
-    message = build(descMax, reasonMax);
+    message = build(descMax, fieldMax);
   }
-  while (gsmLength(message) > MAX_GSM_UNITS && reasonMax > 15) {
-    reasonMax -= 5;
-    message = build(descMax, reasonMax);
+  while (gsmLength(message) > maxUnits && fieldMax > 10) {
+    fieldMax -= 5;
+    message = build(descMax, fieldMax);
   }
-  return gsmLength(message) > MAX_GSM_UNITS ? message.slice(0, MAX_GSM_UNITS - 3) + '...' : message;
+  if (gsmLength(message) > maxUnits) {
+    // Last resort before cutting: leave the free-text description out.
+    message = build(0, fieldMax);
+  }
+  return gsmLength(message) > maxUnits ? message.slice(0, maxUnits - 3) + '...' : message;
 }
 
-export function buildEventCreatedSms(input: EventSmsInput): string {
-  const name = truncate(clean(input.contactName), 40);
-  const phone = truncate(clean(input.contactPhone), 24);
-  const forText = [name, phone].filter(Boolean).join(', ');
-  const ward = truncate(clean(input.ward), 40);
-  const building = truncate(clean(input.building), 40);
-  return fitToLimit((descMax) =>
-    joinLines([
-      'DigitalFob: New booking',
+const NEW_BOOKING_ACTION_LINES: Record<KindooAccessPlan, string> = {
+  automatic:
+    'Nothing needed from you. Door access is added in Kindoo automatically, usually about 4 hours before the start.',
+  'automatic-soon':
+    'Nothing needed from you. Door access is added in Kindoo automatically, usually soon since the event is close.',
+  'no-email':
+    'Door access will not be added automatically (no contact email). Please add one in DigitalFob, or add access in Kindoo.',
+  'unsupported-building':
+    'Door access is not added automatically for this building. Please add access in Kindoo if it is needed.',
+  ended: 'Door access is not added automatically because this event has already ended.',
+};
+
+export function buildEventCreatedSms(input: EventSmsInput & { accessPlan?: KindooAccessPlan }): string {
+  const actionLine = NEW_BOOKING_ACTION_LINES[input.accessPlan ?? 'automatic'];
+  return fitToLimit((descMax, fieldMax) => {
+    const name = truncate(clean(input.contactName), Math.min(40, fieldMax));
+    const phone = truncate(clean(input.contactPhone), 24);
+    const forText = [name, phone].filter(Boolean).join(', ');
+    const ward = truncate(clean(input.ward), Math.min(40, fieldMax));
+    const building = truncate(clean(input.building), Math.min(40, fieldMax));
+    return joinLines([
+      'DigitalFob: New booking added',
       titleLine(input, descMax),
       forText && `For: ${forText}`,
       ward && `Ward: ${ward}`,
       building && `Where: ${building}`,
       whenLine(input),
-      'Status: Booked, Kindoo access pending',
-    ])
-  );
+      actionLine,
+    ]);
+  });
 }
 
-function forNameWard(input: EventSmsInput): string {
-  const parts = [truncate(clean(input.contactName), 40), truncate(clean(input.ward), 40)].filter(
+function forNameWard(input: EventSmsInput, max = 40): string {
+  const parts = [truncate(clean(input.contactName), max), truncate(clean(input.ward), max)].filter(
     Boolean
   );
   return parts.length ? `For: ${parts.join(', ')}` : '';
 }
 
 export function buildLicenseJobCompletedSms(input: EventSmsInput): string {
-  const building = truncate(clean(input.building), 40);
-  return fitToLimit((descMax) =>
+  return fitToLimit((descMax, fieldMax) =>
     joinLines([
-      'DigitalFob: Kindoo access READY',
+      'DigitalFob: Door access is set up',
       titleLine(input, descMax),
-      forNameWard(input),
-      building && `Where: ${building}`,
+      forNameWard(input, Math.min(40, fieldMax)),
+      detailWhere(input, fieldMax),
       whenLine(input),
-      'Temporary license is set for this time.',
+      'Nothing needed from you. Access works from about 2 hours before the start until about 2 hours after the end.',
     ])
   );
 }
 
-export function buildLicenseJobFailedSms(input: EventSmsInput & { details?: string | null }): string {
-  const building = truncate(clean(input.building), 40);
-  const reason = friendlyFailureReason(input.details);
-  return fitToLimit((descMax, reasonMax) =>
+const RETRY_OR_KINDOO = 'tap Retry on this event in DigitalFob, or add access in Kindoo.';
+
+function failureActionLine(kind: FailureKind, afterStart: boolean): string {
+  const when = afterStart ? 'as soon as you can' : 'before the event starts';
+  switch (kind) {
+    case 'user-not-found':
+      return `Please fix the email on the booking in DigitalFob ${when}, then tap Retry.`;
+    case 'time-passed':
+      return 'Please check the date and time on the booking in DigitalFob, then tap Retry.';
+    default:
+      return `Please do one of these ${when}: ${RETRY_OR_KINDOO}`;
+  }
+}
+
+/**
+ * Text for a failed Kindoo job. `afterStart` switches the deadline wording once the event has
+ * started. "Access already exists" is not a failure, so it gets its own reassuring text.
+ */
+export function buildLicenseJobFailedSms(
+  input: EventSmsInput & { details?: string | null; afterStart?: boolean }
+): string {
+  const kind = classifyFailure(input.details);
+  if (kind === 'already-exists') {
+    return fitToLimit((descMax, fieldMax) =>
+      joinLines([
+        'DigitalFob: Door access already exists',
+        titleLine(input, descMax),
+        forNameWard(input, Math.min(40, fieldMax)),
+        detailWhere(input, fieldMax),
+        whenLine(input),
+        'Kindoo already shows access for this person, so nothing was added.',
+        'Nothing needed from you. You can confirm in Kindoo if you like.',
+      ])
+    );
+  }
+  return fitToLimit((descMax, fieldMax) =>
     joinLines([
-      'DigitalFob: Kindoo access FAILED',
+      'DigitalFob: Door access was not set up',
       titleLine(input, descMax),
-      forNameWard(input),
-      building && `Where: ${building}`,
+      forNameWard(input, Math.min(40, fieldMax)),
+      detailWhere(input, fieldMax),
       whenLine(input),
-      `Reason: ${truncate(reason, reasonMax)}`,
-      'Next: Retry in Kindoo or set access by hand.',
+      `Why: ${FAILURE_WHY[kind]}`,
+      failureActionLine(kind, input.afterStart === true),
     ])
   );
 }
 
+const ONE_SEGMENT_UNITS = 160;
+
+/** Kept to 1 segment: long names or emails are shortened, then the closing "No rush." is dropped. */
 export function buildAccessRequestSubmittedSms(input: {
   name: string;
   ward?: string | null;
   email?: string | null;
 }): string {
-  const name = truncate(clean(input.name), 60);
   const ward = truncate(clean(input.ward), 40);
-  const email = truncate(clean(input.email), 80);
-  return fitToLimit(() =>
+  const build = (nameMax: number, emailMax: number, closing: string) =>
     joinLines([
       'DigitalFob: New access request',
-      name && `From: ${name}`,
+      clean(input.name) && `From: ${truncate(clean(input.name), nameMax)}`,
       ward && `Ward: ${ward}`,
-      email && `Email: ${email}`,
-      'Open DigitalFob to approve or deny.',
-    ])
-  );
+      clean(input.email) && `Email: ${truncate(clean(input.email), emailMax)}`,
+      closing,
+    ]);
+  const full = 'Please approve or deny it in DigitalFob when you can. No rush.';
+  const short = 'Please approve or deny it in DigitalFob when you can.';
+  for (const closing of [full, short]) {
+    for (const [nameMax, emailMax] of [
+      [60, 80],
+      [40, 50],
+      [30, 40],
+      [24, 32],
+      [20, 26],
+    ]) {
+      const message = build(nameMax, emailMax, closing);
+      if (gsmLength(message) <= ONE_SEGMENT_UNITS) return message;
+    }
+  }
+  return fitToLimit(() => build(20, 26, short), ONE_SEGMENT_UNITS);
 }
