@@ -1,8 +1,10 @@
 import { db } from '@/lib/db';
+import { getKindooAccessPlan } from '@/lib/kindoo-access';
 import { sendNotificationEventSms } from '@/lib/notifications';
 import { canCreateEventInBuildingForWard, canMutateEvent } from '@/lib/permissions';
 import { buildEventCreatedSms } from '@/lib/sms-message-templates';
 import {
+  formatWardLabel,
   isOtherWard,
   normalizeOtherWardNameForStorage,
   validateOtherWardName,
@@ -440,9 +442,16 @@ export async function createEventForAccess(
             startTime: normalizedInput.startTime,
             endTime: normalizedInput.endTime,
             building: normalizedInput.building,
-            ward: normalizedInput.ward,
+            ward: formatWardLabel(normalizedInput.ward, normalizedInput.otherWardName),
             contactName: normalizedInput.name,
             contactPhone: normalizedInput.phone,
+            accessPlan: getKindooAccessPlan({
+              building: normalizedInput.building,
+              contactEmail: normalizedInput.email,
+              eventDate: normalizedInput.eventDate,
+              startTime: normalizedInput.startTime,
+              endTime: normalizedInput.endTime,
+            }),
           }),
         });
         notificationDelivery = {
