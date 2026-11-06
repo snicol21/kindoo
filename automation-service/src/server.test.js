@@ -333,3 +333,16 @@ test('login screen does not pass authenticated readiness', async () => {
     await page.close();
   }
 });
+
+test('church sign-in page without the Kindoo email field is not treated as authenticated', async () => {
+  const page = await browser.newPage();
+  try {
+    await page.route('https://id.example.org/**', (route) =>
+      route.fulfill({ contentType: 'text/html', body: '<h1>Verify it is you</h1>' })
+    );
+    await page.goto('https://id.example.org/signin');
+    await assert.rejects(waitForPostLoginReady(page, 'test-idp', 1500), /Login did not reach/);
+  } finally {
+    await page.close();
+  }
+});

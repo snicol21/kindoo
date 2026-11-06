@@ -489,7 +489,8 @@ export async function waitForPostLoginReady(page, requestId, timeoutMs = TIMEOUT
     }
 
     const loginVisible = await isLoginScreenVisible(page);
-    if (!loginVisible) {
+    // Off-Kindoo pages (e.g. the church sign-in still processing Verify) are not authenticated yet.
+    if (!loginVisible && isKindooHost(page.url())) {
       nonLoginIterations += 1;
       // If login is gone for a few checks, proceed and force a navigation to home.
       if (nonLoginIterations >= 3) {
@@ -503,6 +504,23 @@ export async function waitForPostLoginReady(page, requestId, timeoutMs = TIMEOUT
   }
 
   throw new Error('Login did not reach an authenticated page before timeout.');
+}
+
+function isKindooHost(url) {
+  try {
+    return /(^|\.)kindoo\.tech$/i.test(new URL(url).hostname);
+  } catch {
+    return false;
+  }
+}
+
+function describeUrlWithoutQuery(url) {
+  try {
+    const { host, pathname } = new URL(url);
+    return `${host}${pathname}`;
+  } catch {
+    return 'unknown';
+  }
 }
 
 async function captureDebugArtifacts(page, requestId, label) {
@@ -578,9 +596,17 @@ export async function performLogin({
 
   await runStep(requestId, 'login-email', async () => {
     await emailField.waitFor({ state: 'visible', timeout: TIMEOUT_MS });
-    await emailField.click();
+    // fill/press skip pointer hit-testing, so Kindoo's loading overlay cannot block them.
     await emailField.fill(kindooEmail);
-    await page.getByText('Next').click();
+    const clickedNext = await page
+      .getByText('Next')
+      .click({ timeout: 5000 })
+      .then(() => true)
+      .catch(() => false);
+    if (!clickedNext) {
+      logAutomation(requestId, 'Next button blocked by overlay; submitting email with Enter');
+      await emailField.press('Enter');
+    }
   });
 
   await runStep(requestId, 'login-church-username', async () => {
@@ -666,12 +692,29 @@ export async function performLogin({
       }
     }
 
-    await waitForPostLoginReady(page, requestId, TIMEOUT_MS);
+    try {
+      await waitForPostLoginReady(page, requestId, TIMEOUT_MS);
+    } catch (error) {
+      const stuckAt = describeUrlWithoutQuery(page.url());
+      await captureDebugArtifacts(page, requestId, 'login-not-completed');
+      throw new Error(
+        `Church sign-in did not return to Kindoo after Verify (stuck at ${stuckAt}). ` +
+          'Check the account for an MFA prompt, password change, or sign-in error.',
+        { cause: error }
+      );
+    }
 
     // Land on a deterministic entry page before continuing navigation.
     await page.goto(kindooUrl, { waitUntil: 'domcontentloaded' });
     await page.waitForLoadState('networkidle', { timeout: 5000 }).catch(() => undefined);
     logAutomation(requestId, 'post-login home navigation complete', { url: page.url() });
+
+    if (await isLoginScreenVisible(page, 3000)) {
+      await captureDebugArtifacts(page, requestId, 'login-not-persisted');
+      throw new Error(
+        'Kindoo returned to its sign-in screen after church login; session was not established.'
+      );
+    }
   });
 
   logAutomation(requestId, 'login flow completed');
