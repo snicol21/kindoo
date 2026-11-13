@@ -33,6 +33,8 @@ API behavior:
   - Due window starts on the event date at `2 hours before license window start`
   - License window start is computed as `event start - 2 hours` (clamped to `05:00` local business time)
   - Practical result: jobs are usually due at `event start - 4 hours` on the same day
+  - If that due clock time is at or after `KINDOO_SCHEDULE_NIGHT_CUTOFF` (default `21:00`) or before `KINDOO_SCHEDULE_MORNING_END` (default `08:00`, exclusive), the job is instead due at `KINDOO_SCHEDULE_PULL_FORWARD_AT` (default `21:00`) on the previous civil day in America/Denver. An 11:00 AM event (normally due at 7:00 AM) is queued at 9:00 PM the evening before. A noon event (normally due at 8:00 AM) stays due at 8:00 AM.
+  - The access rule start and end times are not changed. Only the job run time moves.
   - Catch-up still applies: if the event was created after due time but before event end, it is queued immediately
 
 Important:
@@ -101,6 +103,7 @@ Required for queue auth/recovery:
 
 - `KINDOO_WORKER_TOKEN`
 - `KINDOO_WORKER_STALE_MINUTES`
+- `KINDOO_SCHEDULE_NIGHT_CUTOFF` (default `21:00`), `KINDOO_SCHEDULE_MORNING_END` (default `08:00`, exclusive), `KINDOO_SCHEDULE_PULL_FORWARD_AT` (default `21:00`). Invalid values fall back to these defaults. If you change them, also set the `NEXT_PUBLIC_KINDOO_SCHEDULE_*` mirrors to the same values so the dashboard countdown matches.
 
 ### 5.2 Worker env (`automation-service/.env`)
 

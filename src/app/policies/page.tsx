@@ -23,7 +23,7 @@ For: Jane Smith, 801-555-0123
 Ward: 3rd Ward
 Where: Stake Center
 When: Sat Nov 7, 6:00-9:00 PM MT
-Nothing needed from you. Door access is added in Kindoo automatically, usually about 4 hours before the start.`,
+Nothing needed from you. Door access is added in Kindoo about 4 hours before the start, or 9 PM the night before if early.`,
   `DigitalFob: Door access is set up
 Youth Activity Night (Ward event)
 For: Jane Smith, 3rd Ward

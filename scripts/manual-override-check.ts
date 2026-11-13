@@ -847,8 +847,7 @@ async function main() {
       const body = providerCalls[0].body;
       assert.match(body, /^DigitalFob: Correction, door access is automatic/);
       assert.match(body, /disregard our earlier text/);
-      assert.match(body, /Nothing needed from you/);
-      assert.match(body, /about 4 hours before the event/);
+      assert.match(body, /about 4 hours before the event, or 9 PM the night before if early/);
       assert.match(body, /Where: Stake Center/);
       assert.equal(/https?:\/\/|www\./.test(body), false);
       assert.equal(/[\u2013\u2014\u2026\u201C\u201D]/.test(body), false);

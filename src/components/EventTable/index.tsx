@@ -32,7 +32,14 @@ import type { EventTableProps, SortDir, SortKey } from '@/components/EventTable/
 import { useContactChangeState } from '@/hooks/useContactChangeState';
 import { useContactSearch } from '@/hooks/useContacts';
 import { findExactContact, getContactSuggestions } from '@/lib/contact-matching';
-import { eventEndsInFuture } from '@/lib/license-schedule';
+import {
+  eventEndsInFuture,
+  getCurrentYmdHmInTimeZone,
+  getJobDueAt,
+  getJobDueTimestamp,
+  isDueForQueue,
+  SCHEDULE_TIMEZONE,
+} from '@/lib/license-schedule';
 import { formatWardLabel, isOtherWard, validateOtherWardName } from '@/lib/ward-utils';
 import type { Building, EventType, Ward } from '@/schema/schema';
 import { formatDate, getDaysUntil, getDaysUntilValue, toLocalDateTime } from '@/utils/dateUtils';
@@ -204,27 +211,8 @@ function getLicenseOutcomeVisual(outcome: string) {
   return completedBadge;
 }
 
-function parseTimeToMinutes(time: string) {
-  const parts = time.split(':');
-  if (parts.length !== 2) return null;
-  const hours = Number(parts[0]);
-  const minutes = Number(parts[1]);
-  if (!Number.isFinite(hours) || !Number.isFinite(minutes)) return null;
-  if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) return null;
-  return hours * 60 + minutes;
-}
-
 function getAutoScheduleDueTimestamp(eventDate: string, startTime: string) {
-  const startMinutes = parseTimeToMinutes(startTime);
-  if (startMinutes === null) return Number.NaN;
-  const licenseWindowStart = Math.max(5 * 60, startMinutes - 120);
-  const dueMinutes = Math.max(0, licenseWindowStart - 120);
-  const dueHours = Math.floor(dueMinutes / 60);
-  const dueRemainderMinutes = dueMinutes % 60;
-  return toLocalDateTime(
-    eventDate,
-    `${String(dueHours).padStart(2, '0')}:${String(dueRemainderMinutes).padStart(2, '0')}`
-  );
+  return getJobDueTimestamp(eventDate, startTime);
 }
 
 function formatCountdownMs(ms: number) {
@@ -236,11 +224,7 @@ function formatCountdownMs(ms: number) {
 }
 
 function isAutoScheduleDueNow(eventDate: string, startTime: string, endTime: string) {
-  const dueAt = getAutoScheduleDueTimestamp(eventDate, startTime);
-  const endAt = toLocalDateTime(eventDate, endTime);
-  if (!Number.isFinite(dueAt) || !Number.isFinite(endAt)) return false;
-  const now = Date.now();
-  return now >= dueAt && now <= endAt;
+  return isDueForQueue(eventDate, startTime, endTime);
 }
 
 export function EventTable({
@@ -1190,7 +1174,10 @@ export function EventTable({
                 eventEndsInFuture(event.eventDate, event.endTime);
               const shouldShowLicensePlaceholder =
                 !isOptimistic && (hasLicenseStatus || isLicenseOutcomeLoading);
-              const isDayOfEvent = getDaysUntilValue(event.eventDate) === 0;
+              const todayYmd = getCurrentYmdHmInTimeZone(SCHEDULE_TIMEZONE).ymd;
+              const jobDue = getJobDueAt(event.eventDate, event.startTime);
+              const isCountdownDay =
+                !!jobDue && (todayYmd === jobDue.ymd || todayYmd === event.eventDate);
               const eventEnded = toLocalDateTime(event.eventDate, event.endTime) < Date.now();
               const licenseWindowEnded = getLicenseWindowEndTimestamp(event) < Date.now();
               const dueAtMs = getAutoScheduleDueTimestamp(event.eventDate, event.startTime);
@@ -1202,7 +1189,7 @@ export function EventTable({
                 !isHandledManually &&
                 !event.kindooLicenseCreated &&
                 hasEmail &&
-                isDayOfEvent &&
+                isCountdownDay &&
                 hasValidDueAt &&
                 nowMs !== null &&
                 (!licenseOutcome || !HIDE_SCHEDULE_COUNTDOWN_OUTCOMES.has(licenseOutcome));

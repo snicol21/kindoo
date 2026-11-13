@@ -171,7 +171,7 @@ function fitToLimit(
 
 const NEW_BOOKING_ACTION_LINES: Record<KindooAccessPlan, string> = {
   automatic:
-    'Nothing needed from you. Door access is added in Kindoo automatically, usually about 4 hours before the start.',
+    'Nothing needed from you. Door access is added in Kindoo about 4 hours before the start, or 9 PM the night before if early.',
   'automatic-soon':
     'Nothing needed from you. Door access is added in Kindoo automatically, usually soon since the event is close.',
   'no-email':
@@ -352,7 +352,7 @@ export function buildEventHandledManuallyReopenedSms(input: EventSmsInput): stri
       building && `Where: ${building}`,
       whenLine(input),
       'Please disregard our earlier text.',
-      'Door access will be set up as usual, about 4 hours before the event. Nothing needed from you.',
+      'Door access will be set up as usual, about 4 hours before the event, or 9 PM the night before if early.',
     ])
   );
 }

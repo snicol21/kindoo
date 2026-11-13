@@ -170,7 +170,7 @@ For: Jane Smith, 801-555-0123
 Ward: 3rd Ward
 Where: Stake Center
 When: Sat Nov 7, 6:00-9:00 PM MT
-Nothing needed from you. Door access is added in Kindoo automatically, usually about 4 hours before the start.`
+Nothing needed from you. Door access is added in Kindoo about 4 hours before the start, or 9 PM the night before if early.`
     );
     assert.equal(
       rendered['set up'],
@@ -244,7 +244,7 @@ Please approve or deny it in DigitalFob when you can. No rush.`
   await check('new booking action line is accurate for events with no job', () => {
     assert.match(
       rendered['new booking (automatic)'],
-      /automatically, usually about 4 hours before the start\.$/
+      /is added in Kindoo about 4 hours before the start, or 9 PM the night before if early\.$/
     );
     for (const plan of ['no-email', 'unsupported-building', 'ended']) {
       const msg =
@@ -335,10 +335,14 @@ Please approve or deny it in DigitalFob when you can. No rush.`
         access.getKindooAccessPlan({ ...base, building: 'Chapel' }, at('2026-10-01T00:00:00Z')),
         'unsupported-building'
       );
-      // early start: window opens at 5:00 AM, so the job is due at 3:00 AM
+      // early start: window opens at 5:00 AM; the 3:00 AM due is pulled to 9:00 PM the evening before.
       const early = { ...base, startTime: '06:00', endTime: '08:00' };
-      assert.equal(access.getKindooAccessPlan(early, at('2026-11-07T09:50:00Z')), 'automatic'); // 2:50 AM
-      assert.equal(access.getKindooAccessPlan(early, at('2026-11-07T10:00:00Z')), 'automatic-soon'); // 3:00 AM
+      // 8:59 PM MST Nov 6 (previous evening), still before pull-forward
+      assert.equal(access.getKindooAccessPlan(early, at('2026-11-07T03:59:00Z')), 'automatic');
+      // 9:00 PM MST Nov 6
+      assert.equal(access.getKindooAccessPlan(early, at('2026-11-07T04:00:00Z')), 'automatic-soon');
+      // 2:50 AM MST Nov 7, already past the pulled due (catch-up)
+      assert.equal(access.getKindooAccessPlan(early, at('2026-11-07T09:50:00Z')), 'automatic-soon');
       assert.equal(
         access.hasEventStarted('2026-11-07', '18:00', at('2026-11-08T00:59:00Z')),
         false
@@ -364,16 +368,14 @@ Please approve or deny it in DigitalFob when you can. No rush.`
     } = {}
   ) => {
     const userId = id(name);
-    await db
-      .insert(users)
-      .values({
-        id: userId,
-        name: `${name} Person`,
-        email: opts.email ?? `${userId}@example.test`,
-        role,
-        ward,
-        phone: '5555550100',
-      });
+    await db.insert(users).values({
+      id: userId,
+      name: `${name} Person`,
+      email: opts.email ?? `${userId}@example.test`,
+      role,
+      ward,
+      phone: '5555550100',
+    });
     const phone = `55555502${String(10 + phoneSeq++).padStart(2, '0')}`;
     if (opts.sms !== undefined) {
       await db.insert(notificationPreferences).values({
@@ -422,15 +424,13 @@ Please approve or deny it in DigitalFob when you can. No rush.`
   await db.update(users).set({ role: 'admin' }).where(eq(users.id, synthetic.userId));
 
   const contactId = id('contact');
-  await db
-    .insert(contacts)
-    .values({
-      id: contactId,
-      name: 'Check Contact',
-      ward: '1st Ward',
-      email: `${contactId}@example.test`,
-      phone: '5555550199',
-    });
+  await db.insert(contacts).values({
+    id: contactId,
+    name: 'Check Contact',
+    ward: '1st Ward',
+    email: `${contactId}@example.test`,
+    phone: '5555550199',
+  });
 
   const ymdPlusDays = (days: number) =>
     new Intl.DateTimeFormat('en-CA', {
@@ -449,19 +449,17 @@ Please approve or deny it in DigitalFob when you can. No rush.`
     end = '20:00'
   ) => {
     const eventId = id(name);
-    await db
-      .insert(schema.events)
-      .values({
-        id: eventId,
-        building: 'Stake Center',
-        eventDate: date,
-        startTime: start,
-        endTime: end,
-        contactId,
-        description: `check ${name}`,
-        eventType: 'Ward',
-        userId: ownerId,
-      });
+    await db.insert(schema.events).values({
+      id: eventId,
+      building: 'Stake Center',
+      eventDate: date,
+      startTime: start,
+      endTime: end,
+      contactId,
+      description: `check ${name}`,
+      eventType: 'Ward',
+      userId: ownerId,
+    });
     return eventId;
   };
   const mkProcessingJob = async (name: string, eventId: string, ownerId: string) => {
@@ -615,7 +613,10 @@ Please approve or deny it in DigitalFob when you can. No rush.`
       const body = fakeTwilio.calls[0].body;
       assert.match(body, /\nWard: Other: Riverton 3rd Ward\n/);
       assert.match(body, /^DigitalFob: New booking added/);
-      assert.match(body, /automatically, usually about 4 hours before the start\.$/);
+      assert.match(
+        body,
+        /is added in Kindoo about 4 hours before the start, or 9 PM the night before if early\.$/
+      );
     }
   );
 
