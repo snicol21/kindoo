@@ -1,4 +1,5 @@
 import type { EventWithCreator } from '@/actions/events';
+import { isDueForQueue } from '@/lib/license-schedule';
 import { formatWardLabel } from '@/lib/ward-utils';
 import type { Building } from '@/schema/schema';
 import type { DashboardCounts, DashboardTab, DotCalendarDay, WardBreakdownRow } from './types';
@@ -81,17 +82,6 @@ function parseTimeToMinutes(time: string) {
   return hours * 60 + minutes;
 }
 
-function getDueTimestamp(eventDate: string, startTime: string) {
-  const startMinutes = parseTimeToMinutes(startTime);
-  if (startMinutes === null) return Number.NaN;
-  const licenseWindowStart = Math.max(5 * 60, startMinutes - 120);
-  const dueMinutes = Math.max(0, licenseWindowStart - 120);
-  const dueHours = Math.floor(dueMinutes / 60);
-  const dueRemainderMinutes = dueMinutes % 60;
-  const dueTime = `${String(dueHours).padStart(2, '0')}:${String(dueRemainderMinutes).padStart(2, '0')}`;
-  return new Date(`${eventDate}T${dueTime}:00`).getTime();
-}
-
 function getLicenseWindowEndTimestamp(event: EventWithCreator) {
   const endMinutes = parseTimeToMinutes(event.endTime);
   if (endMinutes === null) return Number.NaN;
@@ -120,11 +110,7 @@ function isPendingAutomation(event: EventWithCreator) {
   // The worker skips events an admin marked as handled manually, so they are never pending.
   if (event.manualHandledAt) return false;
   if (event.kindooLicenseCreated) return false;
-  const now = Date.now();
-  const dueTimestamp = getDueTimestamp(event.eventDate, event.startTime);
-  const eventEnd = new Date(`${event.eventDate}T${event.endTime}:00`).getTime();
-  if (!Number.isFinite(dueTimestamp) || !Number.isFinite(eventEnd)) return false;
-  return now >= dueTimestamp && now <= eventEnd;
+  return isDueForQueue(event.eventDate, event.startTime, event.endTime);
 }
 
 export function getTodayYmd() {

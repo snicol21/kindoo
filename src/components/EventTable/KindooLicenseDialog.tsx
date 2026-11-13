@@ -12,8 +12,9 @@ import {
 } from '@/components/_ui/dialog';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/_ui/tooltip';
 import { ManualOverrideSection } from '@/components/EventTable/ManualOverrideSection';
+import { getJobDueAt, getJobDueTimestamp } from '@/lib/license-schedule';
 import { formatWardLabel } from '@/lib/ward-utils';
-import { parseTimeToMinutes } from '@/utils/timeUtils';
+import { formatTime } from '@/utils/timeUtils';
 import { AlertTriangle, CheckCircle2, Clock, Copy, Hand, Loader2, RotateCw } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
@@ -190,15 +191,6 @@ function getOutcomeStatusVisual(outcome: string) {
   };
 }
 
-const EARLIEST_MINUTES = 5 * 60;
-
-function formatLocalYmd(date: Date) {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, '0');
-  const d = String(date.getDate()).padStart(2, '0');
-  return `${y}-${m}-${d}`;
-}
-
 function formatDateTimeNoSeconds(date: Date) {
   return date.toLocaleString('en-US', {
     month: 'numeric',
@@ -218,19 +210,6 @@ function formatCountdownMs(ms: number) {
   if (days > 0)
     return `${days}d ${String(hours).padStart(2, '0')}h ${String(minutes).padStart(2, '0')}m`;
   return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-}
-
-function getScheduledProcessingDateTime(eventDate: string, startTime: string) {
-  const startMinutes = parseTimeToMinutes(startTime);
-  if (startMinutes === null) return null;
-  const windowStartMinutes = Math.max(EARLIEST_MINUTES, startMinutes - 120);
-  const dueMinutes = Math.max(0, windowStartMinutes - 120);
-  const h = Math.floor(dueMinutes / 60);
-  const min = dueMinutes % 60;
-  const dt = new Date(
-    `${eventDate}T${String(h).padStart(2, '0')}:${String(min).padStart(2, '0')}:00`
-  );
-  return Number.isFinite(dt.getTime()) ? dt : null;
 }
 
 function getAccessRule(building: EventWithCreator['building']) {
@@ -516,16 +495,16 @@ export function KindooLicenseDialog({
 
   const licenseTimes = licenseEvent ? getLicenseTimesAction(licenseEvent) : null;
   const descriptionText = licenseEvent ? buildDescription(licenseEvent) : '';
-  const scheduledDateTime = licenseEvent
-    ? getScheduledProcessingDateTime(licenseEvent.eventDate, licenseEvent.startTime)
+  const scheduledDue = licenseEvent
+    ? getJobDueAt(licenseEvent.eventDate, licenseEvent.startTime)
     : null;
+  const scheduledDueMs = licenseEvent
+    ? getJobDueTimestamp(licenseEvent.eventDate, licenseEvent.startTime)
+    : Number.NaN;
+  const scheduledDateTime = Number.isFinite(scheduledDueMs) ? new Date(scheduledDueMs) : null;
 
-  const scheduledDateLabel = scheduledDateTime
-    ? formatDateAction(formatLocalYmd(scheduledDateTime))
-    : null;
-  const scheduledTimeLabel = scheduledDateTime
-    ? scheduledDateTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
-    : null;
+  const scheduledDateLabel = scheduledDue ? formatDateAction(scheduledDue.ymd) : null;
+  const scheduledTimeLabel = scheduledDue ? formatTime(scheduledDue.hm) : null;
 
   const licenseWindowDateLabel = licenseEvent
     ? formatDateAction(licenseEvent.eventDate)
